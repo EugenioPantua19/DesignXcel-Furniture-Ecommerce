@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory Manager - Manage Users</title>
+    <link rel="stylesheet" href="/css/Employee/Admin/AdminIndexStyles.css">
+    <style>
+        /* General table styling */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            margin-bottom: 30px;
+        }
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+            color: #333;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tr:hover {
+            background-color: #e9e9e9;
+        }
+        .manage-users-section {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .manage-users-section h3 {
+            color: #333;
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+            padding-bottom: 10px;
+        }
+        .manage-users-section table th {
+            background-color: #f2f2f2;
+            color: #333;
+        }
+        .sidebar-section-label {
+            color: #fff;
+            font-weight: bold;
+            padding: 12px 18px 6px 18px;
+            background: #333;
+            border-top: 1px solid #444;
+            border-bottom: none;
+            margin-top: 2px;
+            margin-bottom: 0;
+            font-size: 1.08em;
+        }
+        .sidebar-submenu {
+            list-style: none;
+            margin: 0 0 0 0;
+            padding: 0 0 0 18px;
+            background: #444;
+        }
+        .sidebar-submenu li a {
+            color: #fff;
+            display: block;
+            padding: 10px 0 10px 10px;
+            text-decoration: none;
+            font-size: 1em;
+            border-bottom: 1px solid #555;
+            transition: background 0.2s;
+        }
+        .sidebar-submenu li a:hover {
+            background: #555;
+        }
+        .edit-user-btn {
+            background-color: #FFC107;
+            color: #222;
+            border: none;
+            border-radius: 5px;
+            padding: 6px 16px;
+            font-size: 1em;
+            font-weight: 400;
+            cursor: pointer;
+            margin-right: 7px;
+            transition: background-color 0.2s;
+        }
+        .edit-user-btn:hover, .edit-user-btn:focus {
+            background-color: #e0ac06;
+            color: #111;
+        }
+        .delete-user-btn {
+            background-color: #dc3545;
+            color: #222;
+            border: none;
+            border-radius: 5px;
+            padding: 6px 16px;
+            font-size: 1em;
+            font-weight: 400;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .delete-user-btn:hover, .delete-user-btn:focus {
+            background-color: #c82333;
+            color: #111;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h3>Inventory Manager Panel</h3>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="/Employee/InventoryManager">Dashboard</a></li>
+                <li class="sidebar-section-label" style="font-weight:normal;">Inventory</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/Inventory/InvManagerProducts">Products</a></li>
+                    <li><a href="/Employee/Inventory/InvManagerMaterials">Raw Materials</a></li>
+                    <li><a href="/Employee/Inventory/InvManagerAlerts">Alerts</a></li>
+                    <li><a href="/Employee/Inventory/InvManagerArchived">Archived items</a></li>
+                </ul>
+                <li class="sidebar-section-label" style="font-weight:normal;">Transactions</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/Inventory/DeliveryRates">Delivery Rates</a></li>
+                    <li><a href="/Employee/Inventory/WalkIn">Walk In</a></li>
+                    <li><a href="/Employee/Inventory/InvManOrdersPending">Orders Pending</a></li>
+                    <li><a href="/Employee/Inventory/InvManOrdersProcessing">Orders Processing</a></li>
+                    <li><a href="/Employee/Inventory/InvManOrdersShipping">Orders Shipping</a></li>
+                    <li><a href="/Employee/Inventory/InvManOrdersDelivery">Orders Delivery</a></li>
+                    <li><a href="/Employee/Inventory/InvManOrdersReceive">Orders Receive</a></li>
+                    <li><a href="/Employee/Inventory/InvManCancelledOrders">Cancelled Orders</a></li>
+                    <li><a href="/Employee/Inventory/InvManCompletedOrders">Completed Orders</a></li>
+                </ul>
+                <li><a href="/Employee/Inventory/InvManagerManUsers">Manage Users</a></li>
+                <li><a href="/Employee/Inventory/InvManChatSupport">Chat Support</a></li>
+                <li><a href="/Employee/Inventory/InvManagerCMS">Content Management</a></li>
+                <li><a href="/Employee/Inventory/InvManagerLogs">Activity Logs</a></li>
+            </ul>
+        </div>
+        <div class="main-content">
+            <div class="header">
+                <h2>Manage Users</h2>
+            </div>
+            <div class="content-area">
+                <div class="manage-users-section">
+                    <h3>Admin Accounts</h3>
+                    <table id="adminAccountsTable">
+                        <thead>
+                            <tr>
+                                <th>User ID</th>
+                                <th>Username</th>
+                                <th>Full Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Created At</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% if (users && users.length > 0 && users.some(u => u.RoleName === 'Admin')) { %>
+                                <% users.filter(user => user.RoleName === 'Admin').forEach(function(user) { %>
+                                    <tr>
+                                        <td><%= user.UserID %></td>
+                                        <td><%= user.Username %></td>
+                                        <td><%= user.FullName %></td>
+                                        <td><%= user.Email %></td>
+                                        <td><%= user.RoleName %></td>
+                                        <td><%= user.IsActive ? 'Active' : 'Inactive' %></td>
+                                        <td><%= user.CreatedAt ? new Date(user.CreatedAt).toLocaleDateString() : 'N/A' %></td>
+                                        <td>
+                                            <!-- No edit/delete buttons for Admin accounts -->
+                                        </td>
+                                    </tr>
+                                <% }); %>
+                            <% } else { %>
+                                <tr><td colspan="8">No admin accounts found.</td></tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="manage-users-section">
+                    <h3>Employee Accounts</h3>
+                    <table id="employeeAccountsTable">
+                        <thead>
+                            <tr>
+                                <th>User ID</th>
+                                <th>Username</th>
+                                <th>Full Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Created At</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% if (users && users.length > 0 && users.some(u => u.RoleName !== 'Admin')) { %>
+                                <% users.filter(user => user.RoleName !== 'Admin').forEach(function(user) { %>
+                                    <tr>
+                                        <td><%= user.UserID %></td>
+                                        <td><%= user.Username %></td>
+                                        <td><%= user.FullName %></td>
+                                        <td><%= user.Email %></td>
+                                        <td><%= user.RoleName %></td>
+                                        <td><%= user.IsActive ? 'Active' : 'Inactive' %></td>
+                                        <td><%= user.CreatedAt ? new Date(user.CreatedAt).toLocaleDateString() : 'N/A' %></td>
+                                        <td>
+                                            <button class="edit-user-btn"
+                                                data-userid="<%= user.UserID %>"
+                                                data-username="<%= user.Username %>"
+                                                data-fullname="<%= user.FullName %>"
+                                                data-email="<%= user.Email %>"
+                                                data-roleid="<%= user.RoleID %>"
+                                                data-isactive="<%= user.IsActive ? 1 : 0 %>"
+                                                title="Edit"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 20h9"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16.5 3.5a2.121 2.121 0 113 3L7 19.5 3 21l1.5-4L16.5 3.5z"/></svg>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                <% }); %>
+                            <% } else { %>
+                                <tr><td colspan="8">No employee accounts found.</td></tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="manage-users-section">
+                    <h3>Customer Accounts</h3>
+                    <table id="customerAccountsTable">
+                        <thead>
+                            <tr>
+                                <th>Customer ID</th>
+                                <th>Full Name</th>
+                                <th>Email</th>
+                                <th>Phone Number</th>
+                                <th>Status</th>
+                                <th>Created At</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Customer data will be loaded here by JavaScript -->
+                        </tbody>
+                    </table>
+                    <p id="noCustomerAccounts" style="display:none;">No customer accounts found.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Edit User Modal -->
+    <div id="editUserModal" class="modal" style="display:none;">
+        <div class="modal-content" style="max-width: 420px;">
+            <span class="close-button" id="closeEditUserModal" style="float:right;cursor:pointer;font-size:1.5em;">&times;</span>
+            <h3>Edit User</h3>
+            <form id="editUserForm" method="POST" action="/Employee/Inventory/InvManagerManUsers/Edit">
+                <input type="hidden" id="editUserID" name="userId">
+                <label for="editUsername">Username:</label>
+                <input type="text" id="editUsername" name="username" required><br><br>
+                <label for="editFullName">Full Name:</label>
+                <input type="text" id="editFullName" name="fullName" required><br><br>
+                <label for="editEmail">Email:</label>
+                <input type="email" id="editEmail" name="email" required><br><br>
+                <label for="editRole">Role:</label>
+                <select id="editRole" name="roleId" required>
+                    <option value="1">InventoryManager</option>
+                    <option value="2">TransactionManager</option>
+                    <option value="3">UserManager</option>
+                    <option value="4">OrderSupport</option>
+                    <option value="5">Admin</option>
+                </select><br><br>
+                <label for="editIsActive">Status:</label>
+                <select id="editIsActive" name="isActive" required>
+                    <option value="1">Active</option>
+                    <option value="0">Inactive</option>
+                </select><br><br>
+                <button type="submit">Save Changes</button>
+                <button type="button" id="cancelEditUser">Cancel</button>
+            </form>
+        </div>
+    </div>
+    <!-- Custom Success Popup -->
+    <div id="customPopup" class="custom-popup" style="display:none;position:fixed;top:20px;right:20px;background-color:#4CAF50;color:white;padding:15px 25px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:1000;max-width:300px;">
+        <div class="custom-popup-content" style="display:flex;align-items:center;gap:12px;">
+            <span class="custom-popup-icon" style="font-size:24px;">✓</span>
+            <span class="custom-popup-message" style="font-size:14px;line-height:1.4;"></span>
+        </div>
+    </div>
+    <script src="/js/Employee/Inventory/InvManagerManUsers.js"></script>
+    <script>
+        // Improved dropdown functionality for sidebar
+        document.querySelectorAll('.dropdown-toggle').forEach(item => {
+            item.addEventListener('click', event => {
+                event.preventDefault();
+                const dropdownMenu = item.nextElementSibling;
+                const isVisible = dropdownMenu.style.display === 'block';
+                document.querySelectorAll('.dropdown-menu').forEach(menu => {
+                    menu.style.display = 'none';
+                });
+                dropdownMenu.style.display = isVisible ? 'none' : 'block';
+            });
+        });
+        document.addEventListener('click', function(event) {
+            const dropdowns = document.querySelectorAll('.dropdown');
+            dropdowns.forEach(dropdown => {
+                if (!dropdown.contains(event.target)) {
+                    const dropdownMenu = dropdown.querySelector('.dropdown-menu');
+                    if (dropdownMenu) {
+                        dropdownMenu.style.display = 'none';
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>

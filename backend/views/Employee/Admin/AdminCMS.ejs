@@ -1,0 +1,1860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Content Management - Admin</title>
+    <link rel="stylesheet" href="/css/Employee/Admin/AdminIndexStyles.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h3>Admin Panel</h3>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="/Employee/AdminIndex">Dashboard</a></li>
+                <li class="sidebar-section-label">Inventory</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/Admin/Products">Products</a></li>
+                    <li><a href="/Employee/Admin/Variations">Variations</a></li>
+                    <li><a href="/Employee/Admin/RawMaterials">Raw Materials</a></li>
+                    <li><a href="/Employee/Admin/Alerts">Alerts</a></li>
+                    <li><a href="/Employee/Admin/Archived">Archived items</a></li>
+                </ul>
+                <li class="sidebar-section-label">Transactions</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/Admin/DeliveryRates">Delivery Rates</a></li>
+                    <li><a href="/Employee/Admin/WalkIn">Walk In</a></li>
+                    <li><a href="/Employee/Admin/OrdersPending">Pending Orders</a></li>
+                    <li><a href="/Employee/Admin/OrdersProcessing">In Process</a></li>
+                    <li><a href="/Employee/Admin/OrdersShipping">Shipping</a></li>
+                    <li><a href="/Employee/Admin/OrdersDelivery">On Delivery</a></li>
+                    <li><a href="/Employee/Admin/OrdersReceive">To Receive</a></li>
+                    <li><a href="/Employee/Admin/CancelledOrders">Cancelled Orders</a></li>
+                    <li><a href="/Employee/Admin/CompletedOrders">Completed Orders</a></li>
+                </ul>
+                <li><a href="/Employee/Admin/ManageUsers">Manage Users</a></li>
+                <li><a href="/Employee/Admin/ChatSupport">Chat Support</a></li>
+                <li><a href="/Employee/Admin/CMS">Content Management</a></li>
+                <li><a href="/Employee/Admin/Logs">Activity Logs</a></li>
+            </ul>
+        </div>
+        <div class="main-content">
+            <div class="header">
+                <h2>Content Management</h2>
+            </div>
+            <div class="content-area">
+                <!-- Tab Navigation -->
+                <div class="cms-tabs">
+                    <button class="cms-tab-btn" onclick="showTab('banner')" id="tab-banner">Header Banner</button>
+                    <button class="cms-tab-btn" onclick="showTab('hero-banner')" id="tab-hero-banner">Hero Banner</button>
+                    <button class="cms-tab-btn" onclick="showTab('products')" id="tab-products">Products</button>
+                    <button class="cms-tab-btn" onclick="showTab('testimonials')" id="tab-testimonials">Testimonials</button>
+                    <button class="cms-tab-btn" onclick="showTab('offer')" id="tab-offer">Offer</button>
+                    <button class="cms-tab-btn" onclick="showTab('gallery')" id="tab-gallery">Projects</button>
+                    <button class="cms-tab-btn" onclick="showTab('about')" id="tab-about">About Us</button>
+                    <button class="cms-tab-btn" onclick="showTab('auto-messages')" id="tab-auto-messages">Auto. Messages</button>
+                    <button class="cms-tab-btn" onclick="showTab('review')" id="tab-review">Review</button>
+                    <button class="cms-tab-btn" onclick="showTab('terms')" id="tab-terms">Terms & Conditions</button>
+                    <button class="cms-tab-btn" onclick="showTab('theme')" id="tab-theme">Theme</button>
+                    <button class="cms-tab-btn" onclick="showTab('messages')" id="tab-messages">Messages</button>
+                </div>
+                <!-- Tab Content -->
+                <div class="cms-tab-content" id="tab-content-hero-banner">
+                    <h3>Hero Banner Management</h3>
+                    <div class="cms-section-content">
+                        <div style="margin-bottom: 3em; padding: 1.5em; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #17a2b8;">
+                            <h4 style="margin-top: 0; color: #0c5460;">🎯 Hero Banner Content & Image</h4>
+                            <p style="color: #666; margin-bottom: 1.5em;">Customize the main hero banner that appears at the top of your homepage.</p>
+                            
+                            <form id="hero-banner-form" enctype="multipart/form-data" style="margin-bottom: 2em;">
+                                <!-- Hero Banner Image -->
+                                <div style="background: #e9ecef; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+                                    <h5 style="margin-top: 0; color: #495057;">🖼️ Hero Banner Image</h5>
+                                    <div style="margin-bottom: 15px;">
+                                        <label for="hero-banner-images">Upload Images (1-3 images):</label><br>
+                                        <input type="file" id="hero-banner-images" name="heroBannerImages" accept="image/*" multiple style="width: 100%; padding: 0.5em; margin-top: 0.5em;">
+                                        <small style="color: #666; display: block; margin-top: 0.5em;">Recommended size: 1920x600 or larger. Upload 1-3 images for a rotating hero banner. Will be displayed as the background of your hero section.</small>
+                                    </div>
+                                    <div id="current-hero-images" style="margin-top: 1em;">
+                                        <h6>Current Hero Images:</h6>
+                                        <div id="hero-images-preview" style="border: 1px solid #ddd; padding: 1em; border-radius: 4px; min-height: 100px; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 10px;">
+                                            <span id="no-hero-images-text">No hero images set</span>
+                                            <div id="hero-images-container" style="display: none; width: 100%;">
+                                                <!-- Images will be dynamically added here -->
+                                            </div>
+                                        </div>
+                                        <button id="remove-hero-images-btn" onclick="removeHeroBannerImages()" style="background: #dc3545; color: white; border: none; padding: 0.5em 1em; border-radius: 4px; cursor: pointer; margin-top: 0.5em; display: none;">Remove All Hero Images</button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Hero Banner Content -->
+                                <div style="background: #e9ecef; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+                                    <h5 style="margin-top: 0; color: #495057;">📝 Hero Banner Content</h5>
+                                    <div style="margin-bottom: 15px;">
+                                        <label for="hero-main-heading">Main Heading:</label><br>
+                                        <input type="text" id="hero-main-heading" name="mainHeading" placeholder="Premium Office Furniture Solutions" style="width: 100%; padding: 0.5em; margin-top: 0.5em;" required>
+                                    </div>
+                                    <div style="margin-bottom: 15px;">
+                                        <label for="hero-description-line1">Description Line 1:</label><br>
+                                        <input type="text" id="hero-description-line1" name="descriptionLine1" placeholder="Transform your workspace with our premium collection of office furniture" style="width: 100%; padding: 0.5em; margin-top: 0.5em;">
+                                    </div>
+                                    <div style="margin-bottom: 15px;">
+                                        <label for="hero-description-line2">Description Line 2:</label><br>
+                                        <input type="text" id="hero-description-line2" name="descriptionLine2" placeholder="Discover our premium collection of office furniture designed for modern professionals" style="width: 100%; padding: 0.5em; margin-top: 0.5em;">
+                                    </div>
+                                    <div style="margin-bottom: 15px;">
+                                        <label for="hero-button-text">Button Text:</label><br>
+                                        <input type="text" id="hero-button-text" name="buttonText" placeholder="SHOP NOW" style="width: 100%; padding: 0.5em; margin-top: 0.5em;" required>
+                                    </div>
+                                    <div style="margin-bottom: 15px;">
+                                        <label for="hero-button-link">Button Link:</label><br>
+                                        <input type="text" id="hero-button-link" name="buttonLink" placeholder="/products" style="width: 100%; padding: 0.5em; margin-top: 0.5em;" required>
+                                    </div>
+                                    <div style="margin-bottom: 15px;">
+                                        <label for="hero-button2-text">Second Button Text:</label><br>
+                                        <input type="text" id="hero-button2-text" name="button2Text" placeholder="Custom Design" style="width: 100%; padding: 0.5em; margin-top: 0.5em;">
+                                    </div>
+                                    <div style="margin-bottom: 15px;">
+                                        <label for="hero-button2-link">Second Button Link:</label><br>
+                                        <input type="text" id="hero-button2-link" name="button2Link" placeholder="/custom-furniture" style="width: 100%; padding: 0.5em; margin-top: 0.5em;">
+                                    </div>
+                                </div>
+                                
+                                <!-- Hero Banner Colors -->
+                                <div style="background: #e9ecef; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+                                    <h5 style="margin-top: 0; color: #495057;">🎨 Hero Banner Colors</h5>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                        <div>
+                                            <label for="hero-text-color">Text Color:</label><br>
+                                            <input type="color" id="hero-text-color" name="textColor" value="#ffffff" style="width: 100%; height: 40px; padding: 0.5em;">
+                                        </div>
+                                        <div>
+                                            <label for="hero-button-bg-color">Button Background Color:</label><br>
+                                            <input type="color" id="hero-button-bg-color" name="buttonBgColor" value="#ffc107" style="width: 100%; height: 40px; padding: 0.5em;">
+                                        </div>
+                                    </div>
+                                    <div style="margin-top: 15px;">
+                                        <label for="hero-button-text-color">Button Text Color:</label><br>
+                                        <input type="color" id="hero-button-text-color" name="buttonTextColor" value="#333333" style="width: 100%; height: 40px; padding: 0.5em;">
+                                    </div>
+                                    <div style="margin-top: 15px;">
+                                        <label for="hero-button2-bg-color">Second Button Background Color:</label><br>
+                                        <input type="color" id="hero-button2-bg-color" name="button2BgColor" value="#6c757d" style="width: 100%; height: 40px; padding: 0.5em;">
+                                    </div>
+                                    <div style="margin-top: 15px;">
+                                        <label for="hero-button2-text-color">Second Button Text Color:</label><br>
+                                        <input type="color" id="hero-button2-text-color" name="button2TextColor" value="#ffffff" style="width: 100%; height: 40px; padding: 0.5em;">
+                                    </div>
+                                </div>
+                                
+                                <button type="submit" style="background: #17a2b8; color: white; border: none; padding: 0.75em 1.5em; border-radius: 4px; cursor: pointer; font-weight: bold;">Save Hero Banner Settings</button>
+                            </form>
+                            
+                            <!-- Live Preview Section -->
+                            <div style="margin-top: 2em;">
+                                <h5 style="color: #0c5460;">👁️ Live Preview</h5>
+                                <div id="hero-banner-preview" style="border: 2px solid #ddd; border-radius: 8px; overflow: hidden; min-height: 400px; position: relative; background: linear-gradient(135deg, #6c757d 0%, #ffc107 100%);">
+                                    <!-- Background Image Slider -->
+                                    <div id="preview-hero-carousel" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-size: cover; background-position: center; background-repeat: no-repeat; transition: opacity 0.5s ease-in-out;"></div>
+                                    
+                                    <!-- Background Overlay -->
+                                    <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.2) 50%, rgba(0, 0, 0, 0.3) 100%); z-index: 1;"></div>
+                                    
+                                    <!-- Hero Content -->
+                                    <div style="position: relative; z-index: 2; padding: 3rem 2rem; text-align: center; color: white; display: flex; align-items: center; justify-content: center; min-height: 400px;">
+                                        <div style="max-width: 800px;">
+                                            <h1 id="preview-hero-heading" style="font-size: 2.5rem; margin-bottom: 1rem; text-shadow: 2px 2px 4px rgba(0,0,0,0.7); line-height: 1.2;">
+                                                <span id="preview-hero-main-text">Transform Your Workspace with</span><br>
+                                                <span id="preview-hero-highlight" style="color: #F0B21B; text-shadow: 2px 2px 4px rgba(0,0,0,0.7);">Premium Office Furniture</span>
+                                            </h1>
+                                            <p id="preview-hero-desc1" style="font-size: 1.25rem; margin-bottom: 2rem; opacity: 0.95; text-shadow: 1px 1px 3px rgba(0,0,0,0.6); max-width: 700px; margin-left: auto; margin-right: auto;">Discover our curated collection of ergonomic chairs, modern desks, and storage solutions designed to enhance productivity and comfort in your office.</p>
+                                            <div style="display: flex; align-items: center; gap: 24px; justify-content: center; flex-wrap: wrap;">
+                                                <button id="preview-hero-button" style="background: #F0B21B; color: #333; border: none; padding: 1rem 2rem; border-radius: 4px; font-size: 1.1rem; font-weight: bold; cursor: pointer; transition: all 0.3s ease;">Shop Now</button>
+                                                <button id="preview-hero-button2" style="background: #6c757d; color: #fff; border: none; padding: 1rem 2rem; border-radius: 4px; font-size: 1.1rem; font-weight: bold; cursor: pointer; transition: all 0.3s ease;">Custom Design</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Arrow Navigation -->
+                                    <button id="preview-arrow-left" style="position: absolute; top: 50%; left: 30px; transform: translateY(-50%); width: 48px; height: 48px; border-radius: 50%; background: rgba(255, 255, 255, 0.2); border: 2px solid rgba(255, 255, 255, 0.3); color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; z-index: 3; backdrop-filter: blur(10px);" onclick="switchCarouselImage((currentCarouselIndex - 1 + (window.currentHeroImages ? window.currentHeroImages.length : 1)) % (window.currentHeroImages ? window.currentHeroImages.length : 1))">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M15 18L9 12L15 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                        </svg>
+                                    </button>
+                                    
+                                    <button id="preview-arrow-right" style="position: absolute; top: 50%; right: 30px; transform: translateY(-50%); width: 48px; height: 48px; border-radius: 50%; background: rgba(255, 255, 255, 0.2); border: 2px solid rgba(255, 255, 255, 0.3); color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; z-index: 3; backdrop-filter: blur(10px);" onclick="switchCarouselImage((currentCarouselIndex + 1) % (window.currentHeroImages ? window.currentHeroImages.length : 1))">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M9 18L15 12L9 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                        </svg>
+                                    </button>
+                                    
+                                    <!-- Minimal Slider Indicators -->
+                                    <div id="preview-carousel-dots" style="position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 3; display: flex; gap: 8px;"></div>
+                                </div>
+                            </div>
+                            
+                            <div id="hero-banner-status-message"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="cms-tab-content" id="tab-content-banner">
+                    <h3>Header Banner Management</h3>
+                    <div class="cms-section-content">
+                        <div style="margin-bottom: 3em; padding: 1.5em; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #007bff;">
+                            <h4 style="margin-top: 0; color: #004085;">Header Color Customization</h4>
+                            <p style="color: #666; margin-bottom: 1.5em;">Customize the colors of different header sections to match your brand.</p>
+                            
+                            <form id="header-banner-form" style="margin-bottom: 2em;">
+                                <!-- Main Header Row Colors -->
+                                <div style="background: #e9ecef; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+                                    <h5 style="margin-top: 0; color: #495057;">🏢 Main Header Row</h5>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                        <div>
+                                            <label for="main-bg-color">Background Color:</label><br>
+                                            <input type="color" id="main-bg-color" name="mainBgColor" value="#ffffff" style="width: 100%; height: 40px; padding: 0.5em;">
+                                        </div>
+                                        <div>
+                                            <label for="main-text-color">Text Color:</label><br>
+                                            <input type="color" id="main-text-color" name="mainTextColor" value="#333333" style="width: 100%; height: 40px; padding: 0.5em;">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Contact Information Colors -->
+                                <div style="background: #e9ecef; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+                                    <h5 style="margin-top: 0; color: #495057;">📞 Contact Information (in Header)</h5>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                        <div>
+                                            <label for="contact-text-color">Text Color:</label><br>
+                                            <input type="color" id="contact-text-color" name="contactTextColor" value="#6c757d" style="width: 100%; height: 40px; padding: 0.5em;">
+                                        </div>
+                                        <div>
+                                            <label for="contact-icon-color">Icon Color:</label><br>
+                                            <input type="color" id="contact-icon-color" name="contactIconColor" value="#F0B21B" style="width: 100%; height: 40px; padding: 0.5em;">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Navigation Bar Colors -->
+                                <div style="background: #e9ecef; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+                                    <h5 style="margin-top: 0; color: #495057;">🧭 Navigation Bar</h5>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                        <div>
+                                            <label for="nav-bg-color">Background Color:</label><br>
+                                            <input type="color" id="nav-bg-color" name="navBgColor" value="#343a40" style="width: 100%; height: 40px; padding: 0.5em;">
+                                        </div>
+                                        <div>
+                                            <label for="nav-text-color">Text Color:</label><br>
+                                            <input type="color" id="nav-text-color" name="navTextColor" value="#ffffff" style="width: 100%; height: 40px; padding: 0.5em;">
+                                        </div>
+                                    </div>
+                                    <div style="margin-top: 15px;">
+                                        <label for="nav-hover-color">Hover Color:</label><br>
+                                        <input type="color" id="nav-hover-color" name="navHoverColor" value="#007bff" style="width: 100%; height: 40px; padding: 0.5em;">
+                                    </div>
+                                </div>
+                                
+                                <!-- Search Bar Colors -->
+                                <div style="background: #e9ecef; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+                                    <h5 style="margin-top: 0; color: #495057;">🔍 Search Bar</h5>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                        <div>
+                                            <label for="search-border-color">Border Color:</label><br>
+                                            <input type="color" id="search-border-color" name="searchBorderColor" value="#ffc107" style="width: 100%; height: 40px; padding: 0.5em;">
+                                        </div>
+                                        <div>
+                                            <label for="search-btn-color">Button Color:</label><br>
+                                            <input type="color" id="search-btn-color" name="searchBtnColor" value="#ffc107" style="width: 100%; height: 40px; padding: 0.5em;">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Icon Colors -->
+                                <div style="background: #e9ecef; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+                                    <h5 style="margin-top: 0; color: #495057;">🎨 Icon Colors</h5>
+                                    <div>
+                                        <label for="icon-color">Icon Color:</label><br>
+                                        <input type="color" id="icon-color" name="iconColor" value="#F0B21B" style="width: 100%; height: 40px; padding: 0.5em;">
+                                    </div>
+                                </div>
+                                
+                                <!-- Contact Information Content -->
+                                <div style="background: #e9ecef; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+                                    <h5 style="margin-top: 0; color: #495057;">📞 Contact Information Content</h5>
+                                    <div style="display: grid; grid-template-columns: 1fr; gap: 15px;">
+                                        <div>
+                                            <label for="contact-email">Email:</label><br>
+                                            <input type="email" id="contact-email" name="contactEmail" value="designexcellence1@gmail.com" style="width: 100%; padding: 0.5em; border: 1px solid #ddd; border-radius: 4px;">
+                                        </div>
+                                        <div>
+                                            <label for="contact-phone">Phone:</label><br>
+                                            <input type="text" id="contact-phone" name="contactPhone" value="(02) 413-6682" style="width: 100%; padding: 0.5em; border: 1px solid #ddd; border-radius: 4px;">
+                                        </div>
+                                        <div>
+                                            <label for="contact-address">Address:</label><br>
+                                            <textarea id="contact-address" name="contactAddress" rows="2" style="width: 100%; padding: 0.5em; border: 1px solid #ddd; border-radius: 4px; resize: vertical;">#1 Binmaka Street Cor. Biak na Bato Brgy. Manresa, Quezon City</textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Contact Information Display Settings -->
+                                <div style="background: #e9ecef; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+                                    <h5 style="margin-top: 0; color: #495057;">⚙️ Contact Information Display Settings</h5>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                        <div>
+                                            <label for="contact-font-size">Font Size:</label><br>
+                                            <select id="contact-font-size" name="contactFontSize" style="width: 100%; padding: 0.5em; border: 1px solid #ddd; border-radius: 4px;">
+                                                <option value="0.5rem">Extra Small (0.5rem)</option>
+                                                <option value="0.6rem" selected>Small (0.6rem)</option>
+                                                <option value="0.7rem">Medium (0.7rem)</option>
+                                                <option value="0.8rem">Large (0.8rem)</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label for="contact-spacing">Spacing Between Items:</label><br>
+                                            <select id="contact-spacing" name="contactSpacing" style="width: 100%; padding: 0.5em; border: 1px solid #ddd; border-radius: 4px;">
+                                                <option value="0.4rem">Tight (0.4rem)</option>
+                                                <option value="0.6rem">Normal (0.6rem)</option>
+                                                <option value="0.8rem" selected>Wide (0.8rem)</option>
+                                                <option value="1rem">Extra Wide (1rem)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div style="margin-top: 15px;">
+                                        <label>
+                                            <input type="checkbox" id="contact-show-icons" name="contactShowIcons" checked style="margin-right: 0.5em;">
+                                            Show Icons (Email, Phone, Address)
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <!-- Search Settings -->
+                                <div style="background: #e9ecef; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+                                    <h5 style="margin-top: 0; color: #495057;">🔍 Search Settings</h5>
+                                    <div>
+                                        <label for="search-placeholder">Search Placeholder Text:</label><br>
+                                        <input type="text" id="search-placeholder" name="searchPlaceholder" value="Search" style="width: 100%; padding: 0.5em; border: 1px solid #ddd; border-radius: 4px;">
+                                    </div>
+                                </div>
+                                
+                                <button type="submit" style="background: #007bff; color: white; border: none; padding: 0.75em 1.5em; border-radius: 4px; cursor: pointer; font-weight: bold;">Save Header Settings</button>
+                            </form>
+                            
+                            <!-- Preview Section -->
+                            <div style="margin-top: 2em;">
+                                <h5 style="color: #495057;">🎨 Live Preview</h5>
+                                <div id="header-preview" style="border: 2px solid #ddd; border-radius: 8px; overflow: hidden;">
+                                    <!-- Main Header Preview -->
+                                    <div id="preview-main-row" style="padding: 0.8em 1em; display: flex; justify-content: space-between; align-items: center;">
+                                        <div id="preview-main-left" style="flex: 1; display: flex; align-items: center; gap: 1em; font-size: 0.7em;">
+                                            <span id="preview-email">✉️ designexcellence1@gmail.com</span>
+                                            <span id="preview-phone">📞 (02) 413-6682</span>
+                                            <span id="preview-address">📍 #1 Binmaka Street Cor. Biak na Bato Brgy. Manresa, Quezon City</span>
+                                        </div>
+                                        <div id="preview-main-center" style="flex: 2; text-align: center;">
+                                            <div style="font-weight: bold; font-size: 1.2em;">DESIGN EXCELLENCE</div>
+                                        </div>
+                                        <div id="preview-main-right" style="flex: 1; display: flex; justify-content: flex-end; align-items: center; gap: 1em;">
+                                            <span id="preview-user-icon">👤</span>
+                                            <span id="preview-cart-icon">🛒</span>
+                                            <span id="preview-mail-icon">✉️</span>
+                                            <div id="preview-search-container" style="display: flex; align-items: center; border: 1px solid; padding: 0.25em; border-radius: 4px;">
+                                                <span id="preview-search-icon">🔍</span>
+                                                <input type="text" id="preview-search-input" placeholder="Search" style="border: none; outline: none; padding: 0.25em; font-size: 0.8em;" readonly>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Navigation Preview -->
+                                    <div id="preview-nav-row" style="padding: 0.5em 1em; display: flex; gap: 1em; font-size: 0.8em;">
+                                        <span>HOME</span><span>PRODUCTS</span><span>CUSTOM FURNITURE</span><span>ABOUT US</span><span>CONTACT US</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div id="header-banner-status-message"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="cms-tab-content" id="tab-content-products" style="display:none;">
+                    <h3>Products</h3>
+                    <div class="cms-section-content">
+                        <table id="products-table" border="1" style="width:100%;margin-bottom:1em;">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Name</th>
+                                    <th>Category</th>
+                                    <th>Price</th>
+                                    <th>Featured</th>
+                                    <th>Actions</th>
+                                    <th>Delete</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                        <div id="products-status"></div>
+                        
+                    </div>
+                </div>
+                <div class="cms-tab-content" id="tab-content-testimonials" style="display:none;">
+                    <h3>Testimonials</h3>
+                    <div class="cms-section-content">
+                        <!-- Modern Testimonials Design Settings -->
+                        <div style="margin-bottom: 3em; padding: 1.5em; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #F0B21B;">
+                            <h4 style="margin-top: 0; color: #d69e16;">🎨 Modern Testimonials Design Settings</h4>
+                            <p style="color: #666; margin-bottom: 1.5em;">Customize the modern testimonials design with clean cards, professional layout, and yellow mustard accents.</p>
+                            
+                            <form id="testimonials-design-form" style="margin-bottom: 2em;">
+                                <!-- Simplified Design Settings - Only what's actually used -->
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                                    <div>
+                                        <label for="testimonials-bg-color">Section Background Color:</label><br>
+                                        <input type="color" id="testimonials-bg-color" name="bgColor" value="#f8f9fa" style="width: 100%; height: 40px; padding: 0.5em; margin-top: 0.5em;">
+                                    </div>
+                                    <div>
+                                        <label for="testimonials-accent-color">Accent Color (Yellow Mustard):</label><br>
+                                        <input type="color" id="testimonials-accent-color" name="accentColor" value="#F0B21B" style="width: 100%; height: 40px; padding: 0.5em; margin-top: 0.5em;">
+                                    </div>
+                                </div>
+                                
+                                <div style="margin-bottom: 20px;">
+                                    <label>Display Options:</label><br>
+                                    <div style="margin-top: 0.5em; display: flex; flex-wrap: wrap; gap: 15px;">
+                                        <label style="display: inline-flex; align-items: center;">
+                                            <input type="checkbox" id="testimonials-show-rating" name="showRating" checked style="margin-right: 8px;">
+                                            Show Star Ratings
+                                        </label>
+                                        <label style="display: inline-flex; align-items: center;">
+                                            <input type="checkbox" id="testimonials-show-image" name="showImage" checked style="margin-right: 8px;">
+                                            Show Profile Images
+                                        </label>
+                                        <label style="display: inline-flex; align-items: center;">
+                                            <input type="checkbox" id="testimonials-show-title" name="showTitle" checked style="margin-right: 8px;">
+                                            Show Professions
+                                        </label>
+                                        <label style="display: inline-flex; align-items: center;">
+                                            <input type="checkbox" id="testimonials-show-quote-icon" name="showQuoteIcon" checked style="margin-right: 8px;">
+                                            Show Quote Icons
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <button type="submit" style="background: #F0B21B; color: white; border: none; padding: 0.75em 1.5em; border-radius: 4px; cursor: pointer; font-weight: bold;">Save Testimonials Settings</button>
+                            </form>
+                            
+                            <!-- Live Preview Section -->
+                            <div style="margin-top: 2em;">
+                                <h5 style="color: #d69e16; margin-bottom: 1em;">👁️ Live Design Preview</h5>
+                                <div id="testimonials-preview" style="border: 1px solid #e5e7eb; border-radius: 12px; padding: 0; background: #f8f9fa; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+                                    <div id="testimonials-preview-content" style="padding: 80px 20px; max-width: 1200px; margin: 0 auto;">
+                                        <!-- Modern testimonials preview - Exact match to frontend -->
+                                        <div style="text-align: center; margin-bottom: 60px;">
+                                            <div style="display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 16px;">
+                                                <div style="width: 40px; height: 2px; background: #F0B21B; border-radius: 1px;"></div>
+                                                <span style="font-size: 14px; font-weight: 600; color: #6b7280; letter-spacing: 0.5px; text-transform: uppercase;">Testimonial</span>
+                                            </div>
+                                            <h2 style="font-size: 48px; font-weight: 700; color: #1f2937; margin: 0; line-height: 1.2;">
+                                                What Our <span style="color: #F0B21B;">Clients Say</span>
+                                            </h2>
+                                        </div>
+                                        
+                                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 30px; margin-bottom: 40px;">
+                                            <!-- Testimonial Card 1 -->
+                                            <div style="background: #ffffff; border-radius: 16px; padding: 32px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08); position: relative; transition: all 0.3s ease; border: 1px solid rgba(0, 0, 0, 0.05);">
+                                                <!-- Quote Icon -->
+                                                <div style="position: absolute; top: 24px; right: 24px; width: 40px; height: 40px; background: #f3f4f6; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #F0B21B; font-size: 16px;">"</div>
+                                                
+                                                <!-- Client Profile -->
+                                                <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 24px;">
+                                                    <div style="position: relative; flex-shrink: 0;">
+                                                        <div style="position: absolute; top: -8px; left: -8px; width: 80px; height: 80px; background: #F0B21B; border-radius: 50% 50% 50% 0; z-index: 1;"></div>
+                                                        <div style="width: 64px; height: 64px; border-radius: 50%; background: #e5e7eb; border: 3px solid #F0B21B; position: relative; z-index: 2; display: flex; align-items: center; justify-content: center; color: #6b7280; font-size: 24px; font-weight: bold; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">👤</div>
+                                                    </div>
+                                                    <div style="flex: 1;">
+                                                        <h4 style="font-size: 18px; font-weight: 700; color: #1f2937; margin: 0 0 4px 0; line-height: 1.3;">Leslie Alexander</h4>
+                                                        <p style="font-size: 14px; color: #6b7280; margin: 0 0 8px 0; font-weight: 500;">Architecture</p>
+                                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                                            <div style="display: flex; gap: 2px;">
+                                                                <span style="color: #F0B21B; font-size: 14px;">★★★★★</span>
+                                                            </div>
+                                                            <span style="font-size: 14px; font-weight: 600; color: #1f2937;">5.0</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <!-- Testimonial Text -->
+                                                <div style="margin-top: 20px;">
+                                                    <p style="font-size: 16px; line-height: 1.6; color: #374151; margin: 0; font-style: italic;">"Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis."</p>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Testimonial Card 2 -->
+                                            <div style="background: #ffffff; border-radius: 16px; padding: 32px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08); position: relative; transition: all 0.3s ease; border: 1px solid rgba(0, 0, 0, 0.05);">
+                                                <!-- Quote Icon -->
+                                                <div style="position: absolute; top: 24px; right: 24px; width: 40px; height: 40px; background: #f3f4f6; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #F0B21B; font-size: 16px;">"</div>
+                                                
+                                                <!-- Client Profile -->
+                                                <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 24px;">
+                                                    <div style="position: relative; flex-shrink: 0;">
+                                                        <div style="position: absolute; top: -8px; left: -8px; width: 80px; height: 80px; background: #F0B21B; border-radius: 50% 50% 50% 0; z-index: 1;"></div>
+                                                        <div style="width: 64px; height: 64px; border-radius: 50%; background: #e5e7eb; border: 3px solid #F0B21B; position: relative; z-index: 2; display: flex; align-items: center; justify-content: center; color: #6b7280; font-size: 24px; font-weight: bold; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">👤</div>
+                                                    </div>
+                                                    <div style="flex: 1;">
+                                                        <h4 style="font-size: 18px; font-weight: 700; color: #1f2937; margin: 0 0 4px 0; line-height: 1.3;">Jenny Wilson</h4>
+                                                        <p style="font-size: 14px; color: #6b7280; margin: 0 0 8px 0; font-weight: 500;">Interior Designer</p>
+                                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                                            <div style="display: flex; gap: 2px;">
+                                                                <span style="color: #F0B21B; font-size: 14px;">★★★★★</span>
+                                                            </div>
+                                                            <span style="font-size: 14px; font-weight: 600; color: #1f2937;">5.0</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <!-- Testimonial Text -->
+                                                <div style="margin-top: 20px;">
+                                                    <p style="font-size: 16px; line-height: 1.6; color: #374151; margin: 0; font-style: italic;">"Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis."</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Navigation Indicators - Exact match to frontend -->
+                                        <div style="display: flex; justify-content: center; gap: 8px; margin-top: 40px;">
+                                            <div style="width: 40px; height: 4px; border: none; background: #F0B21B; border-radius: 2px; cursor: pointer; transition: all 0.3s ease;"></div>
+                                            <div style="width: 40px; height: 4px; border: none; background: #d1d5db; border-radius: 2px; cursor: pointer; transition: all 0.3s ease;"></div>
+                                            <div style="width: 40px; height: 4px; border: none; background: #d1d5db; border-radius: 2px; cursor: pointer; transition: all 0.3s ease;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div id="testimonials-design-status-message"></div>
+                        </div>
+                        
+                        <hr style="margin: 2em 0; border: 1px solid #ddd;">
+                        
+                        <!-- Modern Testimonials Management -->
+                        <div style="margin-bottom: 3em; padding: 1.5em; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #F0B21B;">
+                            <h4 style="margin-top: 0; color: #d69e16;">💬 Modern Testimonials Management</h4>
+                            <p style="color: #666; margin-bottom: 1.5em;">Manage testimonials with the new modern design featuring clean cards and professional layout.</p>
+                            
+                            <!-- Add New Testimonial Form -->
+                            <h5 style="color: #333; margin-bottom: 15px;">➕ Add New Testimonial</h5>
+                            <form id="admin-testimonial-form" enctype="multipart/form-data" style="margin-bottom:2em;">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px;">
+                                    <div>
+                                        <label for="testimonial-name">Client Name:</label><br>
+                                        <input type="text" id="testimonial-name" name="name" required style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;">
+                                    </div>
+                                    <div>
+                                        <label for="testimonial-profession">Profession:</label><br>
+                                        <input type="text" id="testimonial-profession" name="profession" required style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;">
+                                    </div>
+                                </div>
+                                <div style="margin-bottom: 15px;">
+                                    <label for="testimonial-text">Testimonial Text:</label><br>
+                                    <textarea id="testimonial-text" name="text" rows="4" required style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;" placeholder="Enter the client's testimonial text..."></textarea>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px;">
+                                    <div>
+                                        <label for="testimonial-rating">Rating:</label><br>
+                                        <select id="testimonial-rating" name="rating" required style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;">
+                                            <option value="5.0">5.0 Stars</option>
+                                            <option value="4.5">4.5 Stars</option>
+                                            <option value="4.0">4.0 Stars</option>
+                                            <option value="3.5">3.5 Stars</option>
+                                            <option value="3.0">3.0 Stars</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label for="testimonial-display-order">Display Order:</label><br>
+                                        <input type="number" id="testimonial-display-order" name="displayOrder" value="0" min="0" style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;">
+                                    </div>
+                                </div>
+                                <div style="margin-bottom: 15px;">
+                                    <label for="testimonial-image">Profile Image:</label><br>
+                                    <input type="file" id="testimonial-image" name="image" accept="image/*" style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;">
+                                    <small style="color: #666; font-size: 12px;">Recommended: Square image, 200x200px or larger</small>
+                                </div>
+                                <button type="submit" style="background: #F0B21B; color: white; border: none; padding: 0.75em 1.5em; border-radius: 4px; cursor: pointer; font-weight: bold;">Add Testimonial</button>
+                            </form>
+                        </div>
+                        
+                        <!-- Existing Testimonials List -->
+                        <h4 style="color: #333; margin-bottom: 15px;">📝 Manage Existing Testimonials</h4>
+                        <div id="admin-testimonials-list"></div>
+                    </div>
+                </div>
+                <div class="cms-tab-content" id="tab-content-offer" style="display:none;">
+                    <h3>Offer Management</h3>
+                    <div class="cms-section-content">
+                        <!-- Header Offer Bar Management -->
+                        <div style="margin-bottom: 3em; padding: 1.5em; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #ffc107;">
+                            <h4 style="margin-top: 0; color: #856404;">Header Offer Bar Settings</h4>
+                            <p style="color: #666; margin-bottom: 1.5em;">Edit the promotional banner that appears at the top of your website.</p>
+                            
+                            <form id="header-offer-form" style="margin-bottom: 2em;">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1em; margin-bottom: 1em;">
+                                    <div>
+                                        <label for="header-offer-text">Offer Text:</label><br>
+                                        <input type="text" id="header-offer-text" name="offerText" placeholder="e.g., SPECIAL OFFER Get 25% off premium office furniture collections" style="width: 100%; padding: 0.5em;" required>
+                                    </div>
+                                    <div>
+                                        <label for="header-offer-button-text">Button Text:</label><br>
+                                        <input type="text" id="header-offer-button-text" name="buttonText" placeholder="e.g., Shop Now" style="width: 100%; padding: 0.5em;" required>
+                                    </div>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1em; margin-bottom: 1em;">
+                                    <div>
+                                        <label for="header-offer-start-date">Start Date:</label><br>
+                                        <input type="date" id="header-offer-start-date" name="startDate" style="width: 100%; padding: 0.5em;" required>
+                                    </div>
+                                    <div>
+                                        <label for="header-offer-end-date">End Date:</label><br>
+                                        <input type="date" id="header-offer-end-date" name="endDate" style="width: 100%; padding: 0.5em;" required>
+                                    </div>
+                                </div>
+                                <div style="margin-bottom: 1em;">
+                                    <label for="header-offer-status">Status:</label><br>
+                                    <select id="header-offer-status" name="status" style="width: 100%; padding: 0.5em;">
+                                        <option value="active">Active</option>
+                                        <option value="inactive">Inactive</option>
+                                        <option value="scheduled">Scheduled</option>
+                                    </select>
+                                </div>
+                                <div style="margin-bottom: 1em;">
+                                    <label for="header-offer-background-color">Background Color:</label><br>
+                                    <input type="color" id="header-offer-background-color" name="backgroundColor" value="#ffc107" style="width: 100%; height: 40px; padding: 0.5em;">
+                                </div>
+                                <div style="margin-bottom: 1em;">
+                                    <label for="header-offer-text-color">Text Color:</label><br>
+                                    <input type="color" id="header-offer-text-color" name="textColor" value="#ffffff" style="width: 100%; height: 40px; padding: 0.5em;">
+                                </div>
+                                <button type="submit" style="background: #28a745; color: white; border: none; padding: 0.75em 1.5em; border-radius: 4px; cursor: pointer;">Save Header Offer Bar</button>
+                            </form>
+                            
+                            <div id="header-offer-preview" style="background: #ffc107; color: white; padding: 1em; border-radius: 4px; margin-top: 1em;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div style="display: flex; align-items: center; gap: 0.5em;">
+                                        <span style="font-size: 1.2em;">🔥</span>
+                                        <span id="preview-offer-text">SPECIAL OFFER Get 25% off premium office furniture collections - Limited time offer ending soon!</span>
+                                    </div>
+                                    <button id="preview-button-text" style="background: white; color: #333; border: 1px solid #ddd; padding: 0.5em 1em; border-radius: 4px; cursor: pointer;">Shop Now</button>
+                                </div>
+                            </div>
+                            <div id="header-offer-status-message"></div>
+                        </div>
+
+
+                    </div>
+                </div>
+                <div class="cms-tab-content" id="tab-content-gallery" style="display:none;">
+                    <h3>Projects Management</h3>
+                    <div class="cms-section-content">
+                        <!-- Add New Gallery Item Form -->
+                        <div style="margin-bottom: 3em; padding: 1.5em; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #28a745;">
+                            <h4 style="margin-top: 0; color: #155724;">➕ Add New Project</h4>
+                            <p style="color: #666; margin-bottom: 1.5em;">Create a new project with main image, modal content, and thumbnail images.</p>
+                            
+                            <form id="gallery-form" enctype="multipart/form-data" style="margin-bottom: 2em;">
+                                <!-- Main Gallery Image -->
+                                <div style="background: #e9ecef; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+                                    <h5 style="margin-top: 0; color: #495057;">🖼️ Main Gallery Image</h5>
+                                    <div style="margin-bottom: 15px;">
+                                        <label for="gallery-main-image">Upload Main Image:</label><br>
+                                        <input type="file" id="gallery-main-image" name="mainImage" accept="image/*" style="width: 100%; padding: 0.5em; margin-top: 0.5em;" required>
+                                        <small style="color: #666; display: block; margin-top: 0.5em;">This is the image that appears in the gallery grid before clicking. Recommended size: 800x600 or larger.</small>
+                                    </div>
+                                    <!-- Current Image Display (for edit mode) -->
+                                    <div id="current-main-image" style="margin-top: 15px;"></div>
+                                </div>
+                                
+                                <!-- Gallery Item Details -->
+                                <div style="background: #e9ecef; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+                                    <h5 style="margin-top: 0; color: #495057;">📝 Gallery Item Details</h5>
+                                    <div style="margin-bottom: 15px;">
+                                        <label for="gallery-title">Title:</label><br>
+                                        <input type="text" id="gallery-title" name="title" placeholder="e.g., Executive Mahogany Desk" style="width: 100%; padding: 0.5em; margin-top: 0.5em;" required>
+                                    </div>
+                                    <div style="margin-bottom: 15px;">
+                                        <label for="gallery-description">Description:</label><br>
+                                        <textarea id="gallery-description" name="description" rows="3" placeholder="Describe the gallery item..." style="width: 100%; padding: 0.5em; margin-top: 0.5em;"></textarea>
+                                    </div>
+                                </div>
+                                
+                                <!-- Modal Thumbnail Images -->
+                                <div style="background: #e9ecef; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+                                    <h5 style="margin-top: 0; color: #495057;">🖼️ Modal Thumbnail Images</h5>
+                                    <div style="margin-bottom: 15px;">
+                                        <label for="gallery-thumbnails">Upload Thumbnail Images (1-8 images):</label><br>
+                                        <input type="file" id="gallery-thumbnails" name="thumbnails" accept="image/*" multiple style="width: 100%; padding: 0.5em; margin-top: 0.5em;">
+                                        <small style="color: #666; display: block; margin-top: 0.5em;">These images appear as thumbnails in the modal when the gallery item is clicked. Upload 1-8 images. Recommended size: 200x150 or larger.</small>
+                                    </div>
+                                    <div id="thumbnail-preview" style="margin-top: 1em;">
+                                        <h6>Thumbnail Preview:</h6>
+                                        <div id="thumbnail-preview-container" style="display: flex; flex-wrap: wrap; gap: 10px; min-height: 60px; align-items: center; justify-content: center; border: 1px solid #ddd; padding: 1em; border-radius: 4px;">
+                                            <span id="no-thumbnails-text">No thumbnails selected</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <button type="submit" style="background: #28a745; color: white; border: none; padding: 0.75em 1.5em; border-radius: 4px; cursor: pointer; font-weight: bold;">Add Project</button>
+                            </form>
+                        </div>
+                        
+                        <!-- Existing Gallery Items -->
+                        <div style="padding: 1.5em; background: #fff; border: 1px solid #e9ecef; border-radius: 8px;">
+                            <h4 style="margin-top: 0; color: #333;">📝 Manage Existing Projects</h4>
+                            <div id="gallery-status">Loading projects...</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="cms-tab-content" id="tab-content-about" style="display:none;">
+                    <h3>About Us Content Management</h3>
+                    <div class="cms-section-content">
+                        <form id="about-form" enctype="multipart/form-data" style="margin-bottom:2em;">
+                            <!-- About Page Layout Selection -->
+                            <div style="background: #fff3cd; padding: 12px 16px; border: 1px solid #ffeeba; border-radius: 6px; margin-bottom: 16px;">
+                                <label for="about-layout" style="font-weight:600; color:#856404;">About Page Layout:</label><br>
+                                <select id="about-layout" name="layout" style="margin-top:8px; padding:8px; min-width: 220px;">
+                                    <option value="default">Default (current design)</option>
+                                    <option value="minimal">Minimal (compact stacked)</option>
+                                </select>
+                                <div style="font-size:12px; color:#6c757d; margin-top:6px;">Choose how the About page is rendered on the storefront.</div>
+                            </div>
+                            <!-- Our Story Section -->
+                            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                                <h4 style="color: #333; margin-bottom: 15px;">📖 Our Story Section</h4>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                                    <div>
+                                        <label for="story-title">Story Title:</label><br>
+                                        <input type="text" id="story-title" name="storyTitle" style="width: 100%; padding: 8px; margin-bottom: 10px;" placeholder="Our Story">
+                                    </div>
+                                    <div>
+                                        <label for="story-subtitle">Story Subtitle:</label><br>
+                                        <input type="text" id="story-subtitle" name="storySubtitle" style="width: 100%; padding: 8px; margin-bottom: 10px;" placeholder="Crafting Excellence Since 2000">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label for="story-description">Story Description:</label><br>
+                                    <textarea id="story-description" name="storyDescription" rows="4" style="width: 100%; padding: 8px; margin-bottom: 10px;" placeholder="What began as a small workshop has grown into a leading provider of premium office furniture solutions..."></textarea>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                                    <div>
+                                        <label for="projects-count">Projects Completed:</label><br>
+                                        <input type="text" id="projects-count" name="projectsCount" style="width: 100%; padding: 8px; margin-bottom: 10px;" placeholder="2000+">
+                                    </div>
+                                    <div>
+                                        <label for="clients-count">Happy Clients:</label><br>
+                                        <input type="text" id="clients-count" name="clientsCount" style="width: 100%; padding: 8px; margin-bottom: 10px;" placeholder="500+">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label for="story-image">Story Image:</label><br>
+                                    <input type="file" id="story-image" name="storyImage" accept="image/*" style="width: 100%; padding: 8px;">
+                                </div>
+                            </div>
+
+                            <!-- Our Mission Section -->
+                            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                                <h4 style="color: #333; margin-bottom: 15px;">🎯 Our Mission Section</h4>
+                                <div>
+                                    <label for="mission-title">Mission Title:</label><br>
+                                    <input type="text" id="mission-title" name="missionTitle" style="width: 100%; padding: 8px; margin-bottom: 10px;" placeholder="Our Mission">
+                                </div>
+                                <div>
+                                    <label for="mission-description">Mission Description:</label><br>
+                                    <textarea id="mission-description" name="missionDescription" rows="4" style="width: 100%; padding: 8px; margin-bottom: 10px;" placeholder="We strive to transform workspaces into inspiring environments..."></textarea>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
+                                    <div>
+                                        <label for="feature-1">Feature 1:</label><br>
+                                        <input type="text" id="feature-1" name="feature1" style="width: 100%; padding: 8px;" placeholder="Premium Materials">
+                                    </div>
+                                    <div>
+                                        <label for="feature-2">Feature 2:</label><br>
+                                        <input type="text" id="feature-2" name="feature2" style="width: 100%; padding: 8px;" placeholder="Ergonomic Design">
+                                    </div>
+                                    <div>
+                                        <label for="feature-3">Feature 3:</label><br>
+                                        <input type="text" id="feature-3" name="feature3" style="width: 100%; padding: 8px;" placeholder="Sustainable Practices">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label for="mission-image">Mission Image:</label><br>
+                                    <input type="file" id="mission-image" name="missionImage" accept="image/*" style="width: 100%; padding: 8px;">
+                                </div>
+                            </div>
+
+                            <!-- Our Values Section -->
+                            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                                <h4 style="color: #333; margin-bottom: 15px;">💎 Our Values Section</h4>
+                                <div>
+                                    <label for="values-title">Values Title:</label><br>
+                                    <input type="text" id="values-title" name="valuesTitle" style="width: 100%; padding: 8px; margin-bottom: 10px;" placeholder="Our Values">
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                                    <div>
+                                        <label for="value-1-title">Value 1 Title:</label><br>
+                                        <input type="text" id="value-1-title" name="value1Title" style="width: 100%; padding: 8px; margin-bottom: 10px;" placeholder="Innovation">
+                                        <label for="value-1-description">Value 1 Description:</label><br>
+                                        <textarea id="value-1-description" name="value1Description" rows="2" style="width: 100%; padding: 8px;" placeholder="Pushing boundaries in design and functionality"></textarea>
+                                    </div>
+                                    <div>
+                                        <label for="value-2-title">Value 2 Title:</label><br>
+                                        <input type="text" id="value-2-title" name="value2Title" style="width: 100%; padding: 8px; margin-bottom: 10px;" placeholder="Quality">
+                                        <label for="value-2-description">Value 2 Description:</label><br>
+                                        <textarea id="value-2-description" name="value2Description" rows="2" style="width: 100%; padding: 8px;" placeholder="Uncompromising commitment to excellence"></textarea>
+                                    </div>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                                    <div>
+                                        <label for="value-3-title">Value 3 Title:</label><br>
+                                        <input type="text" id="value-3-title" name="value3Title" style="width: 100%; padding: 8px; margin-bottom: 10px;" placeholder="Service">
+                                        <label for="value-3-description">Value 3 Description:</label><br>
+                                        <textarea id="value-3-description" name="value3Description" rows="2" style="width: 100%; padding: 8px;" placeholder="Dedicated to exceeding expectations"></textarea>
+                                    </div>
+                                    <div>
+                                        <label for="value-4-title">Value 4 Title:</label><br>
+                                        <input type="text" id="value-4-title" name="value4Title" style="width: 100%; padding: 8px; margin-bottom: 10px;" placeholder="Sustainability">
+                                        <label for="value-4-description">Value 4 Description:</label><br>
+                                        <textarea id="value-4-description" name="value4Description" rows="2" style="width: 100%; padding: 8px;" placeholder="Committed to environmental responsibility"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Design Philosophy Section -->
+                            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                                <h4 style="color: #333; margin-bottom: 15px;">🎨 Design Philosophy Section</h4>
+                                <div>
+                                    <label for="philosophy-title">Philosophy Title:</label><br>
+                                    <input type="text" id="philosophy-title" name="philosophyTitle" style="width: 100%; padding: 8px; margin-bottom: 10px;" placeholder="Design Philosophy">
+                                </div>
+                                <div>
+                                    <label for="philosophy-subtitle">Philosophy Subtitle:</label><br>
+                                    <input type="text" id="philosophy-subtitle" name="philosophySubtitle" style="width: 100%; padding: 8px; margin-bottom: 10px;" placeholder="Every element of our brand reflects our commitment to clean, modern design">
+                                </div>
+                                <div>
+                                    <label for="philosophy-description">Philosophy Description:</label><br>
+                                    <textarea id="philosophy-description" name="philosophyDescription" rows="4" style="width: 100%; padding: 8px; margin-bottom: 10px;" placeholder="Our design language embraces simplicity and clarity..."></textarea>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
+                                    <div>
+                                        <label for="typo-1-title">Typography Feature 1 Title:</label><br>
+                                        <input type="text" id="typo-1-title" name="typo1Title" style="width: 100%; padding: 8px; margin-bottom: 10px;" placeholder="Clean & Modern">
+                                        <label for="typo-1-description">Typography Feature 1 Description:</label><br>
+                                        <textarea id="typo-1-description" name="typo1Description" rows="2" style="width: 100%; padding: 8px;" placeholder="Sans-serif fonts that provide excellent readability"></textarea>
+                                    </div>
+                                    <div>
+                                        <label for="typo-2-title">Typography Feature 2 Title:</label><br>
+                                        <input type="text" id="typo-2-title" name="typo2Title" style="width: 100%; padding: 8px; margin-bottom: 10px;" placeholder="Consistent Hierarchy">
+                                        <label for="typo-2-description">Typography Feature 2 Description:</label><br>
+                                        <textarea id="typo-2-description" name="typo2Description" rows="2" style="width: 100%; padding: 8px;" placeholder="Well-defined text sizes and weights"></textarea>
+                                    </div>
+                                    <div>
+                                        <label for="typo-3-title">Typography Feature 3 Title:</label><br>
+                                        <input type="text" id="typo-3-title" name="typo3Title" style="width: 100%; padding: 8px; margin-bottom: 10px;" placeholder="Accessible Design">
+                                        <label for="typo-3-description">Typography Feature 3 Description:</label><br>
+                                        <textarea id="typo-3-description" name="typo3Description" rows="2" style="width: 100%; padding: 8px;" placeholder="High contrast ratios and legible font sizes"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button type="submit" style="background: #28a745; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold;">Save About Us Content</button>
+                        </form>
+                        <div id="about-status"></div>
+                    </div>
+                </div>
+                <div class="cms-tab-content" id="tab-content-auto-messages" style="display:none;">
+                    <h3>Automated Messages (FAQs)</h3>
+                    <div class="cms-section-content">
+                        <div style="margin-bottom: 2em; padding: 1.5em; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #6f42c1;">
+                            <h4 style="margin-top: 0; color: #4b2e83;">Create/Edit FAQ</h4>
+                            <form id="auto-messages-form" style="margin-bottom: 1em;">
+                                <div style="margin-bottom: 12px;">
+                                    <label for="auto-question">Question</label><br>
+                                    <input type="text" id="auto-question" name="question" style="width:100%; padding:8px;" required>
+                                </div>
+                                <div style="margin-bottom: 12px;">
+                                    <label for="auto-answer">Answer</label><br>
+                                    <textarea id="auto-answer" name="answer" rows="3" style="width:100%; padding:8px;" required></textarea>
+                                </div>
+                                <div style="margin-bottom: 12px;">
+                                    <label for="auto-keywords">Keywords (comma-separated)</label><br>
+                                    <input type="text" id="auto-keywords" name="keywords" style="width:100%; padding:8px;" placeholder="shipping, delivery, refund">
+                                </div>
+                                <div style="margin-bottom: 12px;">
+                                    <label><input type="checkbox" id="auto-active" name="isActive" checked> Active</label>
+                                </div>
+                                <input type="hidden" id="auto-id" value="">
+                                <button type="submit" style="background:#6f42c1; color:#fff; border:none; padding:10px 16px; border-radius:4px; cursor:pointer;">Save</button>
+                                <button type="button" id="auto-reset" style="margin-left:8px; background:#6c757d; color:#fff; border:none; padding:10px 16px; border-radius:4px; cursor:pointer;">Reset</button>
+                            </form>
+                            <div id="auto-messages-status"></div>
+                        </div>
+
+                        <div style="padding: 1.5em; background: #fff; border: 1px solid #e9ecef; border-radius: 8px;">
+                            <h4 style="margin-top: 0;">Existing FAQs</h4>
+                            <div id="auto-messages-list">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Review Section -->
+                <div class="cms-tab-content" id="tab-content-review" style="display:none;">
+                    <h3>Review Section Management</h3>
+                    <div class="cms-section-content">
+                        <div style="margin-bottom: 2em; padding: 1.5em; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #10b981;">
+                            <h4 style="margin-top: 0; color: #047857;">⭐ Review Section Settings</h4>
+                            <p style="color: #666; margin-bottom: 1.5em;">Customize the review section appearance and functionality on product detail pages.</p>
+                            
+                            <form id="review-settings-form" style="margin-bottom: 2em;">
+                                <!-- Review Section Title -->
+                                <div style="background: #e9ecef; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+                                    <h5 style="margin-top: 0; color: #495057;">📝 Review Section Content</h5>
+                                    <div style="margin-bottom: 15px;">
+                                        <label for="review-section-title">Review Section Title:</label><br>
+                                        <input type="text" id="review-section-title" name="sectionTitle" placeholder="Customer Reviews" style="width: 100%; padding: 0.5em; margin-top: 0.5em;" required>
+                                    </div>
+                                    <div style="margin-bottom: 15px;">
+                                        <label for="review-section-subtitle">Review Section Subtitle:</label><br>
+                                        <input type="text" id="review-section-subtitle" name="sectionSubtitle" placeholder="See what our customers are saying about this product" style="width: 100%; padding: 0.5em; margin-top: 0.5em;">
+                                    </div>
+                                    <div style="margin-bottom: 15px;">
+                                        <label for="review-empty-message">Empty State Message:</label><br>
+                                        <input type="text" id="review-empty-message" name="emptyMessage" placeholder="No reviews yet. Be the first to review this product!" style="width: 100%; padding: 0.5em; margin-top: 0.5em;">
+                                    </div>
+                                </div>
+                                
+                                <!-- Review Form Settings -->
+                                <div style="background: #e9ecef; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+                                    <h5 style="margin-top: 0; color: #495057;">📋 Review Form Settings</h5>
+                                    <div style="margin-bottom: 15px;">
+                                        <label for="review-form-title">Review Form Title:</label><br>
+                                        <input type="text" id="review-form-title" name="formTitle" placeholder="Add your review" style="width: 100%; padding: 0.5em; margin-top: 0.5em;" required>
+                                    </div>
+                                    <div style="margin-bottom: 15px;">
+                                        <label for="review-form-note">Review Form Note:</label><br>
+                                        <input type="text" id="review-form-note" name="formNote" placeholder="Your email address will not be published. Required fields are marked*" style="width: 100%; padding: 0.5em; margin-top: 0.5em;">
+                                    </div>
+                                    <div style="margin-bottom: 15px;">
+                                        <label for="review-login-prompt">Login Prompt Message:</label><br>
+                                        <input type="text" id="review-login-prompt" name="loginPrompt" placeholder="Please login to leave a review." style="width: 100%; padding: 0.5em; margin-top: 0.5em;">
+                                    </div>
+                                </div>
+                                
+                                <!-- Review Display Settings -->
+                                <div style="background: #e9ecef; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+                                    <h5 style="margin-top: 0; color: #495057;">🎨 Review Display Settings</h5>
+                                    <div style="margin-bottom: 15px;">
+                                        <label for="reviews-per-page">Reviews per page:</label><br>
+                                        <select id="reviews-per-page" name="reviewsPerPage" style="width: 100%; padding: 0.5em; margin-top: 0.5em;">
+                                            <option value="4">4 reviews</option>
+                                            <option value="6">6 reviews</option>
+                                            <option value="8">8 reviews</option>
+                                            <option value="10">10 reviews</option>
+                                        </select>
+                                    </div>
+                                    <div style="margin-bottom: 15px;">
+                                        <label for="default-sort">Default sort order:</label><br>
+                                        <select id="default-sort" name="defaultSort" style="width: 100%; padding: 0.5em; margin-top: 0.5em;">
+                                            <option value="newest">Newest first</option>
+                                            <option value="oldest">Oldest first</option>
+                                            <option value="highest">Highest rating first</option>
+                                            <option value="lowest">Lowest rating first</option>
+                                        </select>
+                                    </div>
+                                    <div style="margin-bottom: 15px;">
+                                        <label>
+                                            <input type="checkbox" id="enable-image-uploads" name="enableImageUploads" style="margin-right: 8px;">
+                                            Enable image/video uploads in reviews
+                                        </label>
+                                    </div>
+                                    <div style="margin-bottom: 15px;">
+                                        <label>
+                                            <input type="checkbox" id="require-verification" name="requireVerification" style="margin-right: 8px;">
+                                            Require email verification for reviews
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <!-- Review Moderation Settings -->
+                                <div style="background: #e9ecef; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+                                    <h5 style="margin-top: 0; color: #495057;">🛡️ Review Moderation</h5>
+                                    <div style="margin-bottom: 15px;">
+                                        <label>
+                                            <input type="checkbox" id="auto-approve-reviews" name="autoApproveReviews" style="margin-right: 8px;">
+                                            Auto-approve reviews (no moderation required)
+                                        </label>
+                                    </div>
+                                    <div style="margin-bottom: 15px;">
+                                        <label>
+                                            <input type="checkbox" id="enable-review-flagging" name="enableReviewFlagging" style="margin-right: 8px;">
+                                            Enable review flagging by users
+                                        </label>
+                                    </div>
+                                    <div style="margin-bottom: 15px;">
+                                        <label for="min-review-length">Minimum review length (characters):</label><br>
+                                        <input type="number" id="min-review-length" name="minReviewLength" value="10" min="1" max="1000" style="width: 100%; padding: 0.5em; margin-top: 0.5em;">
+                                    </div>
+                                </div>
+                                
+                                <button type="submit" style="background: #10b981; color: white; border: none; padding: 0.75em 1.5em; border-radius: 4px; cursor: pointer; font-weight: bold;">Save Review Settings</button>
+                            </form>
+                            
+                            <!-- Live Preview Section -->
+                            <div style="margin-top: 2em;">
+                                <h5 style="color: #047857;">👁️ Live Preview</h5>
+                                <div id="review-preview" style="border: 2px solid #ddd; border-radius: 8px; overflow: hidden; min-height: 400px; background: white;">
+                                    <div style="padding: 2rem;">
+                                        <h3 id="preview-review-title" style="margin-bottom: 1rem; color: #1f2937;">Customer Reviews</h3>
+                                        <p id="preview-review-subtitle" style="color: #6b7280; margin-bottom: 2rem;">See what our customers are saying about this product</p>
+                                        
+                                        <!-- Review Stats Preview -->
+                                        <div style="display: flex; gap: 2rem; margin-bottom: 2rem; padding: 1rem; background: #f8f9fa; border-radius: 6px;">
+                                            <div style="text-align: center;">
+                                                <div style="font-size: 2rem; font-weight: bold; color: #1f2937;">4.9</div>
+                                                <div style="color: #6b7280; font-size: 0.875rem;">out of 5</div>
+                                                <div style="display: flex; gap: 0.25rem; justify-content: center; margin: 0.5rem 0;">
+                                                    <span style="color: #fbbf24;">★★★★★</span>
+                                                </div>
+                                                <div style="color: #6b7280; font-size: 0.875rem;">(245 Reviews)</div>
+                                            </div>
+                                            <div style="flex: 1;">
+                                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                                    <span style="font-size: 0.875rem;">5</span>
+                                                    <span style="color: #fbbf24;">★</span>
+                                                    <div style="flex: 1; height: 8px; background: #e5e7eb; border-radius: 4px;">
+                                                        <div style="width: 80%; height: 100%; background: #fbbf24; border-radius: 4px;"></div>
+                                                    </div>
+                                                    <span style="font-size: 0.875rem; color: #6b7280;">196</span>
+                                                </div>
+                                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                                    <span style="font-size: 0.875rem;">4</span>
+                                                    <span style="color: #fbbf24;">★</span>
+                                                    <div style="flex: 1; height: 8px; background: #e5e7eb; border-radius: 4px;">
+                                                        <div style="width: 15%; height: 100%; background: #fbbf24; border-radius: 4px;"></div>
+                                                    </div>
+                                                    <span style="font-size: 0.875rem; color: #6b7280;">37</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Sample Review Preview -->
+                                        <div style="border-bottom: 1px solid #f3f4f6; padding-bottom: 1rem; margin-bottom: 1rem;">
+                                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                                                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                                    <div style="width: 48px; height: 48px; background: #F0B21B; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">KW</div>
+                                                    <div>
+                                                        <div style="font-weight: 600; color: #1f2937;">Kristin Watson</div>
+                                                        <div style="font-size: 0.75rem; color: #10b981;">(Verified)</div>
+                                                    </div>
+                                                </div>
+                                                <div style="font-size: 0.875rem; color: #6b7280;">1 month ago</div>
+                                            </div>
+                                            <h4 style="font-size: 1.125rem; font-weight: 600; color: #1f2937; margin: 0 0 0.5rem 0;">Ultimate Comfort and Support - A Gamer's Dream Chair!</h4>
+                                            <p style="color: #4b5563; line-height: 1.6; margin-bottom: 1rem;">I've been using this gaming chair for a few weeks now, and I have to say, it's been a game-changer for me. The comfort level is off the charts, and I no longer feel sore after long gaming sessions. Definitely worth the investment!</p>
+                                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                                <div style="display: flex; gap: 0.125rem;">
+                                                    <span style="color: #fbbf24;">★★★★★</span>
+                                                </div>
+                                                <span style="font-size: 0.875rem; font-weight: 500; color: #374151;">5.0</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div style="text-align: center; margin-top: 2rem;">
+                                            <button style="background: #F0B21B; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 6px; font-weight: 600; cursor: pointer;">Add Your Review</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div id="review-status-message"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="cms-tab-content" id="tab-content-terms" style="display:none;">
+                    <h3>Terms and Conditions Management</h3>
+                    <div class="cms-section-content">
+                        <div style="margin-bottom: 3em; padding: 1.5em; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #6f42c1;">
+                            <h4 style="margin-top: 0; color: #4b2e83;">📋 Terms and Conditions Content</h4>
+                            <p style="color: #666; margin-bottom: 1.5em;">Manage the terms and conditions text that appears on the sign-up page and product checkout page.</p>
+                            
+                            <form id="terms-form" style="margin-bottom: 2em;">
+                                <!-- Sign-up Terms -->
+                                <div style="background: #e9ecef; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+                                    <h5 style="margin-top: 0; color: #495057;">📝 Sign-up Page Terms and Conditions</h5>
+                                    <div style="margin-bottom: 15px;">
+                                        <label for="signup-terms-title">Title:</label><br>
+                                        <input type="text" id="signup-terms-title" name="signupTermsTitle" placeholder="Terms and Conditions" style="width: 100%; padding: 0.5em; margin-top: 0.5em;">
+                                    </div>
+                                    <div style="margin-bottom: 15px;">
+                                        <label for="signup-terms-content">Content:</label><br>
+                                        <textarea id="signup-terms-content" name="signupTermsContent" rows="8" placeholder="Enter the terms and conditions text for the sign-up page..." style="width: 100%; padding: 0.5em; margin-top: 0.5em;"></textarea>
+                                    </div>
+                                    <div style="margin-bottom: 15px;">
+                                        <label for="signup-terms-checkbox-text">Checkbox Text:</label><br>
+                                        <input type="text" id="signup-terms-checkbox-text" name="signupTermsCheckboxText" placeholder="I agree to the Terms and Conditions" style="width: 100%; padding: 0.5em; margin-top: 0.5em;">
+                                    </div>
+                                </div>
+                                
+                                <!-- Checkout Terms -->
+                                <div style="background: #e9ecef; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+                                    <h5 style="margin-top: 0; color: #495057;">🛒 Checkout Page Terms and Conditions</h5>
+                                    <div style="margin-bottom: 15px;">
+                                        <label for="checkout-terms-title">Title:</label><br>
+                                        <input type="text" id="checkout-terms-title" name="checkoutTermsTitle" placeholder="Terms and Conditions" style="width: 100%; padding: 0.5em; margin-top: 0.5em;">
+                                    </div>
+                                    <div style="margin-bottom: 15px;">
+                                        <label for="checkout-terms-content">Content:</label><br>
+                                        <textarea id="checkout-terms-content" name="checkoutTermsContent" rows="8" placeholder="Enter the terms and conditions text for the checkout page..." style="width: 100%; padding: 0.5em; margin-top: 0.5em;"></textarea>
+                                    </div>
+                                    <div style="margin-bottom: 15px;">
+                                        <label for="checkout-terms-checkbox-text">Checkbox Text:</label><br>
+                                        <input type="text" id="checkout-terms-checkbox-text" name="checkoutTermsCheckboxText" placeholder="I agree to the Terms and Conditions" style="width: 100%; padding: 0.5em; margin-top: 0.5em;">
+                                    </div>
+                                </div>
+                                
+                                <!-- General Settings -->
+                                <div style="background: #e9ecef; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+                                    <h5 style="margin-top: 0; color: #495057;">⚙️ General Settings</h5>
+                                    <div style="margin-bottom: 15px;">
+                                        <label for="terms-last-updated">Last Updated Date:</label><br>
+                                        <input type="date" id="terms-last-updated" name="termsLastUpdated" style="width: 100%; padding: 0.5em; margin-top: 0.5em;">
+                                    </div>
+                                    <div style="margin-bottom: 15px;">
+                                        <label for="terms-version">Version:</label><br>
+                                        <input type="text" id="terms-version" name="termsVersion" placeholder="1.0" style="width: 100%; padding: 0.5em; margin-top: 0.5em;">
+                                    </div>
+                                    <div style="margin-bottom: 15px;">
+                                        <label>
+                                            <input type="checkbox" id="terms-require-agreement" name="requireAgreement" style="margin-right: 8px;">
+                                            Require user agreement before sign-up/checkout
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <button type="submit" style="background: #6f42c1; color: white; border: none; padding: 0.75em 1.5em; border-radius: 4px; cursor: pointer; font-weight: bold;">Save Terms and Conditions</button>
+                            </form>
+                            
+                            <div id="terms-status-message"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="cms-tab-content" id="tab-content-theme" style="display:none;">
+                    <h3>Theme</h3>
+                    <div class="cms-section-content">
+                        <form id="theme-form" style="margin-bottom:2em;">
+                            <div style="margin-bottom: 1em;">
+                                <label for="theme-select">Select Theme:</label><br>
+                                                            <select id="theme-select" name="theme" style="width: 100%; padding: 0.5em;">
+                                <option value="default">Default</option>
+                                <option value="dark">Dark</option>
+                                <option value="christmas">Christmas</option>
+                            </select>
+                            </div>
+                            <button type="submit">Save Theme</button>
+                        </form>
+                        <div id="theme-status"></div>
+                        <div>Current active theme: <span id="current-theme">Loading...</span></div>
+                        
+                        <hr style="margin: 2em 0;">
+                        
+                        <h4>Background Image</h4>
+                        <form id="theme-background-form" enctype="multipart/form-data" style="margin-bottom:2em;">
+                            <div style="margin-bottom: 1em;">
+                                <label for="theme-background-image">Upload Background Image:</label><br>
+                                <input type="file" id="theme-background-image" name="backgroundImage" accept="image/*" style="width: 100%; padding: 0.5em;">
+                                <small style="color: #666;">Recommended size: 1920x1080 or larger. Will be applied as background to the entire site.</small>
+                            </div>
+                            <button type="submit" style="background: #007bff; color: white; border: none; padding: 0.75em 1.5em; border-radius: 4px; cursor: pointer;">Upload Background Image</button>
+                        </form>
+                        <div id="theme-background-status"></div>
+                        
+                        <div id="current-background-preview" style="margin-top: 1em;">
+                            <h5>Current Background Image:</h5>
+                            <div id="background-preview-container" style="border: 1px solid #ddd; padding: 1em; border-radius: 4px; min-height: 100px; display: flex; align-items: center; justify-content: center;">
+                                <span id="no-background-text">No background image set</span>
+                                <img id="background-preview-image" src="" alt="Background preview" style="max-width: 100%; max-height: 200px; display: none;">
+                            </div>
+                            <button id="remove-background-btn" onclick="removeBackgroundImage()" style="background: #dc3545; color: white; border: none; padding: 0.5em 1em; border-radius: 4px; cursor: pointer; margin-top: 0.5em; display: none;">Remove Background Image</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Messages Tab Content -->
+                <div class="cms-tab-content" id="tab-content-messages" style="display:none;">
+                    <h3>Contact Messages Management</h3>
+                    <div class="cms-section-content">
+                        <!-- Statistics Section -->
+                        <div style="margin-bottom: 2em; padding: 1.5em; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #17a2b8;">
+                            <h4 style="margin-top: 0; color: #0c5460;">📊 Message Statistics</h4>
+                            <p style="color: #666; margin-bottom: 1.5em;">Overview of contact form submissions and their status.</p>
+                            
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+                                <div style="background: white; padding: 1rem; border-radius: 6px; text-align: center; border: 1px solid #dee2e6;">
+                                    <h3 style="margin: 0 0 0.5rem 0; font-size: 1.8rem; color: #17a2b8;" id="total-messages">-</h3>
+                                    <p style="margin: 0; color: #666; font-weight: 500; font-size: 0.9rem;">Total Messages</p>
+                                </div>
+                                <div style="background: white; padding: 1rem; border-radius: 6px; text-align: center; border: 1px solid #dee2e6;">
+                                    <h3 style="margin: 0 0 0.5rem 0; font-size: 1.8rem; color: #dc3545;" id="new-messages">-</h3>
+                                    <p style="margin: 0; color: #666; font-weight: 500; font-size: 0.9rem;">New Messages</p>
+                                </div>
+                                <div style="background: white; padding: 1rem; border-radius: 6px; text-align: center; border: 1px solid #dee2e6;">
+                                    <h3 style="margin: 0 0 0.5rem 0; font-size: 1.8rem; color: #007bff;" id="read-messages">-</h3>
+                                    <p style="margin: 0; color: #666; font-weight: 500; font-size: 0.9rem;">Read Messages</p>
+                                </div>
+                                <div style="background: white; padding: 1rem; border-radius: 6px; text-align: center; border: 1px solid #dee2e6;">
+                                    <h3 style="margin: 0 0 0.5rem 0; font-size: 1.8rem; color: #28a745;" id="replied-messages">-</h3>
+                                    <p style="margin: 0; color: #666; font-weight: 500; font-size: 0.9rem;">Replied Messages</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Messages List -->
+                        <div style="padding: 1.5em; background: #fff; border: 1px solid #e9ecef; border-radius: 8px;">
+                            <h4 style="margin-top: 0; color: #495057;">📧 All Contact Messages</h4>
+                            <div id="messages-list">
+                                <div style="text-align: center; padding: 2rem; color: #666;">Loading messages...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <style>
+                    .cms-tabs { margin-bottom: 1em; }
+                    .cms-tab-btn { margin-right: 8px; padding: 8px 16px; cursor: pointer; border: 1px solid #ccc; background: #f7f7f7; border-radius: 4px 4px 0 0; }
+                    .cms-tab-btn.active { background: #fff; border-bottom: 1px solid #fff; font-weight: bold; }
+                    .cms-tab-content { border: 1px solid #ccc; border-top: none; padding: 1em; background: #fff; }
+                    
+                    /* Messages Tab Specific Styles */
+                    .message-actions button { transition: background-color 0.2s ease; }
+                    .message-actions button:hover { opacity: 0.9; }
+                    .star-rating {
+                        direction: rtl;
+                        unicode-bidi: bidi-override;
+                        display: inline-block;
+                    }
+                    .star-rating input[type="radio"] {
+                        display: none;
+                    }
+                    .star-rating label {
+                        color: #ccc;
+                        font-size: 2em;
+                        cursor: pointer;
+                        transition: color 0.2s;
+                    }
+                    .star-rating input[type="radio"]:checked ~ label,
+                    .star-rating label:hover,
+                    .star-rating label:hover ~ label {
+                        color: #f5b301;
+                    }
+                </style>
+                <script>
+                    function showTab(tab) {
+                        const tabs = ['banner', 'hero-banner', 'products', 'testimonials', 'offer', 'gallery', 'about', 'auto-messages', 'review', 'terms', 'theme', 'messages'];
+                        tabs.forEach(t => {
+                            document.getElementById('tab-content-' + t).style.display = (t === tab) ? '' : 'none';
+                            document.getElementById('tab-' + t).classList.toggle('active', t === tab);
+                        });
+                        
+                        // Load messages when messages tab is shown
+                        if (tab === 'messages') {
+                            loadMessages();
+                        }
+                    }
+                    // --- Theme Tab Logic ---
+                    async function fetchActiveTheme() {
+                        try {
+                            const res = await fetch('/api/theme/active');
+                            const data = await res.json();
+                            document.getElementById('current-theme').textContent = data.activeTheme || 'default';
+                            document.getElementById('theme-select').value = data.activeTheme || 'default';
+                            
+                            // Update background image preview
+                            updateBackgroundPreview(data.backgroundImage);
+                        } catch {
+                            document.getElementById('current-theme').textContent = 'default';
+                        }
+                    }
+                    
+                    async function saveTheme(e) {
+                        e.preventDefault();
+                        const theme = document.getElementById('theme-select').value;
+                        try {
+                            const res = await fetch('/api/theme/active', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ activeTheme: theme })
+                            });
+                            const data = await res.json();
+                            if (data.success) {
+                                document.getElementById('theme-status').textContent = 'Theme updated!';
+                                document.getElementById('current-theme').textContent = theme;
+                            } else {
+                                document.getElementById('theme-status').textContent = 'Failed to update theme.';
+                            }
+                        } catch {
+                            document.getElementById('theme-status').textContent = 'Error updating theme.';
+                        }
+                    }
+                    
+                    // Background image functions
+                    function updateBackgroundPreview(backgroundImage) {
+                        const previewContainer = document.getElementById('background-preview-container');
+                        const previewImage = document.getElementById('background-preview-image');
+                        const noBackgroundText = document.getElementById('no-background-text');
+                        const removeBtn = document.getElementById('remove-background-btn');
+                        
+                        if (backgroundImage) {
+                            previewImage.src = backgroundImage;
+                            previewImage.style.display = 'block';
+                            noBackgroundText.style.display = 'none';
+                            removeBtn.style.display = 'inline-block';
+                        } else {
+                            previewImage.style.display = 'none';
+                            noBackgroundText.style.display = 'block';
+                            removeBtn.style.display = 'none';
+                        }
+                    }
+                    
+                    async function handleBackgroundImageUpload(e) {
+                        e.preventDefault();
+                        const form = e.target;
+                        const formData = new FormData(form);
+                        const statusDiv = document.getElementById('theme-background-status');
+                        
+                        statusDiv.innerHTML = '<p style="color: #007bff;">Uploading...</p>';
+                        
+                        try {
+                            const res = await fetch('/api/theme/background-image', {
+                                method: 'POST',
+                                body: formData
+                            });
+                            const data = await res.json();
+                            
+                            if (data.success) {
+                                statusDiv.innerHTML = '<p style="color: green;">Background image uploaded successfully!</p>';
+                                updateBackgroundPreview(data.backgroundImage);
+                                form.reset();
+                                
+                                // Auto-hide success message after 3 seconds
+                                setTimeout(() => {
+                                    statusDiv.innerHTML = '';
+                                }, 3000);
+                            } else {
+                                statusDiv.innerHTML = '<p style="color: red;">Failed to upload background image.</p>';
+                            }
+                        } catch (err) {
+                            statusDiv.innerHTML = '<p style="color: red;">Error uploading background image.</p>';
+                        }
+                    }
+                    
+                    async function removeBackgroundImage() {
+                        if (!confirm('Are you sure you want to remove the background image?')) return;
+                        
+                        try {
+                            const res = await fetch('/api/theme/active', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ 
+                                    activeTheme: document.getElementById('theme-select').value,
+                                    backgroundImage: null 
+                                })
+                            });
+                            const data = await res.json();
+                            
+                            if (data.success) {
+                                updateBackgroundPreview(null);
+                                document.getElementById('theme-background-status').innerHTML = '<p style="color: green;">Background image removed successfully!</p>';
+                                
+                                // Auto-hide success message after 3 seconds
+                                setTimeout(() => {
+                                    document.getElementById('theme-background-status').innerHTML = '';
+                                }, 3000);
+                            }
+                        } catch (err) {
+                            document.getElementById('theme-background-status').innerHTML = '<p style="color: red;">Error removing background image.</p>';
+                        }
+                    }
+                    // --- Products Tab Logic ---
+                    async function fetchProducts() {
+                        const res = await fetch('/api/admin/products');
+                        return res.json();
+                    }
+                    async function setProductFeatured(id, isFeatured) {
+                        const res = await fetch(`/api/admin/products/${id}/feature`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ isFeatured })
+                        });
+                        return res.json();
+                    }
+                    
+                    async function renderProductsTable() {
+                        const tbody = document.querySelector('#products-table tbody');
+                        if (!tbody) return;
+                        tbody.innerHTML = '<tr><td colspan="6">Loading...</td></tr>';
+                        try {
+                            const products = await fetchProducts();
+                            tbody.innerHTML = products.map(p => {
+                                return `
+                                    <tr>
+                                        <td>${p.ProductID}</td>
+                                        <td>${p.Name}</td>
+                                        <td>${p.Category}</td>
+                                        <td>₱${parseFloat(p.Price).toFixed(2)}</td>
+                                        <td>
+                                            <input type="checkbox" ${p.IsFeatured ? 'checked' : ''} onchange="toggleFeatured(${p.ProductID}, this.checked)">
+                                        </td>
+                                        <td>
+                                            <button onclick="deleteProduct(${p.ProductID}, '${p.Name}')" style="padding: 0.25em 0.5em; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer;">
+                                                Delete
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `;
+                            }).join('');
+                        } catch {
+                            tbody.innerHTML = '<tr><td colspan="6">Failed to load products.</td></tr>';
+                        }
+                    }
+                    window.toggleFeatured = async function(id, checked) {
+                        document.getElementById('products-status').textContent = 'Saving...';
+                        try {
+                            await setProductFeatured(id, checked);
+                            document.getElementById('products-status').textContent = 'Saved!';
+                            renderProductsTable();
+                        } catch {
+                            document.getElementById('products-status').textContent = 'Failed to save.';
+                        }
+                    };
+                    
+                    
+                    
+                    // Delete product function
+                    window.deleteProduct = async function(productId, productName) {
+                        if (!confirm(`Are you sure you want to delete the product "${productName}"? This action cannot be undone and will also delete all related materials.`)) {
+                            return;
+                        }
+                        
+                        document.getElementById('products-status').textContent = 'Deleting product...';
+                        try {
+                            const response = await fetch(`/api/admin/products/${productId}`, {
+                                method: 'DELETE',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                }
+                            });
+                            
+                            console.log('Delete response status:', response.status);
+                            console.log('Delete response headers:', response.headers);
+                            
+                            if (!response.ok) {
+                                const errorText = await response.text();
+                                console.error('Delete response error:', errorText);
+                                throw new Error(`HTTP ${response.status}: ${errorText}`);
+                            }
+                            
+                            const result = await response.json();
+                            console.log('Delete response result:', result);
+                            
+                            if (result.success) {
+                                document.getElementById('products-status').textContent = `Product "${productName}" deleted successfully!`;
+                                renderProductsTable();
+                            } else {
+                                document.getElementById('products-status').textContent = 'Failed to delete product.';
+                            }
+                        } catch (error) {
+                            console.error('Error deleting product:', error);
+                            document.getElementById('products-status').textContent = `Failed to delete product: ${error.message}`;
+                        }
+                    };
+                    
+                    // Render products table on tab switch
+                    const productsTabBtn = document.getElementById('tab-products');
+                    if (productsTabBtn) {
+                        productsTabBtn.addEventListener('click', renderProductsTable);
+                    }
+                    
+                    // --- Terms and Conditions Tab Logic ---
+                    async function fetchTermsAndConditions() {
+                        try {
+                            const res = await fetch('/api/admin/terms');
+                            if (!res.ok) throw new Error('Failed to fetch terms and conditions');
+                            return res.json();
+                        } catch (err) {
+                            console.error('Error fetching terms:', err);
+                            return null;
+                        }
+                    }
+                    
+                    async function saveTermsAndConditions(formData) {
+                        try {
+                            const res = await fetch('/api/admin/terms', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(formData)
+                            });
+                            if (!res.ok) throw new Error('Failed to save terms and conditions');
+                            return res.json();
+                        } catch (err) {
+                            console.error('Error saving terms:', err);
+                            throw err;
+                        }
+                    }
+                    
+                    async function loadTermsAndConditions() {
+                        try {
+                            const terms = await fetchTermsAndConditions();
+                            if (terms) {
+                                // Sign-up terms
+                                document.getElementById('signup-terms-title').value = terms.signupTermsTitle || '';
+                                document.getElementById('signup-terms-content').value = terms.signupTermsContent || '';
+                                document.getElementById('signup-terms-checkbox-text').value = terms.signupTermsCheckboxText || '';
+                                
+                                // Checkout terms
+                                document.getElementById('checkout-terms-title').value = terms.checkoutTermsTitle || '';
+                                document.getElementById('checkout-terms-content').value = terms.checkoutTermsContent || '';
+                                document.getElementById('checkout-terms-checkbox-text').value = terms.checkoutTermsCheckboxText || '';
+                                
+                                // General settings
+                                document.getElementById('terms-last-updated').value = terms.termsLastUpdated || '';
+                                document.getElementById('terms-version').value = terms.termsVersion || '';
+                                document.getElementById('terms-require-agreement').checked = terms.requireAgreement || false;
+                            }
+                        } catch (err) {
+                            console.error('Error loading terms:', err);
+                        }
+                    }
+                    
+                    async function handleTermsFormSubmit(e) {
+                        e.preventDefault();
+                        const form = e.target;
+                        
+                        // Collect form data as an object
+                        const formData = {
+                            signupTermsTitle: form.querySelector('[name="signupTermsTitle"]').value,
+                            signupTermsContent: form.querySelector('[name="signupTermsContent"]').value,
+                            signupTermsCheckboxText: form.querySelector('[name="signupTermsCheckboxText"]').value,
+                            checkoutTermsTitle: form.querySelector('[name="checkoutTermsTitle"]').value,
+                            checkoutTermsContent: form.querySelector('[name="checkoutTermsContent"]').value,
+                            checkoutTermsCheckboxText: form.querySelector('[name="checkoutTermsCheckboxText"]').value,
+                            termsLastUpdated: form.querySelector('[name="termsLastUpdated"]').value,
+                            termsVersion: form.querySelector('[name="termsVersion"]').value,
+                            requireAgreement: form.querySelector('[name="requireAgreement"]').checked
+                        };
+                        
+                        const statusDiv = document.getElementById('terms-status-message');
+                        statusDiv.innerHTML = '<p style="color: #007bff;">Saving terms and conditions...</p>';
+                        
+                        try {
+                            await saveTermsAndConditions(formData);
+                            statusDiv.innerHTML = '<p style="color: green; margin-top: 1em;">Terms and conditions saved successfully!</p>';
+                            
+                            // Auto-hide success message after 3 seconds
+                            setTimeout(() => {
+                                statusDiv.innerHTML = '';
+                            }, 3000);
+                        } catch (err) {
+                            statusDiv.innerHTML = '<p style="color: red; margin-top: 1em;">Failed to save terms and conditions.</p>';
+                        }
+                    }
+                    
+                    // --- Review Section Functions ---
+                    async function handleReviewFormSubmit(e) {
+                        e.preventDefault();
+                        
+                        const formData = new FormData(e.target);
+                        const reviewSettings = {
+                            sectionTitle: formData.get('sectionTitle'),
+                            sectionSubtitle: formData.get('sectionSubtitle'),
+                            emptyMessage: formData.get('emptyMessage'),
+                            formTitle: formData.get('formTitle'),
+                            formNote: formData.get('formNote'),
+                            loginPrompt: formData.get('loginPrompt'),
+                            reviewsPerPage: parseInt(formData.get('reviewsPerPage')),
+                            defaultSort: formData.get('defaultSort'),
+                            enableImageUploads: formData.get('enableImageUploads') === 'on',
+                            requireVerification: formData.get('requireVerification') === 'on',
+                            autoApproveReviews: formData.get('autoApproveReviews') === 'on',
+                            enableReviewFlagging: formData.get('enableReviewFlagging') === 'on',
+                            minReviewLength: parseInt(formData.get('minReviewLength'))
+                        };
+                        
+                        try {
+                            const response = await fetch('/api/cms/review-settings', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify(reviewSettings)
+                            });
+                            
+                            const result = await response.json();
+                            
+                            if (result.success) {
+                                document.getElementById('review-status-message').innerHTML = 
+                                    '<div style="color: #10b981; background: #d1fae5; padding: 1rem; border-radius: 4px; margin-top: 1rem;">✅ Review settings saved successfully!</div>';
+                                
+                                // Update preview
+                                updateReviewPreview(reviewSettings);
+                            } else {
+                                document.getElementById('review-status-message').innerHTML = 
+                                    '<div style="color: #ef4444; background: #fee2e2; padding: 1rem; border-radius: 4px; margin-top: 1rem;">❌ Failed to save review settings: ' + result.error + '</div>';
+                            }
+                        } catch (error) {
+                            console.error('Error saving review settings:', error);
+                            document.getElementById('review-status-message').innerHTML = 
+                                '<div style="color: #ef4444; background: #fee2e2; padding: 1rem; border-radius: 4px; margin-top: 1rem;">❌ Error saving review settings: ' + error.message + '</div>';
+                        }
+                    }
+                    
+                    async function loadReviewSettings() {
+                        try {
+                            const response = await fetch('/api/cms/review-settings');
+                            const result = await response.json();
+                            
+                            if (result.success && result.settings) {
+                                const settings = result.settings;
+                                
+                                // Populate form fields
+                                document.getElementById('review-section-title').value = settings.sectionTitle || 'Customer Reviews';
+                                document.getElementById('review-section-subtitle').value = settings.sectionSubtitle || 'See what our customers are saying about this product';
+                                document.getElementById('review-empty-message').value = settings.emptyMessage || 'No reviews yet. Be the first to review this product!';
+                                document.getElementById('review-form-title').value = settings.formTitle || 'Add your review';
+                                document.getElementById('review-form-note').value = settings.formNote || 'Your email address will not be published. Required fields are marked*';
+                                document.getElementById('review-login-prompt').value = settings.loginPrompt || 'Please login to leave a review.';
+                                document.getElementById('reviews-per-page').value = settings.reviewsPerPage || 4;
+                                document.getElementById('default-sort').value = settings.defaultSort || 'newest';
+                                document.getElementById('enable-image-uploads').checked = settings.enableImageUploads || false;
+                                document.getElementById('require-verification').checked = settings.requireVerification || false;
+                                document.getElementById('auto-approve-reviews').checked = settings.autoApproveReviews || false;
+                                document.getElementById('enable-review-flagging').checked = settings.enableReviewFlagging || false;
+                                document.getElementById('min-review-length').value = settings.minReviewLength || 10;
+                                
+                                // Update preview
+                                updateReviewPreview(settings);
+                            }
+                        } catch (error) {
+                            console.error('Error loading review settings:', error);
+                        }
+                    }
+                    
+                    function updateReviewPreview(settings) {
+                        // Update preview elements
+                        const previewTitle = document.getElementById('preview-review-title');
+                        const previewSubtitle = document.getElementById('preview-review-subtitle');
+                        
+                        if (previewTitle) previewTitle.textContent = settings.sectionTitle || 'Customer Reviews';
+                        if (previewSubtitle) previewSubtitle.textContent = settings.sectionSubtitle || 'See what our customers are saying about this product';
+                    }
+                    
+                    document.addEventListener('DOMContentLoaded', function() {
+                        showTab('banner');
+                        const themeForm = document.getElementById('theme-form');
+                        if (themeForm) themeForm.addEventListener('submit', saveTheme);
+                        
+                        const backgroundForm = document.getElementById('theme-background-form');
+                        if (backgroundForm) backgroundForm.addEventListener('submit', handleBackgroundImageUpload);
+                        
+                        const termsForm = document.getElementById('terms-form');
+                        if (termsForm) {
+                            termsForm.addEventListener('submit', handleTermsFormSubmit);
+                            loadTermsAndConditions();
+                        }
+                        
+                        const reviewForm = document.getElementById('review-settings-form');
+                        if (reviewForm) {
+                            reviewForm.addEventListener('submit', handleReviewFormSubmit);
+                            loadReviewSettings();
+                        }
+                        
+                        fetchActiveTheme();
+                    });
+                    
+                    // --- Messages Tab Logic ---
+                    let messages = [];
+                    
+                    async function loadMessages() {
+                        try {
+                            const response = await fetch('/api/admin/contact-messages');
+                            const data = await response.json();
+                            
+                            if (data.success) {
+                                messages = data.messages;
+                                renderMessages();
+                                updateStats();
+                            } else {
+                                document.getElementById('messages-list').innerHTML = 
+                                    '<div style="text-align: center; padding: 3rem; color: #666;"><h3>Error loading messages</h3><p>Please try again later.</p></div>';
+                            }
+                        } catch (error) {
+                            console.error('Error loading messages:', error);
+                            document.getElementById('messages-list').innerHTML = 
+                                '<div style="text-align: center; padding: 3rem; color: #666;"><h3>Error loading messages</h3><p>Please check your connection and try again.</p></div>';
+                        }
+                    }
+                    
+                    function updateStats() {
+                        const stats = messages.reduce((acc, msg) => {
+                            acc.total++;
+                            acc[msg.Status.toLowerCase()]++;
+                            return acc;
+                        }, { total: 0, new: 0, read: 0, replied: 0, closed: 0 });
+                        
+                        document.getElementById('total-messages').textContent = stats.total;
+                        document.getElementById('new-messages').textContent = stats.new;
+                        document.getElementById('read-messages').textContent = stats.read;
+                        document.getElementById('replied-messages').textContent = stats.replied;
+                    }
+                    
+                    function renderMessages() {
+                        const messagesList = document.getElementById('messages-list');
+                        
+                        if (messages.length === 0) {
+                            messagesList.innerHTML = `
+                                <div style="text-align: center; padding: 3rem; color: #666;">
+                                    <h3>No Messages Yet</h3>
+                                    <p>Contact form submissions will appear here.</p>
+                                </div>
+                            `;
+                            return;
+                        }
+                        
+                        messagesList.innerHTML = messages.map(message => `
+                            <div style="border-bottom: 1px solid #e9ecef; padding: 1.5rem; margin-bottom: 1rem; background: #f8f9fa; border-radius: 6px;" data-id="${message.SubmissionID}">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                                    <div style="flex: 1;">
+                                        <h5 style="font-weight: 600; color: #333; margin: 0 0 0.25rem 0; font-size: 1.1rem;">${message.Name}</h5>
+                                        <a href="mailto:${message.Email}" style="color: #007bff; margin: 0 0 0.25rem 0; text-decoration: none; font-size: 0.9rem;">${message.Email}</a>
+                                        <p style="color: #6c757d; font-size: 0.85rem; margin: 0;">${new Date(message.SubmissionDate).toLocaleString()}</p>
+                                    </div>
+                                    <span style="padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; ${getStatusStyle(message.Status)}">${message.Status}</span>
+                                </div>
+                                <div style="background: white; padding: 1rem; border-radius: 6px; border: 1px solid #dee2e6; margin-bottom: 1rem;">
+                                    <p style="margin: 0; color: #495057; line-height: 1.5;">${message.Message}</p>
+                                </div>
+                                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                    <button onclick="replyToMessage('${message.Email}')" style="background: #007bff; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: 500;">📧 Reply</button>
+                                    ${message.Status !== 'Read' ? `
+                                        <button onclick="updateMessageStatus(${message.SubmissionID}, 'Read')" style="background: #28a745; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: 500;">✓ Mark as Read</button>
+                                    ` : ''}
+                                    ${message.Status !== 'Replied' ? `
+                                        <button onclick="updateMessageStatus(${message.SubmissionID}, 'Replied')" style="background: #ffc107; color: #212529; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: 500;">✓ Mark as Replied</button>
+                                    ` : ''}
+                                    ${message.Status !== 'Closed' ? `
+                                        <button onclick="updateMessageStatus(${message.SubmissionID}, 'Closed')" style="background: #6c757d; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: 500;">🔒 Close</button>
+                                    ` : ''}
+                                    <button onclick="deleteMessage(${message.SubmissionID})" style="background: #dc3545; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: 500;">🗑️ Delete</button>
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+                    
+                    function getStatusStyle(status) {
+                        const styles = {
+                            'New': 'background: #fff3cd; color: #856404; border: 1px solid #ffeaa7;',
+                            'Read': 'background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb;',
+                            'Replied': 'background: #d4edda; color: #155724; border: 1px solid #c3e6cb;',
+                            'Closed': 'background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;'
+                        };
+                        return styles[status] || styles['New'];
+                    }
+                    
+                    async function updateMessageStatus(id, status) {
+                        try {
+                            const response = await fetch(`/api/admin/contact-messages/${id}/status`, {
+                                method: 'PUT',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({ status })
+                            });
+                            
+                            const data = await response.json();
+                            
+                            if (data.success) {
+                                // Update the local messages array
+                                const messageIndex = messages.findIndex(msg => msg.SubmissionID === id);
+                                if (messageIndex !== -1) {
+                                    messages[messageIndex].Status = status;
+                                    renderMessages();
+                                    updateStats();
+                                }
+                            } else {
+                                alert('Failed to update status: ' + data.message);
+                            }
+                        } catch (error) {
+                            console.error('Error updating status:', error);
+                            alert('Error updating status. Please try again.');
+                        }
+                    }
+                    
+                    async function deleteMessage(id) {
+                        if (!confirm('Are you sure you want to delete this message? This action cannot be undone.')) {
+                            return;
+                        }
+                        
+                        try {
+                            const response = await fetch(`/api/admin/contact-messages/${id}`, {
+                                method: 'DELETE'
+                            });
+                            
+                            const data = await response.json();
+                            
+                            if (data.success) {
+                                // Remove from local messages array
+                                messages = messages.filter(msg => msg.SubmissionID !== id);
+                                renderMessages();
+                                updateStats();
+                            } else {
+                                alert('Failed to delete message: ' + data.message);
+                            }
+                        } catch (error) {
+                            console.error('Error deleting message:', error);
+                            alert('Error deleting message. Please try again.');
+                        }
+                    }
+                    
+                    function replyToMessage(email) {
+                        // Open default email client with pre-filled recipient
+                        window.open(`mailto:${email}?subject=Re: Your inquiry about Design Excellence`, '_blank');
+                    }
+                </script>
+            </div>
+            <script src="/js/admin/AdminCMS.js"></script>
+            <script>
+                // Initialize header offer bar functionality
+                document.addEventListener('DOMContentLoaded', function() {
+                    const headerOfferForm = document.getElementById('header-offer-form');
+                    if (headerOfferForm) {
+                        headerOfferForm.addEventListener('submit', handleHeaderOfferFormSubmit);
+                        loadHeaderOfferBarSettings();
+                        
+                        // Add real-time preview updates
+                        const previewInputs = ['header-offer-text', 'header-offer-button-text', 'header-offer-background-color', 'header-offer-text-color'];
+                        previewInputs.forEach(inputId => {
+                            const input = document.getElementById(inputId);
+                            if (input) {
+                                input.addEventListener('input', updateHeaderOfferPreview);
+                            }
+                        });
+                    }
+                });
+                
+                // Initialize automessages functionality
+                const autoMessagesForm = document.getElementById('auto-messages-form');
+                if (autoMessagesForm) {
+                    autoMessagesForm.addEventListener('submit', handleAutoMessagesFormSubmit);
+                    renderAutoMessagesList();
+                }
+            </script>
+        </div>
+    </div>
+</body>
+</html> 

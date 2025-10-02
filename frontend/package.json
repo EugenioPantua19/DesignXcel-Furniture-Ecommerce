@@ -1,0 +1,62 @@
+{
+  "name": "designxcel-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "proxy": "http://localhost:5000",
+  "description": "DesignXcel Frontend React Application",
+  "dependencies": {
+    "@react-three/drei": "^9.88.13",
+    "@react-three/fiber": "^8.15.19",
+    "@stripe/stripe-js": "^7.4.0",
+    "ajv": "^8.17.1",
+    "axios": "^1.10.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-icons": "^5.5.0",
+    "react-router-dom": "^6.14.2",
+    "react-scripts": "^5.0.1",
+    "socket.io-client": "^4.7.2",
+    "three": "^0.158.0"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "start:dev": "set REACT_APP_ENVIRONMENT=development && react-scripts start",
+    "start:prod": "set REACT_APP_ENVIRONMENT=production && react-scripts start",
+    "build": "react-scripts build",
+    "build:dev": "set REACT_APP_ENVIRONMENT=development && react-scripts build",
+    "build:prod": "set REACT_APP_ENVIRONMENT=production && react-scripts build",
+    "test": "react-scripts test",
+    "test:coverage": "react-scripts test --coverage --watchAll=false",
+    "eject": "react-scripts eject",
+    "serve": "npx serve -s build -l 3000",
+    "analyze": "npx source-map-explorer 'build/static/js/*.js'",
+    "lint": "eslint src --ext .js,.jsx,.ts,.tsx",
+    "lint:fix": "eslint src --ext .js,.jsx,.ts,.tsx --fix",
+    "clean": "rimraf build",
+    "prebuild": "npm run clean",
+    "type-check": "tsc --noEmit",
+    "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx,json,css,md}\"",
+    "format:check": "prettier --check \"src/**/*.{js,jsx,ts,tsx,json,css,md}\""
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.21",
+    "chalk": "^4.1.2",
+    "eslint-webpack-plugin": "^5.0.2",
+    "postcss": "^8.5.6",
+    "prettier": "^3.0.0",
+    "rimraf": "^5.0.0",
+    "tailwindcss": "^4.1.11"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}

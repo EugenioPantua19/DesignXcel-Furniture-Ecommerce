@@ -1,0 +1,372 @@
+/* Product Card Redesigned - Matching the provided image exactly */
+
+.product-card-redesigned {
+  background: #ffffff !important;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+  max-width: 280px;
+  margin: 0 auto;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  cursor: pointer;
+}
+
+.product-card-redesigned:hover {
+  background: #ffffff !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+/* Image Container */
+.product-card-image-container {
+  position: relative;
+  width: 100%;
+  height: 300px;
+  background: #ffffff !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.product-card-redesigned .product-card-image-container .product-image {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  border-radius: 8px 8px 0 0;
+}
+
+/* Discount Badge - Top Left */
+.discount-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: #22c55e !important;
+  color: #ffffff !important;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  z-index: 3;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  border: 1px solid #16a34a !important;
+}
+
+
+/* Stock Indicator in Content */
+.product-stock-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0;
+  font-size: 12px;
+}
+
+.stock-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.stock-text {
+  color: #6b7280;
+  font-weight: 500;
+}
+
+/* Sold Quantity Indicator */
+.product-sold-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0;
+  font-size: 12px;
+}
+
+.product-sold-indicator svg {
+  color: #6b7280;
+  flex-shrink: 0;
+}
+
+.sold-text {
+  color: #6b7280;
+  font-weight: 500;
+}
+
+
+/* Content Section */
+.product-card-content {
+  padding: 16px;
+  background: #ffffff !important;
+}
+
+/* Category */
+.product-category {
+  font-size: 14px;
+  color: #9ca3af;
+  font-weight: 400;
+  margin-bottom: 4px;
+  line-height: 1.2;
+}
+
+/* Product Name */
+.product-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #4D5157;
+  margin-bottom: 8px;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+/* Price Section */
+.product-price-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.current-price {
+  font-size: 16px;
+  font-weight: 600;
+  color: #4D5157;
+  line-height: 1.2;
+}
+
+.original-price {
+  font-size: 16px;
+  font-weight: 400;
+  color: #9ca3af;
+  text-decoration: line-through;
+  line-height: 1.2;
+}
+
+/* Redesigned Card Specific Price Styles */
+.product-card-redesigned .current-price {
+  font-size: 18px;
+  font-weight: 700;
+  color: #F0B21B;
+  line-height: 1.2;
+}
+
+.product-card-redesigned .original-price {
+  font-size: 12px;
+  font-weight: 400;
+  color: #9ca3af;
+  text-decoration: line-through;
+  line-height: 1.2;
+}
+
+/* Rating */
+.product-rating {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+.product-rating svg {
+  color: #fbbf24;
+  width: 16px;
+  height: 16px;
+}
+
+.rating-value {
+  font-size: 14px;
+  font-weight: 500;
+  color: #4D5157;
+  line-height: 1.2;
+}
+
+/* Action Icons - Hidden by default, shown on hover */
+.action-icons {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 3;
+}
+
+.product-card-redesigned:hover .action-icons {
+  opacity: 1;
+}
+
+.action-icon {
+  width: 36px;
+  height: 36px;
+  background: #ffffff !important;
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.action-icon:hover {
+  background: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.action-icon svg {
+  color: #4D5157;
+  width: 20px;
+  height: 20px;
+  transition: color 0.2s ease;
+}
+
+.action-icon:hover svg {
+  color: #4D5157;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .product-card-redesigned {
+    max-width: 100%;
+    margin: 0;
+  }
+  
+  .product-card-image-container {
+    height: 200px;
+  }
+  
+  .discount-badge {
+    font-size: 10px;
+    padding: 2px 5px;
+    top: 8px;
+    left: 8px;
+  }
+  
+  .product-card-content {
+    padding: 12px;
+  }
+  
+  .product-name {
+    font-size: 14px;
+    margin-bottom: 6px;
+    line-height: 1.2;
+  }
+  
+  .current-price {
+    font-size: 14px;
+  }
+  
+  .original-price {
+    font-size: 13px;
+  }
+  
+  /* Redesigned Card Mobile Price Styles */
+  .product-card-redesigned .current-price {
+    font-size: 16px;
+    font-weight: 700;
+    color: #F0B21B;
+  }
+  
+  .product-card-redesigned .original-price {
+    font-size: 11px;
+  }
+  
+  .product-category {
+    font-size: 12px;
+    margin-bottom: 3px;
+  }
+  
+  .product-price-section {
+    margin-bottom: 6px;
+  }
+  
+  .product-stock-indicator,
+  .product-sold-indicator {
+    margin: 4px 0;
+    font-size: 11px;
+  }
+  
+  .product-rating {
+    margin-top: 6px;
+  }
+  
+  .rating-value {
+    font-size: 12px;
+  }
+  
+  .action-icon {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .action-icon svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .product-card-content {
+    padding: 10px;
+  }
+  
+  .product-card-image-container {
+    height: 180px;
+  }
+  
+  .product-name {
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
+  
+  .current-price {
+    font-size: 13px;
+  }
+  
+  .original-price {
+    font-size: 12px;
+  }
+  
+  /* Redesigned Card Small Mobile Price Styles */
+  .product-card-redesigned .current-price {
+    font-size: 15px;
+    font-weight: 700;
+    color: #F0B21B;
+  }
+  
+  .product-card-redesigned .original-price {
+    font-size: 10px;
+  }
+  
+  .product-category {
+    font-size: 11px;
+    margin-bottom: 2px;
+  }
+  
+  .product-stock-indicator,
+  .product-sold-indicator {
+    margin: 3px 0;
+    font-size: 10px;
+  }
+  
+  .rating-value {
+    font-size: 11px;
+  }
+  
+  .action-icon {
+    width: 28px;
+    height: 28px;
+  }
+  
+  .action-icon svg {
+    width: 14px;
+    height: 14px;
+  }
+}

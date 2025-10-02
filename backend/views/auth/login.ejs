@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Login - Design Excellence</title>
+    <link rel="stylesheet" href="/css/EmpLogin/EmpLogin.css">
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-wrapper">
+            <div class="login-left">
+                <div class="logo-container">
+                    <img src="/img/logo.png" alt="Design Excellence Logo" class="logo">
+                    <img src="/img/system-logo.png" alt="System Logo" class="system-logo-side">
+                </div>
+                
+                <h2 class="login-title">Welcome Back!</h2>
+                <p class="login-subtitle">Please Sign in to continue</p>
+                
+                <% if (locals.error && locals.error.length > 0) { %>
+                    <div class="error-message"><%= error %></div>
+                <% } %>
+                
+                <form action="/auth/login" method="POST">
+                    <div class="input-field">
+                        <input 
+                            type="text" 
+                            name="email"
+                            placeholder="Email or username"
+                            required
+                            autocomplete="username"
+                            value="<%= locals.email || '' %>"
+                        >
+                    </div>
+                    
+                    <div class="input-field">
+                        <input 
+                            type="password"
+                            name="password"
+                            placeholder="Password"
+                            required
+                            autocomplete="current-password"
+                            id="password"
+                        >
+                        <span 
+                            class="password-toggle"
+                            onclick="togglePasswordVisibility()"
+                        >
+                            👁️‍🗨️
+                        </span>
+                    </div>
+                    
+                    <button type="submit" class="sign-in-btn">
+                        SIGN IN
+                    </button>
+                </form>
+            </div>
+            
+            <div class="login-right">
+                <!-- Yellow architectural image will be provided by CSS background -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function togglePasswordVisibility() {
+            const passwordInput = document.getElementById('password');
+            const toggleButton = document.querySelector('.password-toggle');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleButton.textContent = '👁️';
+            } else {
+                passwordInput.type = 'password';
+                toggleButton.textContent = '👁️‍🗨️';
+            }
+        }
+    </script>
+</body>
+</html>

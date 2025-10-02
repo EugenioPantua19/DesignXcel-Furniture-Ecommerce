@@ -1,0 +1,1010 @@
+/* 3D Customization Page Styles - Black and Yellow Mustard Design */
+
+.three-d-customization {
+  min-height: 100vh;
+  background-color: #ffffff;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #000000;
+}
+
+/* Loading and Error States */
+.loading-container,
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  text-align: center;
+  padding: 2rem;
+}
+
+.error-container h2 {
+  color: #dc3545;
+  margin-bottom: 1rem;
+}
+
+.error-container p {
+  color: #666666;
+  margin-bottom: 2rem;
+  max-width: 500px;
+}
+
+.btn {
+  display: inline-block;
+  padding: 12px 24px;
+  background-color: #F0B21B;
+  color: #000000;
+  text-decoration: none;
+  border-radius: 6px;
+  font-weight: 600;
+  transition: background-color 0.2s ease;
+}
+
+.btn:hover {
+  background-color: #D4AF37;
+}
+
+/* 3D Customization specific styles */
+
+/* Main Layout */
+.customization-layout {
+  display: flex;
+  height: calc(100vh - 120px); /* Reduced to account for footer */
+  gap: 0;
+  margin-bottom: 80px; /* Space for footer */
+}
+
+/* 3D Viewer Container - Left Side */
+.viewer-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: #ffffff;
+  position: relative;
+}
+
+.viewer-container .viewer-controls-top {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+/* Camera Angle Panel */
+.camera-angle-panel {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  min-width: 200px;
+}
+
+.camera-angle-header {
+  margin-bottom: 12px;
+}
+
+.camera-angle-header h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #000000;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.camera-angle-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.camera-angle-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 12px;
+  font-weight: 500;
+  color: #666666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.camera-angle-btn:hover {
+  background: #f8f9fa;
+  border-color: #FCBD45;
+  color: #000000;
+}
+
+.camera-angle-btn.active {
+  background: #FCBD45;
+  border-color: #FCBD45;
+  color: #ffffff;
+}
+
+.camera-angle-btn svg {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.camera-angle-btn.active svg {
+  opacity: 1;
+}
+
+.camera-angle-btn span {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* Responsive Camera Angle Panel */
+@media (max-width: 768px) {
+  .camera-angle-panel {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    min-width: auto;
+    padding: 12px;
+    z-index: 100;
+    max-height: 120px;
+    overflow-y: auto;
+  }
+  
+  .camera-angle-header h3 {
+    font-size: 12px;
+    margin-bottom: 8px;
+  }
+  
+  .camera-angle-options {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  
+  .camera-angle-btn {
+    flex: 1;
+    min-width: 70px;
+    padding: 6px 8px;
+    font-size: 10px;
+  }
+  
+  .camera-angle-btn span {
+    font-size: 9px;
+  }
+}
+
+@media (max-width: 480px) {
+  .customization-layout {
+    margin-bottom: 140px; /* Extra space for footer */
+  }
+  
+  .camera-angle-panel {
+    top: 5px;
+    left: 5px;
+    right: 5px;
+    padding: 8px;
+    max-height: 100px;
+    z-index: 100;
+  }
+  
+  .camera-angle-header h3 {
+    font-size: 11px;
+    margin-bottom: 6px;
+  }
+  
+  .camera-angle-options {
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  
+  .camera-angle-btn {
+    min-width: 55px;
+    padding: 4px 6px;
+    font-size: 9px;
+  }
+  
+  .camera-angle-btn svg {
+    width: 12px;
+    height: 12px;
+  }
+  
+  .camera-angle-btn span {
+    font-size: 8px;
+  }
+  
+  .viewer-container {
+    height: 40vh; /* Reduced to account for footer */
+    min-height: 250px;
+    margin-top: 110px; /* Space for camera panel */
+  }
+  
+  .customization-panel {
+    max-height: 35vh; /* Reduced to account for footer */
+  }
+  
+  .viewer-controls-top {
+    top: 5px;
+    right: 5px;
+    gap: 6px;
+  }
+  
+  .btn-360 {
+    padding: 4px 8px;
+    font-size: 10px;
+  }
+  
+  .btn-360 .icon-360 {
+    width: 12px;
+    height: 12px;
+  }
+  
+  .ar-button-container {
+    bottom: 60px;
+  }
+  
+  .product-thumbnails {
+    bottom: 15px;
+    height: 50px;
+    gap: 8px;
+  }
+  
+  .thumbnail {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+@media (max-width: 360px) {
+  .customization-layout {
+    margin-bottom: 150px; /* Extra space for footer */
+  }
+  
+  .camera-angle-panel {
+    top: 3px;
+    left: 3px;
+    right: 3px;
+    padding: 6px;
+    max-height: 90px;
+    z-index: 100;
+  }
+  
+  .camera-angle-header h3 {
+    font-size: 10px;
+    margin-bottom: 4px;
+  }
+  
+  .camera-angle-options {
+    gap: 3px;
+  }
+  
+  .camera-angle-btn {
+    min-width: 50px;
+    padding: 3px 5px;
+    font-size: 8px;
+  }
+  
+  .camera-angle-btn svg {
+    width: 10px;
+    height: 10px;
+  }
+  
+  .camera-angle-btn span {
+    font-size: 7px;
+  }
+  
+  .viewer-container {
+    height: 35vh; /* Reduced to account for footer */
+    min-height: 200px;
+    margin-top: 100px; /* Space for camera panel */
+  }
+  
+  .customization-panel {
+    max-height: 30vh; /* Reduced to account for footer */
+  }
+  
+  .viewer-controls-top {
+    top: 3px;
+    right: 3px;
+    gap: 4px;
+  }
+  
+  .btn-360 {
+    padding: 3px 6px;
+    font-size: 9px;
+  }
+  
+  .btn-360 .icon-360 {
+    width: 10px;
+    height: 10px;
+  }
+  
+  .ar-button-container {
+    bottom: 50px;
+  }
+  
+  .product-thumbnails {
+    bottom: 10px;
+    height: 45px;
+    gap: 6px;
+  }
+  
+  .thumbnail {
+    width: 35px;
+    height: 35px;
+  }
+}
+
+/* 360 Button */
+.btn-360 {
+  background-color: #D4AF37;
+  color: #000000;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.icon-360 {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+}
+
+.btn-360:hover {
+  background-color: #B8941F;
+  transform: translateY(-1px);
+}
+
+
+/* Resizing Indicator */
+.resizing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.8);
+  color: #ffffff;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  animation: fadeInOut 0.3s ease-in-out;
+}
+
+.resizing-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid #D4AF37;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translateY(-10px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.canvas-container {
+  flex: 1;
+  position: relative;
+  background-color: #f8f9fa;
+}
+
+.canvas-container canvas {
+  width: 100% !important;
+  height: 100% !important;
+  touch-action: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* AR Button */
+.ar-button-container {
+  position: absolute;
+  bottom: 120px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+}
+
+.ar-button {
+  background-color: #e0e0e0;
+  color: #666666;
+  border: none;
+  border-radius: 6px;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+/* Product Thumbnails */
+.product-thumbnails {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  display: flex;
+  gap: 12px;
+  z-index: 10;
+}
+
+.thumbnail {
+  width: 80px;
+  height: 80px;
+  border-radius: 6px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: border-color 0.2s ease;
+}
+
+.thumbnail.active {
+  border-color: #FFB800;
+}
+
+.thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Customization Panel - Right Side */
+.customization-panel {
+  width: 400px;
+  background-color: #ffffff;
+  border-left: 1px solid #e0e0e0;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+/* Customization Sections */
+.customization-section {
+  margin-bottom: 30px;
+}
+
+.customization-section .section-header {
+  color: #D4AF37;
+  padding: 12px 16px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  font-weight: 600; 
+}
+
+.section-icon {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+}
+
+.section-title {
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Dimension Controls */
+.dimension-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.dimension-control {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dimension-control label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #000000;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.slider-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dimension-slider {
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: #e0e0e0;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+
+.dimension-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #D4AF37;
+  cursor: pointer;
+  border: 1px solid #000000;
+}
+
+.dimension-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #D4AF37;
+  cursor: pointer;
+  border: 1px solid #000000;
+}
+
+.dimension-value {
+  font-size: 11px;
+  color: #666666;
+  font-weight: 400;
+  padding: 2px 6px;
+  background: rgba(212, 175, 55, 0.05);
+  border-radius: 3px;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+/* Color Controls */
+.color-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.color-control {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.color-control label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #000000;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.color-select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  background-color: #ffffff;
+  font-size: 14px;
+  color: #000000;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.color-select:focus {
+  border-color: #D4AF37;
+}
+
+.color-select:hover {
+  border-color: #cccccc;
+}
+
+/* Integrated Add to Cart Section */
+.add-to-cart-section {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.quantity-price-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  gap: 16px;
+}
+
+.quantity-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.quantity-input label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #000000;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.quantity-field {
+  width: 50px;
+  padding: 8px 10px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  text-align: center;
+  font-size: 14px;
+  color: #000000;
+  outline: none;
+}
+
+.quantity-field:focus {
+  border-color: #D4AF37;
+}
+
+.price-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.original-price {
+  font-size: 12px;
+  color: #999999;
+  text-decoration: line-through;
+}
+
+.current-price {
+  font-size: 14px;
+  font-weight: 700;
+  color: #dc3545;
+}
+
+.add-to-cart-btn {
+  width: 100%;
+  background-color: #D4AF37;
+  color: #000000;
+  border: none;
+  border-radius: 6px;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.add-to-cart-btn:hover {
+  background-color: #B8941F;
+}
+
+.add-to-cart-btn:active {
+  transform: translateY(1px);
+}
+
+.add-to-cart-btn:disabled {
+  background-color: #e0e0e0;
+  color: #999999;
+  cursor: not-allowed;
+}
+
+/* Loading Spinner */
+.loading-spinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  color: #000000;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e0e0e0;
+  border-top: 4px solid #D4AF37;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Model Placeholder */
+.model-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  color: #000000;
+  text-align: center;
+  padding: 40px 20px;
+  background: rgba(248, 249, 250, 0.8);
+  border-radius: 12px;
+  border: 2px dashed #e0e0e0;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.model-placeholder h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333333;
+  margin: 0;
+}
+
+.placeholder-icon {
+  width: 64px;
+  height: 64px;
+  stroke: #D4AF37;
+  opacity: 0.8;
+}
+
+.placeholder-subtitle {
+  font-size: 14px;
+  color: #666666;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.placeholder-note {
+  font-size: 12px;
+  color: #999999;
+  margin: 0;
+  font-style: italic;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .customization-layout {
+    flex-direction: column;
+    height: auto;
+    min-height: calc(100vh - 140px); /* Account for footer */
+    margin-bottom: 100px; /* Extra space for footer */
+  }
+  
+  .customization-panel {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid #e0e0e0;
+    max-height: 40vh;
+    overflow-y: auto;
+    order: 2;
+  }
+  
+  .viewer-container {
+    height: 60vh;
+    min-height: 500px;
+    order: 1;
+  }
+  
+  .viewer-controls-top {
+    top: 15px;
+    right: 15px;
+  }
+  
+  .camera-angle-panel {
+    top: 15px;
+    left: 15px;
+    position: fixed;
+    z-index: 100;
+  }
+}
+
+@media (max-width: 768px) {
+  .customization-layout {
+    margin-bottom: 120px; /* More space for footer on mobile */
+  }
+  
+  .customization-panel {
+    padding: 16px;
+    max-height: 40vh; /* Reduced to account for footer */
+  }
+  
+  .viewer-container {
+    height: 50vh; /* Reduced to account for footer */
+    min-height: 350px;
+  }
+  
+  .viewer-controls-top {
+    top: 10px;
+    right: 10px;
+    gap: 8px;
+  }
+  
+  .btn-360 {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+  
+  .btn-360 .icon-360 {
+    width: 14px;
+    height: 14px;
+  }
+  
+  .canvas-container {
+    height: 100%;
+  }
+  
+  .ar-button-container {
+    bottom: 80px;
+  }
+  
+  .product-thumbnails {
+    bottom: 20px;
+    height: 60px;
+  }
+  
+  .thumbnail {
+    width: 50px;
+    height: 50px;
+  }
+  
+  .product-thumbnails {
+    bottom: 10px;
+    left: 10px;
+    gap: 8px;
+  }
+  
+  .thumbnail {
+    width: 60px;
+    height: 60px;
+  }
+  
+  .quantity-price-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .quantity-input {
+    align-self: flex-start;
+  }
+  
+  .price-display {
+    align-self: flex-end;
+  }
+}
+
+/* Mobile responsive styles for add to cart section */
+@media (max-width: 480px) {
+  .add-to-cart-section {
+    margin-top: 16px;
+    padding-top: 16px;
+  }
+  
+  .quantity-price-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  
+  .quantity-input {
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .quantity-field {
+    width: 60px;
+    padding: 6px 8px;
+    font-size: 13px;
+  }
+  
+  .price-display {
+    justify-content: flex-end;
+  }
+  
+  .current-price {
+    font-size: 16px;
+  }
+  
+  .original-price {
+    font-size: 12px;
+  }
+  
+  .add-to-cart-btn {
+    padding: 10px 20px;
+    font-size: 13px;
+  }
+}
+
+/* Extra small screens - landscape phones */
+@media (max-width: 320px) {
+  .customization-layout {
+    margin-bottom: 160px; /* Extra space for footer */
+  }
+  
+  .camera-angle-panel {
+    top: 2px;
+    left: 2px;
+    right: 2px;
+    padding: 4px;
+    max-height: 80px;
+  }
+  
+  .camera-angle-header h3 {
+    font-size: 9px;
+    margin-bottom: 3px;
+  }
+  
+  .camera-angle-btn {
+    min-width: 45px;
+    padding: 2px 4px;
+    font-size: 7px;
+  }
+  
+  .camera-angle-btn svg {
+    width: 8px;
+    height: 8px;
+  }
+  
+  .camera-angle-btn span {
+    font-size: 6px;
+  }
+  
+  .viewer-container {
+    height: 30vh; /* Reduced to account for footer */
+    min-height: 180px;
+    margin-top: 85px;
+  }
+  
+  .customization-panel {
+    padding: 12px;
+    max-height: 25vh; /* Reduced to account for footer */
+  }
+  
+  .add-to-cart-section {
+    margin-top: 12px;
+    padding-top: 12px;
+  }
+  
+  .quantity-field {
+    width: 50px;
+    padding: 4px 6px;
+    font-size: 12px;
+  }
+  
+  .current-price {
+    font-size: 14px;
+  }
+  
+  .original-price {
+    font-size: 11px;
+  }
+  
+  .add-to-cart-btn {
+    padding: 8px 16px;
+    font-size: 12px;
+  }
+}

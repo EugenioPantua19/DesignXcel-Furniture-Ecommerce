@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orders Delivery - Inventory Manager</title>
+    <link rel="stylesheet" href="/css/Employee/Admin/AdminIndexStyles.css">
+    <style>
+    .order-actions-bar {
+        display: flex;
+        gap: 10px;
+        margin-top: 18px;
+        width: 100%;
+    }
+    .order-action-btn {
+        width: 100%;
+        padding: 8px 0;
+        font-size: 1em;
+        font-weight: 600;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background 0.15s;
+    }
+    .order-action-btn.proceed {
+        background: #27ae60;
+        color: #fff;
+    }
+    .order-action-btn.cancel {
+        background: #e74c3c;
+        color: #fff;
+    }
+    .order-action-btn:active {
+        filter: brightness(0.95);
+    }
+    .order-action-btn:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+    }
+</style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h3>Inventory Manager Panel</h3>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="/Employee/InventoryManager">Dashboard</a></li>
+                <li class="sidebar-section-label" style="font-weight:normal;">Inventory</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/Inventory/InvManagerProducts">Products</a></li>
+                    <li><a href="/Employee/Inventory/InvManagerMaterials">Raw Materials</a></li>
+                    <li><a href="/Employee/Inventory/InvManagerAlerts">Alerts</a></li>
+                    <li><a href="/Employee/Inventory/InvManagerArchived">Archived items</a></li>
+                </ul>
+                <li class="sidebar-section-label" style="font-weight:normal;">Transactions</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/Inventory/DeliveryRates">Delivery Rates</a></li>
+                    <li><a href="/Employee/Inventory/WalkIn">Walk In</a></li>
+                    <li><a href="/Employee/Inventory/InvManOrdersPending">Orders Pending</a></li>
+                    <li><a href="/Employee/Inventory/InvManOrdersProcessing">Orders Processing</a></li>
+                    <li><a href="/Employee/Inventory/InvManOrdersShipping">Orders Shipping</a></li>
+                    <li><a href="/Employee/Inventory/InvManOrdersDelivery">Orders Delivery</a></li>
+                    <li><a href="/Employee/Inventory/InvManOrdersReceive">Orders Receive</a></li>
+                    <li><a href="/Employee/Inventory/InvManCancelledOrders">Cancelled Orders</a></li>
+                    <li><a href="/Employee/Inventory/InvManCompletedOrders">Completed Orders</a></li>
+                </ul>
+                <li><a href="/Employee/Inventory/InvManagerManUsers">Manage Users</a></li>
+                <li><a href="/Employee/Inventory/InvManChatSupport">Chat Support</a></li>
+                <li><a href="/Employee/Inventory/InvManagerCMS">Content Management</a></li>
+            </ul>
+        </div>
+        <div class="main-content">
+            <div class="header">
+                <h2>Orders Delivery</h2>
+            </div>
+            <div class="content-area">
+                <% if (orders && orders.length > 0) { %>
+                    <div style="display: flex; flex-wrap: wrap; gap: 24px;">
+                        <% orders.forEach(function(order) { %>
+                            <div style="background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 24px; min-width: 340px; max-width: 420px; flex: 1 1 340px; border-left: 6px solid #f39c12; margin-bottom: 12px; display: flex; flex-direction: column; height: 520px;">
+                                <div style="flex: 1 1 auto; overflow-y: auto; min-height: 0;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                        <div style="font-weight: 600; font-size: 1.1em;">Order #<%= order.OrderID %></div>
+                                        <span style="background: #f39c12; color: #fff; border-radius: 12px; padding: 4px 14px; font-size: 0.95em; font-weight: 600;">Delivery</span>
+                                    </div>
+                                    <div style="font-size: 0.97em; color: #555; margin-bottom: 8px;">Placed: <%= order.FormattedOrderDate || new Date(order.OrderDate).toLocaleString('en-US') %></div>
+                                    <hr style="border: none; border-top: 1.5px solid #e0e0e0; margin: 10px 0;" />
+                                    <div style="margin-bottom: 10px;">
+                                        <div style="font-weight: bold;">Customer:</div>
+                                        <div><%= order.CustomerName %> (<%= order.CustomerEmail %>)<br>Phone: <%= order.CustomerPhone %></div>
+                                    </div>
+                                    <hr style="border: none; border-top: 1.5px solid #e0e0e0; margin: 10px 0;" />
+                                    <div style="margin-bottom: 10px;">
+                                        <div style="font-weight: bold;">Shipping Address:</div>
+                                        <div><%= order.AddressLabel ? order.AddressLabel + ': ' : '' %><%= [order.HouseNumber, order.Street, order.Barangay, order.City, order.Province, order.Region, order.PostalCode, order.Country].filter(Boolean).join(', ') %></div>
+                                    </div>
+                                    <hr style="border: none; border-top: 1.5px solid #e0e0e0; margin: 10px 0;" />
+                                    <div style="margin-bottom: 10px;">
+                                        <div style="font-weight: bold;">Products:</div>
+                                        <% if (order.items && order.items.length > 0) { %>
+                                            <% order.items.forEach(function(item) { %>
+                                                <div style="display: flex; align-items: center; gap: 12px; background: #f8f9fa; border-radius: 6px; padding: 7px 10px; margin-bottom: 6px;">
+                                                    <% if (item.ImageURL) { %>
+                                                        <img src="<%= item.ImageURL %>" alt="<%= item.Name %>" style="width: 44px; height: 44px; object-fit: cover; border-radius: 6px; background: #eee;" />
+                                                    <% } else { %>
+                                                        <div style="width: 44px; height: 44px; background: #eee; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #aaa; font-size: 20px;">🖼️</div>
+                                                    <% } %>
+                                                    <div style="flex:1;">
+                                                        <div style="font-weight: 600; font-size: 1em;"><%= item.Name %></div>
+                                                        <div style="font-size: 0.93em; color: #888;">Qty: <%= item.Quantity %></div>
+                                                    </div>
+                                                    <div style="font-weight: 600; color: #333;">₱<%= Number(item.PriceAtPurchase).toLocaleString(undefined, { minimumFractionDigits: 2 }) %></div>
+                                                </div>
+                                            <% }); %>
+                                        <% } else { %>
+                                            <div>No products found.</div>
+                                        <% } %>
+                                    </div>
+                                    <hr style="border: none; border-top: 1.5px solid #e0e0e0; margin: 10px 0;" />
+                                    <div style="margin-bottom: 10px;">
+                                        <div style="font-weight: bold;">Payment Method:</div>
+                                        <div><%= order.PaymentMethod %></div>
+                                    </div>
+                                    <hr style="border: none; border-top: 1.5px solid #e0e0e0; margin: 10px 0;" />
+                                    <div style="margin-bottom: 10px;">
+                                        <div style="font-weight: bold;">Delivery Method:</div>
+                                        <div><%= order.DeliveryTypeName || 'Pick up' %></div>
+                                    </div>
+                                    <hr style="border: none; border-top: 1.5px solid #e0e0e0; margin: 10px 0;" />
+                                    <div style="margin-bottom: 10px;">
+                                        <div style="font-weight: bold;">Delivery Cost:</div>
+                                        <div>₱<%= Number(order.DeliveryCost || 0).toLocaleString(undefined, { minimumFractionDigits: 2 }) %></div>
+                                    </div>
+                                    <hr style="border: none; border-top: 1.5px solid #e0e0e0; margin: 10px 0;" />
+                                    <div style="margin-bottom: 10px;">
+                                        <div style="font-weight: bold;">Order Total:</div>
+                                        <div style="font-weight: bold; font-size: 1.1em; color: #222;">₱<%= Number(order.TotalAmount).toLocaleString(undefined, { minimumFractionDigits: 2 }) %></div>
+                                    </div>
+                                </div>
+                                <div class="order-actions-bar">
+                                    <button class="order-action-btn proceed" data-order-id="<%= order.OrderID %>">Proceed to Next Process</button>
+                                    <button class="order-action-btn cancel" data-order-id="<%= order.OrderID %>">Cancel Order</button>
+                                </div>
+                            </div>
+                        <% }); %>
+                    </div>
+                <% } else { %>
+                    <div style="text-align:center; color:#888; font-size:1.1em;">No delivery orders found.</div>
+                <% } %>
+            </div>
+        </div>
+    </div>
+<!-- Confirmation Modals -->
+<div id="modal-bg" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.25); z-index:1000;"></div>
+<div id="confirm-modal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#fff; border-radius:10px; box-shadow:0 2px 16px rgba(0,0,0,0.18); padding:32px 28px; z-index:1001; min-width:320px; max-width:90vw;">
+    <div id="modal-message" style="font-size:1.1em; margin-bottom:18px;"></div>
+    <div style="display:flex; gap:12px; justify-content:flex-end;">
+        <button id="modal-cancel" style="background:#eee; color:#333; border:none; border-radius:5px; padding:7px 18px; font-weight:600;">Cancel</button>
+        <button id="modal-confirm" style="background:#2980ef; color:#fff; border:none; border-radius:5px; padding:7px 18px; font-weight:600;" disabled>Confirm (<span id="modal-timer">5</span>s)</button>
+    </div>
+</div>
+<!-- Popup Notification -->
+<div id="popup-notif" style="display:none; position:fixed; top:32px; right:32px; background:#27ae60; color:#fff; padding:16px 32px; border-radius:8px; font-weight:600; font-size:1.1em; z-index:2000; box-shadow:0 2px 12px rgba(0,0,0,0.12);">Success!</div>
+<script>
+(function(){
+    let modalBg = document.getElementById('modal-bg');
+    let modal = document.getElementById('confirm-modal');
+    let modalMsg = document.getElementById('modal-message');
+    let modalCancel = document.getElementById('modal-cancel');
+    let modalConfirm = document.getElementById('modal-confirm');
+    let modalTimer = document.getElementById('modal-timer');
+    let popup = document.getElementById('popup-notif');
+    let orderId = null, timer = null, seconds = 5;
+    function showModal(msg, cb) {
+        modalMsg.textContent = msg;
+        modalBg.style.display = 'block';
+        modal.style.display = 'block';
+        modalConfirm.disabled = true;
+        seconds = 5;
+        modalTimer.textContent = seconds;
+        timer = setInterval(()=>{
+            seconds--;
+            modalTimer.textContent = seconds;
+            if(seconds<=0){
+                modalConfirm.disabled = false;
+                modalConfirm.textContent = 'Confirm';
+                clearInterval(timer);
+            }
+        },1000);
+        modalConfirm.onclick = function(){
+            cb();
+            hideModal();
+        };
+        modalCancel.onclick = hideModal;
+    }
+    function hideModal(){
+        modalBg.style.display = 'none';
+        modal.style.display = 'none';
+        if(timer) clearInterval(timer);
+        modalConfirm.disabled = true;
+        modalConfirm.textContent = 'Confirm (<span id="modal-timer">5</span>s)';
+    }
+    function showPopup(msg){
+        popup.textContent = msg;
+        popup.style.display = 'block';
+        setTimeout(()=>{popup.style.display='none';}, 2200);
+    }
+    document.querySelectorAll('.order-action-btn.proceed').forEach(btn=>{
+        btn.onclick = function(){
+            orderId = btn.getAttribute('data-order-id');
+            showModal('Proceed this order to Receive?', function(){
+                fetch(`/Employee/Inventory/InvManOrdersDelivery/Proceed/${orderId}`, {method:'POST', headers:{'Content-Type':'application/json'}})
+                .then(r=>r.json()).then(data=>{
+                    if(data.success){
+                        showPopup('Order proceeded to Receive!');
+                        setTimeout(()=>{location.reload();}, 1200);
+                    } else {
+                        showPopup('Failed to proceed order.');
+                    }
+                });
+            });
+        };
+    });
+    document.querySelectorAll('.order-action-btn.cancel').forEach(btn=>{
+        btn.onclick = function(){
+            orderId = btn.getAttribute('data-order-id');
+            showModal('Cancel this order? This cannot be undone.', function(){
+                fetch(`/Employee/Inventory/InvManOrdersDelivery/Cancel/${orderId}`, {method:'POST', headers:{'Content-Type':'application/json'}})
+                .then(r=>r.json()).then(data=>{
+                    if(data.success){
+                        showPopup('Order cancelled.');
+                        setTimeout(()=>{location.reload();}, 1200);
+                    } else {
+                        showPopup('Failed to cancel order.');
+                    }
+                });
+            });
+        };
+    });
+})();
+</script>
+</body>
+</html> 

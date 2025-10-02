@@ -1,0 +1,77 @@
+name: Deploy Backend to Azure App Service
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths: [ 'backend/**' ]
+  workflow_dispatch:
+
+env:
+  AZURE_WEBAPP_NAME: designxcel-api
+  AZURE_WEBAPP_PACKAGE_PATH: './backend'
+  NODE_VERSION: '18.x'
+
+jobs:
+  build-and-deploy:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+    environment: production
+    
+    steps:
+    - name: 'Checkout GitHub Action'
+      uses: actions/checkout@v3
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: backend/package-lock.json
+
+    - name: Install dependencies
+      run: |
+        cd backend
+        npm ci --production
+
+    - name: Run tests (if available)
+      run: |
+        cd backend
+        if [ -f "package.json" ] && grep -q '"test"' package.json; then
+          npm test
+        else
+          echo "No tests found, skipping test step"
+        fi
+
+    - name: Create deployment package
+      run: |
+        cd backend
+        # Remove development dependencies and files not needed in production
+        rm -rf node_modules/.cache
+        rm -rf .env.example
+        rm -rf tests/
+        
+        # Create a clean package
+        zip -r ../backend-deploy.zip . -x "*.log" "*.tmp" ".DS_Store"
+
+    - name: 'Deploy to Azure WebApp'
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: ${{ env.AZURE_WEBAPP_NAME }}
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        package: './backend-deploy.zip'
+
+    - name: 'Health Check'
+      run: |
+        sleep 30
+        curl -f https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net/health || exit 1
+        echo "Health check passed!"
+
+    - name: 'Notify deployment status'
+      if: always()
+      run: |
+        if [ ${{ job.status }} == 'success' ]; then
+          echo "✅ Backend deployment successful!"
+          echo "🌐 URL: https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net"
+        else
+          echo "❌ Backend deployment failed!"
+        fi

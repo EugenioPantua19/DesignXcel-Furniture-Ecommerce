@@ -1,0 +1,315 @@
+body {
+  margin: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  font-variant-numeric: tabular-nums;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+body.theme-dark {
+  background: #181a1b;
+  color: #f5f5f5;
+}
+body.theme-dark .header-main, body.theme-dark .footer-main {
+  background: #222326;
+  color: #f5b301;
+}
+body.theme-dark .testimonials, body.theme-dark .featured-products, body.theme-dark .featured-categories {
+  background: #23272a;
+}
+body.theme-dark .star {
+  color: #f5b301 !important;
+}
+
+body.theme-christmas {
+  background: linear-gradient(135deg, #1a472a 0%, #2d5016 50%, #1a472a 100%);
+  color: #ffffff;
+  position: relative;
+}
+
+body.theme-christmas::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: 
+    radial-gradient(circle at 20% 20%, rgba(255, 0, 0, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 30%, rgba(0, 255, 0, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 40% 70%, rgba(255, 255, 0, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 90% 80%, rgba(255, 0, 255, 0.1) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+body.theme-christmas .header-main, 
+body.theme-christmas .footer-main {
+  background: rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(15px);
+  color: #ffffff;
+  border-bottom: 2px solid #ff6b6b;
+  border-top: 2px solid #4ecdc4;
+}
+
+body.theme-christmas .testimonials, 
+body.theme-christmas .featured-products, 
+body.theme-christmas .featured-categories,
+body.theme-christmas .hero,
+body.theme-christmas .section,
+body.theme-christmas .category-card,
+body.theme-christmas .product-card {
+  background: rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(15px);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  border: 2px solid transparent;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Christmas lights animation for featured products and product cards */
+body.theme-christmas .featured-products,
+body.theme-christmas .product-card {
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+body.theme-christmas .featured-products::before,
+body.theme-christmas .product-card::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(45deg, 
+    #ff0000, #ff6b6b, #ffd93d, #6bcf7f, #4ecdc4, #45b7d1, #96ceb4, #feca57, #ff9ff3, #54a0ff,
+    #ff0000, #ff6b6b, #ffd93d, #6bcf7f, #4ecdc4, #45b7d1, #96ceb4, #feca57, #ff9ff3, #54a0ff
+  );
+  background-size: 400% 400%;
+  border-radius: 18px;
+  z-index: -1;
+  animation: christmasLights 3s ease-in-out infinite;
+}
+
+/* Christmas lights animation for product catalog page */
+body.theme-christmas .catalog-main .product-card::before {
+  animation: christmasLights 2.5s ease-in-out infinite;
+}
+
+/* Christmas lights animation for category cards */
+body.theme-christmas .category-card::before {
+  animation: christmasLights 3.5s ease-in-out infinite;
+}
+
+/* Christmas lights keyframes */
+@keyframes christmasLights {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Snow effect */
+body.theme-christmas::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    radial-gradient(2px 2px at 20px 30px, #ffffff, transparent),
+    radial-gradient(2px 2px at 40px 70px, #ffffff, transparent),
+    radial-gradient(1px 1px at 90px 40px, #ffffff, transparent),
+    radial-gradient(1px 1px at 130px 80px, #ffffff, transparent),
+    radial-gradient(2px 2px at 160px 30px, #ffffff, transparent);
+  background-repeat: repeat;
+  background-size: 200px 100px;
+  animation: snow 10s linear infinite;
+  pointer-events: none;
+  z-index: -1;
+}
+
+@keyframes snow {
+  0% {
+    transform: translateY(-100px);
+  }
+  100% {
+    transform: translateY(100vh);
+  }
+}
+
+body.theme-christmas .star {
+  color: #ffd93d !important;
+}
+
+/* Christmas theme text colors */
+body.theme-christmas h1, 
+body.theme-christmas h2, 
+body.theme-christmas h3, 
+body.theme-christmas h4, 
+body.theme-christmas h5, 
+body.theme-christmas h6 {
+  color: #ffffff;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+body.theme-christmas p {
+  color: #f0f0f0;
+}
+
+/* Christmas theme buttons */
+body.theme-christmas .btn-primary {
+  background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+  border: none;
+  color: white;
+  box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+}
+
+body.theme-christmas .btn-primary:hover {
+  background: linear-gradient(45deg, #ff5252, #26a69a);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+}
+
+/* Christmas theme form elements */
+body.theme-christmas input,
+body.theme-christmas textarea,
+body.theme-christmas select {
+  background: rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+body.theme-christmas input::placeholder,
+body.theme-christmas textarea::placeholder {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Christmas theme navigation */
+body.theme-christmas .nav-link {
+  color: #ffffff !important;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+body.theme-christmas .nav-link:hover {
+  color: #ffd93d !important;
+  text-shadow: 0 0 10px rgba(255, 217, 61, 0.5);
+}
+
+/* Background image overlay for better readability */
+body[style*="background-image"],
+html[style*="background-image"] {
+  position: relative;
+  background-color: transparent !important;
+}
+
+body[style*="background-image"]::before,
+html[style*="background-image"]::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Ensure background image is visible */
+body[style*="background-image"] {
+  min-height: 100vh;
+}
+
+html[style*="background-image"] {
+  min-height: 100vh;
+}
+
+/* Ensure content is readable over background images */
+body[style*="background-image"] .header-main,
+body[style*="background-image"] .footer-main,
+body[style*="background-image"] .testimonials,
+body[style*="background-image"] .featured-products,
+body[style*="background-image"] .featured-categories,
+html[style*="background-image"] .header-main,
+html[style*="background-image"] .footer-main,
+html[style*="background-image"] .testimonials,
+html[style*="background-image"] .featured-products,
+html[style*="background-image"] .featured-categories {
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(10px);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Dark theme with background image */
+body.theme-dark[style*="background-image"] .header-main,
+body.theme-dark[style*="background-image"] .footer-main,
+body.theme-dark[style*="background-image"] .testimonials,
+body.theme-dark[style*="background-image"] .featured-products,
+body.theme-dark[style*="background-image"] .featured-categories,
+html.theme-dark[style*="background-image"] .header-main,
+html.theme-dark[style*="background-image"] .footer-main,
+html.theme-dark[style*="background-image"] .testimonials,
+html.theme-dark[style*="background-image"] .featured-products,
+html.theme-dark[style*="background-image"] .featured-categories {
+  background: rgba(34, 35, 38, 0.95) !important;
+  backdrop-filter: blur(10px);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Christmas theme with background image */
+body.theme-christmas[style*="background-image"] .header-main,
+body.theme-christmas[style*="background-image"] .footer-main,
+body.theme-christmas[style*="background-image"] .testimonials,
+body.theme-christmas[style*="background-image"] .featured-products,
+body.theme-christmas[style*="background-image"] .featured-categories,
+body.theme-christmas[style*="background-image"] .hero,
+body.theme-christmas[style*="background-image"] .section,
+body.theme-christmas[style*="background-image"] .category-card,
+body.theme-christmas[style*="background-image"] .product-card,
+html.theme-christmas[style*="background-image"] .header-main,
+html.theme-christmas[style*="background-image"] .footer-main,
+html.theme-christmas[style*="background-image"] .testimonials,
+html.theme-christmas[style*="background-image"] .featured-products,
+html.theme-christmas[style*="background-image"] .featured-categories,
+html.theme-christmas[style*="background-image"] .hero,
+html.theme-christmas[style*="background-image"] .section,
+html.theme-christmas[style*="background-image"] .category-card,
+html.theme-christmas[style*="background-image"] .product-card {
+  background: rgba(255, 255, 255, 0.15) !important;
+  backdrop-filter: blur(20px);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+/* Force background image visibility */
+body[style*="background-image"],
+html[style*="background-image"] {
+  background-color: transparent !important;
+  background-image: inherit !important;
+}
+
+/* Ensure the background image is visible above all other elements */
+body[style*="background-image"]::before,
+html[style*="background-image"]::before {
+  z-index: -9999 !important;
+}

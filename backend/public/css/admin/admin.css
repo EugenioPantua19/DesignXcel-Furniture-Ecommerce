@@ -1,0 +1,513 @@
+/* Basic styles for Admin Dashboard */
+
+body {
+    margin: 0;
+    font-family: sans-serif;
+    background-color: #f4f4f4;
+}
+
+.dashboard-container {
+    display: flex;
+    height: 100vh;
+}
+
+.sidebar {
+    width: 250px;
+    background-color: #333;
+    color: white;
+    padding-top: 20px;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.sidebar-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.sidebar-header h3 {
+    margin: 0;
+    font-size: 20px;
+}
+
+.sidebar-menu {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.sidebar-menu li {
+    border-bottom: 1px solid #555;
+}
+
+.sidebar-menu li a {
+    display: block;
+    color: white;
+    text-decoration: none;
+    padding: 15px 20px;
+    transition: background-color 0.3s ease;
+}
+
+.sidebar-menu li a:hover {
+    background-color: #555;
+}
+
+.dropdown .dropdown-menu {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    background-color: #444;
+    display: none; /* Hidden by default */
+}
+
+.dropdown .dropdown-menu li {
+    border-bottom: none;
+}
+
+.dropdown .dropdown-menu li a {
+    padding: 10px 20px 10px 30px; /* Indent dropdown items */
+}
+
+/* Logout Section Styles */
+.logout-section {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 20px;
+    background-color: #222;
+    border-top: 1px solid #444;
+}
+
+.logout-button {
+    display: block;
+    width: 100%;
+    padding: 12px 20px;
+    background-color: #dc3545;
+    color: white;
+    text-decoration: none;
+    text-align: center;
+    border-radius: 4px;
+    transition: background-color 0.3s ease;
+    font-weight: 600;
+}
+
+.logout-button:hover {
+    background-color: #c82333;
+    color: white;
+    text-decoration: none;
+}
+
+/* Logout Confirmation Modal Styles */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 3000;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-overlay.show {
+    display: flex;
+}
+
+.modal-overlay .modal-content {
+    background-color: white;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    width: 90%;
+    max-width: 400px;
+    text-align: center;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.modal-overlay .modal-content h3 {
+    color: #333;
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 1.5em;
+}
+
+.modal-overlay .modal-content p {
+    color: #666;
+    margin-bottom: 20px;
+    font-size: 1.1em;
+}
+
+.modal-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+}
+
+.modal-button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background-color 0.3s ease;
+}
+
+.modal-button.confirm {
+    background-color: #dc3545;
+    color: white;
+}
+
+.modal-button.confirm:hover {
+    background-color: #c82333;
+}
+
+.modal-button.cancel {
+    background-color: #6c757d;
+    color: white;
+}
+
+.modal-button.cancel:hover {
+    background-color: #5a6268;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.main-content {
+    flex-grow: 1;
+    padding: 20px;
+    overflow-y: auto; /* Add scrolling to main content if needed */
+}
+
+.header {
+    background-color: #fff;
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.content-area {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    overflow: visible; /* Allow dropdowns to overflow */
+}
+
+/* Styles for the Add Product Modal */
+.modal {
+    display: none; /* Hidden by default */
+    position: fixed; /* Stay in place */
+    z-index: 1; /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgba(0, 0, 0, 0.4); /* Black w/ opacity */
+    padding-top: 60px;
+}
+
+.modal-content {
+    background-color: #fefefe; /* White background for the form area */
+    margin: 5% auto; /* 5% from the top and centered */
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%; /* Could be more or less, depending on screen size */
+    max-width: 500px; /* Limit maximum width */
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.6);
+    background-color: #f0f0f0; /* Light grey background */
+}
+
+.close-button {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.close-button:hover,
+.close-button:focus {
+    color: #333;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.modal-content h3 {
+    color: #333; /* Dark text for heading */
+    margin-top: 0;
+    border-bottom: 2px solid #ffd500; /* Mustard yellow underline */
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+
+.modal-content form label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #555; /* Slightly darker grey for labels */
+}
+
+.modal-content form input[type="text"],
+.modal-content form input[type="number"],
+.modal-content form textarea {
+    width: calc(100% - 22px); /* Adjust for padding and border */
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.modal-content form button {
+    background-color: #ffc000; /* Mustard yellow for buttons */
+    color: #333; /* Dark text for buttons */
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    margin-right: 10px;
+    transition: background-color 0.3s ease;
+}
+
+.modal-content form button:hover {
+    background-color: #fdb800; /* Darker mustard yellow on hover */
+}
+
+.modal-content form button#cancelAddProduct {
+    background-color: #ccc; /* Grey for cancel button */
+    color: #333;
+}
+
+.modal-content form button#cancelAddProduct:hover {
+    background-color: #bbb; /* Darker grey on hover */
+}
+
+/* Add specific styles for error/success messages within modal if needed */
+.modal-content .error-message,
+.modal-content .success-message {
+    margin-bottom: 15px;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.modal-content .error-message {
+    background-color: #f8d7da;
+    color: #dc3545;
+    border: 1px solid #f5c6cb;
+}
+
+.modal-content .success-message {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.sidebar-submenu {
+    list-style: none;
+    margin: 0 0 0 0;
+    padding: 0 0 0 18px;
+    background: #444;
+}
+.sidebar-submenu li a {
+    color: #fff;
+    display: block;
+    padding: 10px 0 10px 10px;
+    text-decoration: none;
+    font-size: 1em;
+    border-bottom: 1px solid #555;
+    transition: background 0.2s;
+}
+.sidebar-submenu li a:hover {
+    background: #555;
+}
+
+.sidebar-section-label {
+    color: #fff;
+    padding: 12px 18px 6px 18px;
+    background: #333;
+    border-top: 1px solid #444;
+    border-bottom: none;
+    margin-top: 2px;
+    margin-bottom: 0;
+    font-size: 1.08em;
+}
+
+.empty-table-message {
+    text-align: center;
+    color: #888;
+    background: #fafafa;
+    font-style: italic;
+}
+
+.content-area table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 18px;
+    margin-bottom: 18px;
+    background: #fff;
+    border-radius: 6px;
+    overflow: visible; /* Allow dropdowns to overflow */
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.content-area th, .content-area td {
+    border: 1px solid #ddd;
+    padding: 10px 12px;
+    text-align: left;
+}
+
+.content-area th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+}
+
+.content-area tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+.content-area tr:hover {
+    background-color: #f5f5f5;
+}
+
+.reactivate-btn {
+    background-color: #43e97b;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 7px 18px;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+    margin: 0 2px;
+}
+.reactivate-btn:hover, .reactivate-btn:focus {
+    background-color: #38c172;
+    color: #fff;
+}
+
+.delete-cancel-btn {
+    background-color: #6c757d;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 10px 20px;
+    font-size: 1em;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+.delete-cancel-btn:hover, .delete-cancel-btn:focus {
+    background-color: #5a6268;
+}
+.delete-confirm-btn {
+    background-color: #43e97b;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 10px 20px;
+    font-size: 1em;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+.delete-confirm-btn:hover, .delete-confirm-btn:focus {
+    background-color: #38c172;
+}
+
+/* Custom Popup Styles for Success/Error Messages */
+.custom-popup {
+    display: none;
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background-color: #4CAF50;
+    color: white;
+    padding: 15px 25px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    animation: slideIn 0.5s ease-out;
+    max-width: 300px;
+}
+.custom-popup.error {
+    background-color: #f44336;
+}
+.custom-popup-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.custom-popup-icon {
+    font-size: 24px;
+}
+.custom-popup-message {
+    font-size: 14px;
+    line-height: 1.4;
+}
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+@keyframes slideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+.custom-popup.hide {
+    animation: slideOut 0.5s ease-in forwards;
+}
+
+.delete-confirmation-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+.delete-confirmation-modal.show {
+    display: flex !important;
+}
+.delete-confirmation-content {
+    background: #fff;
+    padding: 32px 32px 28px 32px;
+    border-radius: 10px;
+    box-shadow: 0 6px 32px rgba(0,0,0,0.18);
+    width: 95%;
+    max-width: 420px;
+    text-align: center;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.content-area tbody {
+    overflow: visible; /* Allow dropdowns to overflow */
+} 
