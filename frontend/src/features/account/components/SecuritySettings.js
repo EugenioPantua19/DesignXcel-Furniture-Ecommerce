@@ -41,7 +41,7 @@ const SecuritySettings = () => {
 
   const checkPasswordStrength = (password) => {
     let score = 0;
-    let feedback = [];
+    const feedback = [];
     
     if (password.length >= 8) score += 1;
     else feedback.push('At least 8 characters');

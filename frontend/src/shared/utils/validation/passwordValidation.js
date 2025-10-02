@@ -26,7 +26,7 @@ export const validatePassword = (password) => {
   }
 
   // Check for special character
-  if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(password)) {
+  if (!/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/.test(password)) {
     errors.push('Password must contain at least one special character');
   }
 
@@ -93,7 +93,7 @@ export const validatePassword = (password) => {
   if (/[A-Z]/.test(password)) strength++;
   if (/[a-z]/.test(password)) strength++;
   if (/\d/.test(password)) strength++;
-  if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(password)) strength++;
+  if (/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/.test(password)) strength++;
   if (password.length >= 12) strength++;
 
   let strengthLabel = '';
@@ -146,8 +146,8 @@ export const getPasswordRequirements = (password) => {
     },
     {
       text: 'At least one special character',
-      met: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(password),
-      icon: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(password) ? '✓' : '✗'
+      met: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/.test(password),
+      icon: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/.test(password) ? '✓' : '✗'
     },
     {
       text: 'No 3+ repeated characters',

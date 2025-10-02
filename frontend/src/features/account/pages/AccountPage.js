@@ -44,13 +44,6 @@ const Account = () => {
     const [statsLoading, setStatsLoading] = useState(true);
     const [orderDetailsModal, setOrderDetailsModal] = useState({ open: false, order: null });
 
-    // Show loading while authentication is being checked
-    if (loading) {
-        return (
-            <PageLoader isLoading={true} text="Loading your account..." />
-        );
-    }
-
     // Handle URL parameter changes for tab switching
     useEffect(() => {
         const tabParam = searchParams.get('tab');
@@ -106,6 +99,13 @@ const Account = () => {
 
         fetchAccountData();
     }, [isAuthenticated]);
+
+    // Show loading while authentication is being checked
+    if (loading) {
+        return (
+            <PageLoader isLoading={true} text="Loading your account..." />
+        );
+    }
 
     if (!isAuthenticated) {
         return null;
