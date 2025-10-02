@@ -5,6 +5,7 @@ import './checkout.css';
 import { useAuth } from '../../auth/hooks/useAuth';
 import ConfirmationModal from '../../../shared/components/ui/ConfirmationModal';
 import apiClient from '../../../shared/services/api/apiClient';
+import checkoutSessionManager from '../utils/checkoutSessionManager';
 
 // Modern SVG Icons
 const ShippingIcon = () => (
@@ -65,6 +66,12 @@ const CheckoutPage = () => {
         const fetchAddresses = async () => {
             setAddressLoading(true);
             try {
+                // Validate session before fetching addresses
+                const sessionValid = await checkoutSessionManager.ensureValidSession();
+                if (!sessionValid) {
+                    return; // Session manager will handle redirect
+                }
+
                 const res = await apiClient.get('/api/customer/addresses');
                 if (res.success && Array.isArray(res.addresses) && res.addresses.length > 0) {
                     setAddresses(res.addresses);
@@ -77,8 +84,13 @@ const CheckoutPage = () => {
                 }
             } catch (err) {
                 console.error('Failed to fetch addresses:', err);
-                setAddresses([]);
-                setDefaultAddress(null);
+                
+                // Handle checkout-specific errors
+                const handled = checkoutSessionManager.handleCheckoutError(err, '/api/customer/addresses');
+                if (!handled) {
+                    setAddresses([]);
+                    setDefaultAddress(null);
+                }
             } finally {
                 setAddressLoading(false);
             }

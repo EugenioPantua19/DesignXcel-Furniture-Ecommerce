@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../auth/hooks/useAuth';
 import stripeService from '../services/stripeService';
 import apiClient from '../../../shared/services/api/apiClient';
+import checkoutSessionManager from '../utils/checkoutSessionManager';
 import './payment.css';
 
 const Payment = () => {
@@ -74,6 +75,13 @@ const Payment = () => {
         setError('');
         
         try {
+            // Validate session before processing payment
+            const sessionValid = await checkoutSessionManager.ensureValidSession();
+            if (!sessionValid) {
+                setLoading(false);
+                return; // Session manager will handle redirect
+            }
+
             // Get customer email from user context or localStorage
             const customerEmail = user?.email || JSON.parse(localStorage.getItem('user') || '{}').email;
             
@@ -131,21 +139,25 @@ const Payment = () => {
         } catch (error) {
             console.error('E-Wallet payment error:', error);
 
-            // Provide more specific error messages based on error type
-            let errorMessage = 'Payment setup failed: ';
-            if (error.message.includes('checkout session')) {
-                errorMessage += 'Unable to create payment session. Please try again.';
-            } else if (error.message.includes('not configured') || error.message.includes('not properly configured')) {
-                errorMessage += 'Payment system is not configured. Please contact support for alternative payment methods.';
-            } else if (error.message.includes('Stripe')) {
-                errorMessage += 'Payment service temporarily unavailable. Please try again later.';
-            } else if (error.message.includes('network') || error.message.includes('fetch')) {
-                errorMessage += 'Network error. Please check your connection and try again.';
-            } else {
-                errorMessage += error.message;
-            }
+            // Handle checkout-specific errors first
+            const handled = checkoutSessionManager.handleCheckoutError(error, 'stripe-checkout');
+            if (!handled) {
+                // Provide more specific error messages based on error type
+                let errorMessage = 'Payment setup failed: ';
+                if (error.message.includes('checkout session')) {
+                    errorMessage += 'Unable to create payment session. Please try again.';
+                } else if (error.message.includes('not configured') || error.message.includes('not properly configured')) {
+                    errorMessage += 'Payment system is not configured. Please contact support for alternative payment methods.';
+                } else if (error.message.includes('Stripe')) {
+                    errorMessage += 'Payment service temporarily unavailable. Please try again later.';
+                } else if (error.message.includes('network') || error.message.includes('fetch')) {
+                    errorMessage += 'Network error. Please check your connection and try again.';
+                } else {
+                    errorMessage += error.message;
+                }
 
-            setError(errorMessage);
+                setError(errorMessage);
+            }
         } finally {
             setLoading(false);
         }

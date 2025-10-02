@@ -25,7 +25,11 @@ class ApiClient {
         const isCustomerEndpoint = config.url && (
           config.url.includes('/api/customer/') || 
           config.url.includes('/api/auth/customer/') ||
-          config.url.includes('/api/auth/validate-session')
+          config.url.includes('/api/auth/validate-session') ||
+          config.url.includes('/api/create-checkout-session') ||
+          config.url.includes('/api/terms') ||
+          config.url.includes('/api/public/') ||
+          config.url.includes('/api/test-webhook')
         );
         
         if (!isCustomerEndpoint) {
@@ -100,7 +104,16 @@ class ApiClient {
             } else if (!error.config?.url?.includes('/validate-session')) {
               // Check if this is a critical endpoint that requires immediate logout
               const criticalEndpoints = ['/api/customer/profile', '/api/auth/customer/login'];
+              const checkoutEndpoints = ['/api/customer/addresses', '/api/create-checkout-session'];
+              const publicEndpoints = ['/api/terms', '/api/public/', '/api/test-webhook'];
+              
               const isCriticalEndpoint = criticalEndpoints.some(endpoint => 
+                error.config?.url?.includes(endpoint)
+              );
+              const isCheckoutEndpoint = checkoutEndpoints.some(endpoint => 
+                error.config?.url?.includes(endpoint)
+              );
+              const isPublicEndpoint = publicEndpoints.some(endpoint => 
                 error.config?.url?.includes(endpoint)
               );
               
@@ -111,8 +124,18 @@ class ApiClient {
                 if (window.location.pathname !== '/login') {
                   window.location.href = '/login';
                 }
+              } else if (isCheckoutEndpoint) {
+                console.log('🔒 401 error on checkout endpoint - redirecting to login with return URL');
+                this.clearAuthToken();
+                localStorage.removeItem('lastValidation');
+                // Redirect to login with return URL for checkout
+                const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
+                window.location.href = `/login?returnUrl=${returnUrl}`;
+              } else if (isPublicEndpoint) {
+                // Public endpoints shouldn't cause logout
+                console.log('🔒 401 error on public endpoint - this should not happen');
               } else {
-                // For non-critical endpoints, just log the error but don't logout
+                // For other non-critical endpoints, just log the error but don't logout
                 console.log('🔒 401 error on non-critical endpoint - continuing with cached auth');
               }
             }
