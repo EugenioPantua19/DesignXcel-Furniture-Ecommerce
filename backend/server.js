@@ -277,10 +277,12 @@ app.use(session({
     secret: process.env.SESSION_SECRET || 'your_session_secret_key_here',
     resave: false,
     saveUninitialized: false, // Set to false for best practice
+    rolling: true, // Reset expiration on each request
     cookie: {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
-        sameSite: 'lax' // Can be 'strict', 'lax', or 'none'
+        sameSite: 'lax', // Can be 'strict', 'lax', or 'none'
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours session timeout
     }
 }));
 

@@ -98,26 +98,22 @@ class ApiClient {
                 window.location.href = '/login';
               }
             } else if (!error.config?.url?.includes('/validate-session')) {
-              // For admin endpoints, use the existing logic
-              const user = JSON.parse(localStorage.getItem('user') || '{}');
-              const frontendCustomerAccounts = ['augmentdoe@gmail.com']; // Only frontend customer accounts
-              const adminAccounts = ['andreijumaw@gmail.com']; // Admin accounts that use backend sessions
-              const isFrontendCustomerAccount = user.email && frontendCustomerAccounts.includes(user.email);
-              const isAdminAccount = user.email && adminAccounts.includes(user.email);
+              // Check if this is a critical endpoint that requires immediate logout
+              const criticalEndpoints = ['/api/customer/profile', '/api/auth/customer/login'];
+              const isCriticalEndpoint = criticalEndpoints.some(endpoint => 
+                error.config?.url?.includes(endpoint)
+              );
               
-              if (isAdminAccount) {
-                console.log('🔒 401 error for admin account - redirecting to backend login');
-                // For admin accounts, redirect to backend login instead of frontend login
-                window.location.href = 'http://localhost:5000/login';
-              } else if (!isFrontendCustomerAccount) {
+              if (isCriticalEndpoint) {
+                console.log('🔒 401 error on critical endpoint - clearing auth');
                 this.clearAuthToken();
+                localStorage.removeItem('lastValidation');
                 if (window.location.pathname !== '/login') {
                   window.location.href = '/login';
                 }
               } else {
-                console.log('🔒 401 error for frontend customer account - attempting session restoration');
-                // For frontend customer accounts, try to restore session instead of logging out
-                this.attemptSessionRestoration(user.email);
+                // For non-critical endpoints, just log the error but don't logout
+                console.log('🔒 401 error on non-critical endpoint - continuing with cached auth');
               }
             }
           } else if (status === 403) {
