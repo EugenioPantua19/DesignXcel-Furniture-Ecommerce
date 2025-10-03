@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory Orders Shipping - Design Excellence</title>
+    <div data-user-role="<%= user.roleName || user.RoleName %>" data-user-id="<%= user.UserID %>" style="display: none;"></div>
+    <link rel="stylesheet" href="/css/Employee/Admin/AdminIndexStyles.css">
+    <style>
+        /* Inventory-specific styles */
+        .inventory-header {
+            background: linear-gradient(135deg, #6f42c1, #5a2d91);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .inventory-header h1 {
+            margin: 0;
+            font-size: 2em;
+        }
+
+        .inventory-header p {
+            margin: 5px 0 0 0;
+            opacity: 0.9;
+        }
+
+        .order-card {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-left: 4px solid #6f42c1;
+        }
+
+        .order-id {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .order-details {
+            color: #666;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h3>Inventory Manager Panel</h3>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="/Employee/InventoryManager">Dashboard</a></li>
+                <li class="sidebar-section-label" style="font-weight:normal;">Inventory</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/Inventory/InventoryProducts" data-permission="products">Products</a></li>
+                    <li><a href="/Employee/Inventory/InventoryVariations" data-permission="variations">Variations</a></li>
+                    <li><a href="/Employee/Inventory/InventoryMaterials" data-permission="materials">Raw Materials</a></li>
+                    <li><a href="/Employee/Inventory/InventoryAlerts" data-permission="alerts">Alerts</a></li>
+                    <li><a href="/Employee/Inventory/InventoryArchived" data-permission="archived">Archived items</a></li>
+                </ul>
+                <li class="sidebar-section-label" style="font-weight:normal;">Transactions</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/Admin/DeliveryRates" data-permission="rates">Delivery Rates</a></li>
+                    <li><a href="/Employee/Admin/WalkIn" data-permission="transactions">Walk In</a></li>
+                    <li><a href="/Employee/Inventory/InventoryOrdersPending" data-permission="orders">Orders Pending</a></li>
+                    <li><a href="/Employee/Inventory/InventoryOrdersProcessing" data-permission="orders">Orders Processing</a></li>
+                    <li><a href="/Employee/Inventory/InventoryOrdersShipping" data-permission="orders">Orders Shipping</a></li>
+                    <li><a href="/Employee/Admin/OrdersDelivery" data-permission="orders">Orders Delivery</a></li>
+                    <li><a href="/Employee/Admin/OrdersReceive" data-permission="orders">Orders Receive</a></li>
+                    <li><a href="/Employee/Admin/CancelledOrders" data-permission="orders">Cancelled Orders</a></li>
+                    <li><a href="/Employee/Admin/CompletedOrders" data-permission="orders">Completed Orders</a></li>
+                </ul>
+                <li><a href="/Employee/Admin/ManageUsers" data-permission="users">Manage Users</a></li>
+                <li><a href="/Employee/Admin/ChatSupport" data-permission="chat">Chat Support</a></li>
+                <li><a href="/Employee/Admin/CMS" data-permission="content">Content Management</a></li>
+                <li><a href="/Employee/Admin/Logs" data-permission="logs">Activity Logs</a></li>
+            </ul>
+            <div class="logout-section">
+                <a href="/logout" class="logout-button" onclick="handleLogout(event)">Logout</a>
+            </div>
+        </div>
+        <div class="main-content">
+            <div class="inventory-header">
+                <h1>🚚 Shipping Orders</h1>
+                <p>Monitor shipping orders for inventory management</p>
+            </div>
+            
+            <div class="content-area">
+                <div class="orders-section">
+                    <h2>Shipping Orders</h2>
+                    <p>View and monitor orders currently being shipped</p>
+                    
+                    <!-- Orders will be loaded here -->
+                    <div id="orders-container">
+                        <p>Loading orders...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            window.userPermissions.updateUI();
+            }
+            
+            // Load orders for inventory view
+            loadOrdersForInventory();
+        });
+        
+        function loadOrdersForInventory() {
+            fetch('/api/orders/shipping/inventory')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        displayOrders(data.orders);
+                    } else {
+                        document.getElementById('orders-container').innerHTML = 
+                            '<p>Error loading orders: ' + data.message + '</p>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading orders:', error);
+                    document.getElementById('orders-container').innerHTML = 
+                        '<p>Error loading orders. Please try again.</p>';
+                });
+        }
+        
+        function displayOrders(orders) {
+            const container = document.getElementById('orders-container');
+            
+            if (orders.length === 0) {
+                container.innerHTML = '<p>No shipping orders available.</p>';
+                return;
+            }
+            
+            let html = '';
+            
+            orders.forEach(order => {
+                html += `
+                    <div class="order-card">
+                        <div class="order-id">Order #${order.OrderID}</div>
+                        <div class="order-details">
+                            Customer: ${order.CustomerName} | 
+                            Amount: $${order.TotalAmount} | 
+                            Date: ${new Date(order.OrderDate).toLocaleDateString()} | 
+                            Status: ${order.Status}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+    </script>
+</body>
+</html>

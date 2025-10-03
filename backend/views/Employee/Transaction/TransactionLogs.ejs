@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transaction Logs - Design Excellence</title>
+    <div data-user-role="<%= user.roleName || user.RoleName %>" data-user-id="<%= user.UserID %>" style="display: none;"></div>
+    <link rel="stylesheet" href="/css/Employee/Admin/AdminIndexStyles.css">
+    <style>
+        /* Transaction-specific styles */
+        .transaction-header {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .transaction-header h1 {
+            margin: 0;
+            font-size: 2em;
+        }
+
+        .transaction-header p {
+            margin: 5px 0 0 0;
+            opacity: 0.9;
+        }
+
+        .log-card {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-left: 4px solid #007bff;
+        }
+
+        .log-action {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .log-details {
+            color: #666;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h3>Transaction Manager Panel</h3>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="/Employee/TransactionManager">Dashboard</a></li>
+                <li class="sidebar-section-label" style="font-weight:normal;">Inventory</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/Transaction/TransactionProducts" data-permission="products">Products</a></li>
+                    <li><a href="/Employee/Transaction/TransactionVariations" data-permission="variations">Variations</a></li>
+                    <li><a href="/Employee/Transaction/TransactionMaterials" data-permission="materials">Raw Materials</a></li>
+                    <li><a href="/Employee/Transaction/TransactionAlerts" data-permission="alerts">Alerts</a></li>
+                    <li><a href="/Employee/Transaction/TransactionArchived" data-permission="archived">Archived items</a></li>
+                </ul>
+                <li class="sidebar-section-label" style="font-weight:normal;">Transactions</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/Transaction/TransactionRates" data-permission="rates">Delivery Rates</a></li>
+                    <li><a href="/Employee/Transaction/TransactionWalkIn" data-permission="transactions">Walk In</a></li>
+                    <li><a href="/Employee/Transaction/TransactionOrdersPending" data-permission="orders">Orders Pending</a></li>
+                    <li><a href="/Employee/Transaction/TransactionOrdersProcessing" data-permission="orders">Orders Processing</a></li>
+                    <li><a href="/Employee/Transaction/TransactionOrdersShipping" data-permission="orders">Orders Shipping</a></li>
+                    <li><a href="/Employee/Transaction/TransactionOrdersDelivery" data-permission="orders">Orders Delivery</a></li>
+                    <li><a href="/Employee/Transaction/TransactionOrdersReceive" data-permission="orders">Orders Receive</a></li>
+                    <li><a href="/Employee/Transaction/TransactionCancelledOrders" data-permission="orders">Cancelled Orders</a></li>
+                    <li><a href="/Employee/Transaction/TransactionCompletedOrders" data-permission="orders">Completed Orders</a></li>
+                </ul>
+                <li><a href="/Employee/Transaction/TransactionManageUsers" data-permission="users">Manage Users</a></li>
+                <li><a href="/Employee/Admin/ChatSupport" data-permission="chat">Chat Support</a></li>
+                <li><a href="/Employee/Transaction/TransactionCMS" data-permission="content">Content Management</a></li>
+                <li><a href="/Employee/Transaction/TransactionLogs" data-permission="logs">Activity Logs</a></li>
+            </ul>
+            <div class="logout-section">
+                <a href="/logout" class="logout-button" onclick="handleLogout(event)">Logout</a>
+            </div>
+        </div>
+        <div class="main-content">
+            <div class="transaction-header">
+                <h1>📊 Activity Logs</h1>
+                <p>Monitor activity logs for transaction processing</p>
+            </div>
+            
+            <div class="content-area">
+                <div class="logs-section">
+                    <h2>Activity Logs</h2>
+                    <p>View and monitor activity logs for transaction processing</p>
+                    
+                    <!-- Logs will be loaded here -->
+                    <div id="logs-container">
+                        <p>Loading logs...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            window.userPermissions.updateUI();
+            }
+            
+            // Load logs for transaction view
+            loadLogsForTransaction();
+        });
+        
+        function loadLogsForTransaction() {
+            fetch('/api/logs/transaction')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        displayLogs(data.logs);
+                    } else {
+                        document.getElementById('logs-container').innerHTML = 
+                            '<p>Error loading logs: ' + data.message + '</p>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading logs:', error);
+                    document.getElementById('logs-container').innerHTML = 
+                        '<p>Error loading logs. Please try again.</p>';
+                });
+        }
+        
+        function displayLogs(logs) {
+            const container = document.getElementById('logs-container');
+            
+            if (logs.length === 0) {
+                container.innerHTML = '<p>No logs available.</p>';
+                return;
+            }
+            
+            let html = '';
+            
+            logs.forEach(log => {
+                html += `
+                    <div class="log-card">
+                        <div class="log-action">${log.Action}</div>
+                        <div class="log-details">
+                            User: ${log.UserName} | 
+                            Date: ${new Date(log.CreatedAt).toLocaleDateString()} | 
+                            Details: ${log.Details}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+    </script>
+</body>
+</html>

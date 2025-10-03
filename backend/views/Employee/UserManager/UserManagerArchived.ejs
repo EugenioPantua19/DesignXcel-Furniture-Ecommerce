@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UserManager Archived - Design Excellence</title>
+    <div data-user-role="<%= user.roleName || user.RoleName %>" data-user-id="<%= user.UserID %>" style="display: none;"></div>
+    <link rel="stylesheet" href="/css/Employee/Admin/AdminIndexStyles.css">
+    <style>
+        /* UserManager-specific styles */
+        .usermanager-header {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .usermanager-header h1 {
+            margin: 0;
+            font-size: 2em;
+        }
+
+        .usermanager-header p {
+            margin: 5px 0 0 0;
+            opacity: 0.9;
+        }
+
+        .archived-item {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-left: 4px solid #28a745;
+        }
+
+        .item-name {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .item-details {
+            color: #666;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h3>User Manager Panel</h3>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="/Employee/UserManager">Dashboard</a></li>
+                <li class="sidebar-section-label" style="font-weight:normal;">Inventory</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/UserManager/UserManagerProducts" data-permission="products">Products</a></li>
+                    <li><a href="/Employee/UserManager/UserManagerVariations" data-permission="variations">Variations</a></li>
+                    <li><a href="/Employee/UserManager/UserManagerMaterials" data-permission="materials">Raw Materials</a></li>
+                    <li><a href="/Employee/UserManager/UserManagerAlerts" data-permission="alerts">Alerts</a></li>
+                    <li><a href="/Employee/UserManager/UserManagerArchived" data-permission="archived">Archived items</a></li>
+                </ul>
+                <li class="sidebar-section-label" style="font-weight:normal;">Transactions</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/Admin/DeliveryRates" data-permission="rates">Delivery Rates</a></li>
+                    <li><a href="/Employee/Admin/WalkIn" data-permission="transactions">Walk In</a></li>
+                    <li><a href="/Employee/Admin/OrdersPending" data-permission="orders">Orders Pending</a></li>
+                    <li><a href="/Employee/Admin/OrdersProcessing" data-permission="orders">Orders Processing</a></li>
+                    <li><a href="/Employee/Admin/OrdersShipping" data-permission="orders">Orders Shipping</a></li>
+                    <li><a href="/Employee/Admin/OrdersDelivery" data-permission="orders">Orders Delivery</a></li>
+                    <li><a href="/Employee/Admin/OrdersReceive" data-permission="orders">Orders Receive</a></li>
+                    <li><a href="/Employee/Admin/CancelledOrders" data-permission="orders">Cancelled Orders</a></li>
+                    <li><a href="/Employee/Admin/CompletedOrders" data-permission="orders">Completed Orders</a></li>
+                </ul>
+                <li><a href="/Employee/Admin/ManageUsers" data-permission="users">Manage Users</a></li>
+                <li><a href="/Employee/Admin/ChatSupport" data-permission="chat">Chat Support</a></li>
+                <li><a href="/Employee/Admin/CMS" data-permission="content">Content Management</a></li>
+                <li><a href="/Employee/Admin/Logs" data-permission="logs">Activity Logs</a></li>
+            </ul>
+            <div class="logout-section">
+                <a href="/logout" class="logout-button" onclick="handleLogout(event)">Logout</a>
+            </div>
+        </div>
+        <div class="main-content">
+            <div class="usermanager-header">
+                <h1>📁 Archived Items</h1>
+                <p>View archived products and materials for user management reference</p>
+            </div>
+            
+            <div class="content-area">
+                <div class="archived-section">
+                    <h2>Archived Items</h2>
+                    <p>Browse archived items for user management context</p>
+                    
+                    <!-- Archived items will be loaded here -->
+                    <div id="archived-container">
+                        <p>Loading archived items...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            window.userPermissions.updateUI();
+            }
+            
+            // Load archived items for usermanager view
+            loadArchivedForUserManager();
+        });
+        
+        function loadArchivedForUserManager() {
+            fetch('/api/archived/usermanager')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        displayArchived(data.archived);
+                    } else {
+                        document.getElementById('archived-container').innerHTML = 
+                            '<p>Error loading archived items: ' + data.message + '</p>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading archived items:', error);
+                    document.getElementById('archived-container').innerHTML = 
+                        '<p>Error loading archived items. Please try again.</p>';
+                });
+        }
+        
+        function displayArchived(archived) {
+            const container = document.getElementById('archived-container');
+            
+            if (archived.length === 0) {
+                container.innerHTML = '<p>No archived items available.</p>';
+                return;
+            }
+            
+            let html = '';
+            
+            archived.forEach(item => {
+                html += `
+                    <div class="archived-item">
+                        <div class="item-name">${item.Name}</div>
+                        <div class="item-details">
+                            Type: ${item.Type} | 
+                            Archived: ${new Date(item.ArchivedDate).toLocaleDateString()} | 
+                            Reason: ${item.ArchiveReason || 'N/A'}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+    </script>
+</body>
+</html>
