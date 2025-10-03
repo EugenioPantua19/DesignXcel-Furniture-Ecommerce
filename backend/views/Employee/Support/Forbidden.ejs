@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Access Denied - Order Support</title>
+    <style>
+        body {
+            background: #f0f8ff;
+            color: #333;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .forbidden-container {
+            background: #e6f3ff;
+            border: 2px solid #4a90e2;
+            border-radius: 16px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.07);
+            padding: 48px 36px 36px 36px;
+            text-align: center;
+            max-width: 400px;
+        }
+        .forbidden-icon {
+            font-size: 54px;
+            color: #2980b9;
+            margin-bottom: 18px;
+        }
+        .forbidden-title {
+            font-size: 2em;
+            font-weight: bold;
+            color: #1f4e79;
+            margin-bottom: 10px;
+        }
+        .forbidden-message {
+            font-size: 1.1em;
+            margin-bottom: 28px;
+            color: #555;
+        }
+        .forbidden-btn {
+            background: #2980b9;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 12px 32px;
+            font-size: 1em;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .forbidden-btn:hover {
+            background: #1f4e79;
+        }
+    </style>
+</head>
+<body>
+    <div class="forbidden-container">
+        <div class="forbidden-icon">🛡️</div>
+        <div class="forbidden-title">Access Denied</div>
+        <div class="forbidden-message">
+            Sorry, you do not have permission to view this page.<br>
+            Your OrderSupport role doesn't include access to this section.
+        </div>
+        <button class="forbidden-btn" onclick="window.location.href='/Employee/OrderSupport'">Go to Support Dashboard</button>
+    </div>
+</body>
+</html>

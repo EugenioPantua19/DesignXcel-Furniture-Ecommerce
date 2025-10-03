@@ -1,9 +1,43 @@
 // API Routes for Frontend
 const express = require('express');
 const sql = require('mssql');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 
 module.exports = function(sql, pool) {
     const router = express.Router();
+
+    // Configure multer for review image uploads
+    const reviewUploadsDir = path.join(__dirname, 'public', 'uploads', 'reviews');
+    if (!fs.existsSync(reviewUploadsDir)) {
+        fs.mkdirSync(reviewUploadsDir, { recursive: true });
+    }
+
+    const reviewStorage = multer.diskStorage({
+        destination: function (req, file, cb) {
+            cb(null, reviewUploadsDir);
+        },
+        filename: function (req, file, cb) {
+            const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+            cb(null, 'review-' + uniqueSuffix + path.extname(file.originalname));
+        }
+    });
+
+    const reviewUpload = multer({
+        storage: reviewStorage,
+        limits: {
+            fileSize: 5 * 1024 * 1024, // 5MB limit
+            files: 5 // Maximum 5 files per review
+        },
+        fileFilter: function (req, file, cb) {
+            if (file.mimetype.startsWith('image/')) {
+                cb(null, true);
+            } else {
+                cb(new Error('Only image files are allowed!'), false);
+            }
+        }
+    });
 
     // --- Order Management API Endpoints ---
     // Cash on Delivery Order Creation
@@ -113,11 +147,92 @@ module.exports = function(sql, pool) {
     router.get('/api/products/:productId/reviews', async (req, res) => {
         try {
             const productId = parseInt(req.params.productId);
-            console.log('Backend: Fetching reviews for product ID:', productId);
+            const sortBy = req.query.sort || 'newest';
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 4;
+            const offset = (page - 1) * limit;
+            
+            console.log('Backend: Fetching reviews for product ID:', productId, 'Sort:', sortBy, 'Page:', page, 'Limit:', limit);
+            
+            // Check if table has extended columns
+            const columnCheck = await pool.request().query(`
+                SELECT COLUMN_NAME 
+                FROM INFORMATION_SCHEMA.COLUMNS 
+                WHERE TABLE_NAME = 'ProductReviews' 
+                AND COLUMN_NAME IN ('ReviewerName', 'ReviewerEmail', 'Title')
+            `);
+            
+            let orderClause = 'ORDER BY pr.CreatedAt DESC';
+            switch (sortBy) {
+                case 'oldest':
+                    orderClause = 'ORDER BY pr.CreatedAt ASC';
+                    break;
+                case 'highest':
+                    orderClause = 'ORDER BY pr.Rating DESC, pr.CreatedAt DESC';
+                    break;
+                case 'lowest':
+                    orderClause = 'ORDER BY pr.Rating ASC, pr.CreatedAt DESC';
+                    break;
+                default: // newest
+                    orderClause = 'ORDER BY pr.CreatedAt DESC';
+            }
+            
+            let query;
+            if (columnCheck.recordset.length >= 3) {
+                // Extended table with additional columns
+                query = `
+                    SELECT
+                        pr.ReviewID as id,
+                        pr.ProductID,
+                        pr.CustomerID,
+                        COALESCE(pr.ReviewerName, c.FullName, 'Anonymous') AS customerName,
+                        COALESCE(pr.ReviewerEmail, c.Email) AS customerEmail,
+                        pr.Rating as rating,
+                        COALESCE(pr.Title, 'Review') AS title,
+                        pr.Comment as comment,
+                        pr.HelpfulCount,
+                        pr.CreatedAt as createdAt,
+                        pr.UpdatedAt,
+                        pr.IsActive
+                    FROM ProductReviews pr
+                        LEFT JOIN Customers c ON pr.CustomerID = c.CustomerID
+                    WHERE pr.ProductID = @productId
+                        AND pr.IsActive = 1
+                    ${orderClause}
+                    OFFSET @offset ROWS
+                    FETCH NEXT @limit ROWS ONLY
+                `;
+            } else {
+                // Basic table structure
+                query = `
+                    SELECT
+                        pr.ReviewID as id,
+                        pr.ProductID,
+                        pr.CustomerID,
+                        COALESCE(c.FullName, 'Anonymous') AS customerName,
+                        c.Email AS customerEmail,
+                        pr.Rating as rating,
+                        'Review' AS title,
+                        pr.Comment as comment,
+                        pr.HelpfulCount,
+                        pr.CreatedAt as createdAt,
+                        pr.UpdatedAt,
+                        pr.IsActive
+                    FROM ProductReviews pr
+                        LEFT JOIN Customers c ON pr.CustomerID = c.CustomerID
+                    WHERE pr.ProductID = @productId
+                        AND pr.IsActive = 1
+                    ${orderClause}
+                    OFFSET @offset ROWS
+                    FETCH NEXT @limit ROWS ONLY
+                `;
+            }
             
             const result = await pool.request()
                 .input('productId', sql.Int, productId)
-                .execute('GetProductReviews');
+                .input('offset', sql.Int, offset)
+                .input('limit', sql.Int, limit)
+                .query(query);
             
             console.log('Backend: Reviews query result:', result.recordset);
             
@@ -136,15 +251,99 @@ module.exports = function(sql, pool) {
     });
 
     // Add a new review for a product
-    router.post('/api/products/:productId/reviews', async (req, res) => {
+    router.post('/api/products/:productId/reviews', (req, res, next) => {
+        reviewUpload.array('images', 5)(req, res, (err) => {
+            if (err) {
+                console.error('Multer error:', err);
+                
+                if (err.code === 'LIMIT_FILE_SIZE') {
+                    return res.status(400).json({ 
+                        success: false, 
+                        error: 'File too large. Maximum size is 5MB per file.' 
+                    });
+                }
+                
+                if (err.code === 'LIMIT_FILE_COUNT') {
+                    return res.status(400).json({ 
+                        success: false, 
+                        error: 'Too many files. Maximum 5 files allowed.' 
+                    });
+                }
+                
+                if (err.message && err.message.includes('Only image files are allowed')) {
+                    return res.status(400).json({ 
+                        success: false, 
+                        error: 'Only image files are allowed.' 
+                    });
+                }
+                
+                return res.status(400).json({ 
+                    success: false, 
+                    error: 'File upload error: ' + err.message 
+                });
+            }
+            next();
+        });
+    }, async (req, res) => {
         try {
             const productId = parseInt(req.params.productId);
-            const { rating, comment, customerId } = req.body;
             
-            console.log('Backend: Adding review for product ID:', productId, 'Data:', { rating, comment, customerId });
+            // Debug logging
+            console.log('Backend: Request headers:', req.headers);
+            console.log('Backend: Request body keys:', Object.keys(req.body));
+            console.log('Backend: Request body:', req.body);
+            console.log('Backend: Request files:', req.files);
+            console.log('Backend: Content-Type:', req.get('Content-Type'));
             
-            // Validate input
-            if (!rating || rating < 1 || rating > 5) {
+            // Extract data from request body (handles both FormData and JSON)
+            const rawRating = req.body.rating;
+            let parsedRating;
+            
+            // Try multiple parsing methods
+            if (typeof rawRating === 'number') {
+                parsedRating = Math.round(rawRating); // Ensure it's an integer
+            } else if (typeof rawRating === 'string') {
+                const numRating = Number(rawRating);
+                parsedRating = isNaN(numRating) ? NaN : Math.round(numRating);
+            } else {
+                parsedRating = NaN;
+            }
+            
+            const reviewData = {
+                name: req.body.name,
+                email: req.body.email,
+                rating: parsedRating,
+                title: req.body.title,
+                comment: req.body.comment,
+                customerId: req.body.customerId
+            };
+            
+            const { name, email, rating, title, comment, customerId } = reviewData;
+            
+            console.log('Backend: Adding review for product ID:', productId);
+            console.log('Backend: Raw request body:', req.body);
+            console.log('Backend: Extracted data:', { name, email, rating, title, comment, customerId });
+            console.log('Backend: Rating details:', { 
+                rating, 
+                type: typeof rating, 
+                isNaN: isNaN(rating),
+                originalRating: rawRating,
+                originalType: typeof rawRating,
+                parsedRating: parsedRating,
+                parsedType: typeof parsedRating
+            });
+            
+            // Validate input - be more specific about validation
+            if (isNaN(rating) || rating < 1 || rating > 5) {
+                console.log('Rating validation failed:', { 
+                    rating, 
+                    type: typeof rating, 
+                    isNaN: isNaN(rating),
+                    lessThan1: rating < 1,
+                    greaterThan5: rating > 5,
+                    rawRating: rawRating,
+                    parsedRating: parsedRating
+                });
                 return res.status(400).json({ 
                     success: false, 
                     error: 'Rating must be between 1 and 5' 
@@ -154,32 +353,114 @@ module.exports = function(sql, pool) {
             if (!comment || comment.trim().length === 0) {
                 return res.status(400).json({ 
                     success: false, 
-                    error: 'Comment is required' 
+                    error: 'Review content is required' 
                 });
             }
             
-            if (!customerId) {
+            if (!title || title.trim().length === 0) {
                 return res.status(400).json({ 
                     success: false, 
-                    error: 'Customer ID is required' 
+                    error: 'Review title is required' 
                 });
             }
             
-            const result = await pool.request()
-                .input('productId', sql.Int, productId)
-                .input('customerId', sql.Int, customerId)
-                .input('rating', sql.Int, rating)
-                .input('comment', sql.NVarChar, comment.trim())
-                .execute('AddProductReview');
+            if (!name || name.trim().length === 0) {
+                return res.status(400).json({ 
+                    success: false, 
+                    error: 'Name is required' 
+                });
+            }
+            
+            if (!email || email.trim().length === 0) {
+                return res.status(400).json({ 
+                    success: false, 
+                    error: 'Email is required' 
+                });
+            }
+            
+            if (!customerId || isNaN(parseInt(customerId))) {
+                return res.status(400).json({ 
+                    success: false, 
+                    error: 'Valid Customer ID is required' 
+                });
+            }
+            
+            // Handle uploaded images
+            let imageUrls = [];
+            if (req.files && req.files.length > 0) {
+                imageUrls = req.files.map(file => {
+                    // Return relative path from public directory
+                    return '/uploads/reviews/' + file.filename;
+                });
+                console.log('Backend: Review images uploaded:', imageUrls);
+            }
+            
+            // Check if ProductReviews table has the required columns
+            const columnCheck = await pool.request().query(`
+                SELECT COLUMN_NAME 
+                FROM INFORMATION_SCHEMA.COLUMNS 
+                WHERE TABLE_NAME = 'ProductReviews' 
+                AND COLUMN_NAME IN ('ReviewerName', 'ReviewerEmail', 'Title')
+            `);
+            
+            let result;
+            if (columnCheck.recordset.length >= 3) {
+                // Table has extended columns
+                result = await pool.request()
+                    .input('productId', sql.Int, productId)
+                    .input('customerId', sql.Int, parseInt(customerId))
+                    .input('reviewerName', sql.NVarChar, name.trim())
+                    .input('reviewerEmail', sql.NVarChar, email.trim())
+                    .input('rating', sql.Int, rating)
+                    .input('title', sql.NVarChar, title.trim())
+                    .input('comment', sql.NVarChar, comment.trim())
+                    .query(`
+                        INSERT INTO ProductReviews (ProductID, CustomerID, ReviewerName, ReviewerEmail, Rating, Title, Comment, CreatedAt, IsActive)
+                        OUTPUT INSERTED.*
+                        VALUES (@productId, @customerId, @reviewerName, @reviewerEmail, @rating, @title, @comment, GETDATE(), 1)
+                    `);
+            } else {
+                // Use basic columns only
+                result = await pool.request()
+                    .input('productId', sql.Int, productId)
+                    .input('customerId', sql.Int, parseInt(customerId))
+                    .input('rating', sql.Int, rating)
+                    .input('comment', sql.NVarChar, `${title.trim()}\n\n${comment.trim()}`)
+                    .execute('AddProductReview');
+            }
             
             console.log('Backend: Review added successfully:', result.recordset[0]);
             
             res.json({
                 success: true,
-                review: result.recordset[0]
+                review: result.recordset[0],
+                message: 'Review submitted successfully!'
             });
         } catch (err) {
             console.error('Backend: Error adding product review:', err);
+            
+            // Handle multer errors specifically
+            if (err.code === 'LIMIT_FILE_SIZE') {
+                return res.status(400).json({ 
+                    success: false, 
+                    error: 'File too large. Maximum size is 5MB per file.' 
+                });
+            }
+            
+            if (err.code === 'LIMIT_FILE_COUNT') {
+                return res.status(400).json({ 
+                    success: false, 
+                    error: 'Too many files. Maximum 5 files allowed.' 
+                });
+            }
+            
+            if (err.message && err.message.includes('Only image files are allowed')) {
+                return res.status(400).json({ 
+                    success: false, 
+                    error: 'Only image files are allowed.' 
+                });
+            }
+            
             res.status(500).json({ 
                 success: false, 
                 error: 'Failed to add review', 
@@ -222,6 +503,153 @@ module.exports = function(sql, pool) {
                 success: false, 
                 error: 'Failed to fetch review statistics', 
                 details: err.message 
+            });
+        }
+    });
+
+    // --- Admin Review Management Endpoints ---
+    // Get all reviews for admin management
+    router.get('/api/admin/reviews', async (req, res) => {
+        try {
+            const filter = req.query.filter || 'all';
+            let whereClause = '';
+            
+            switch (filter) {
+                case 'pending':
+                    whereClause = 'WHERE pr.IsActive = 0';
+                    break;
+                case 'approved':
+                    whereClause = 'WHERE pr.IsActive = 1';
+                    break;
+                case 'flagged':
+                    whereClause = 'WHERE pr.IsFlagged = 1';
+                    break;
+                case 'all':
+                default:
+                    whereClause = '';
+                    break;
+            }
+            
+            // Check if ProductReviews table has extended columns
+            const columnCheck = await pool.request().query(`
+                SELECT COLUMN_NAME 
+                FROM INFORMATION_SCHEMA.COLUMNS 
+                WHERE TABLE_NAME = 'ProductReviews' 
+                AND COLUMN_NAME IN ('ReviewerName', 'ReviewerEmail', 'Title')
+            `);
+            
+            let query;
+            if (columnCheck.recordset.length >= 3) {
+                // Extended table with additional columns
+                query = `
+                    SELECT 
+                        pr.ReviewID,
+                        pr.ProductID,
+                        pr.CustomerID,
+                        pr.ReviewerName,
+                        pr.ReviewerEmail,
+                        pr.Rating,
+                        pr.Title,
+                        pr.Comment,
+                        pr.ReviewDate,
+                        pr.IsActive,
+                        COALESCE(pr.IsFlagged, 0) as IsFlagged,
+                        p.Name as ProductName
+                    FROM ProductReviews pr
+                    LEFT JOIN Products p ON pr.ProductID = p.ProductID
+                    ${whereClause}
+                    ORDER BY pr.ReviewDate DESC
+                `;
+            } else {
+                // Basic table structure
+                query = `
+                    SELECT 
+                        pr.ReviewID,
+                        pr.ProductID,
+                        pr.CustomerID,
+                        'Anonymous' as ReviewerName,
+                        '' as ReviewerEmail,
+                        pr.Rating,
+                        'Review' as Title,
+                        pr.Comment,
+                        pr.ReviewDate,
+                        pr.IsActive,
+                        0 as IsFlagged,
+                        p.Name as ProductName
+                    FROM ProductReviews pr
+                    LEFT JOIN Products p ON pr.ProductID = p.ProductID
+                    ${whereClause}
+                    ORDER BY pr.ReviewDate DESC
+                `;
+            }
+            
+            const result = await pool.request().query(query);
+            
+            res.json({
+                success: true,
+                reviews: result.recordset
+            });
+        } catch (error) {
+            console.error('Error fetching admin reviews:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to fetch reviews',
+                details: error.message
+            });
+        }
+    });
+    
+    // Toggle review status (approve/reject)
+    router.post('/api/admin/reviews/:reviewId/toggle', async (req, res) => {
+        try {
+            const reviewId = parseInt(req.params.reviewId);
+            const { isActive } = req.body;
+            
+            await pool.request()
+                .input('reviewId', sql.Int, reviewId)
+                .input('isActive', sql.Bit, isActive)
+                .query(`
+                    UPDATE ProductReviews 
+                    SET IsActive = @isActive 
+                    WHERE ReviewID = @reviewId
+                `);
+            
+            res.json({
+                success: true,
+                message: `Review ${isActive ? 'approved' : 'rejected'} successfully`
+            });
+        } catch (error) {
+            console.error('Error toggling review status:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to update review status',
+                details: error.message
+            });
+        }
+    });
+    
+    // Delete review
+    router.delete('/api/admin/reviews/:reviewId', async (req, res) => {
+        try {
+            const reviewId = parseInt(req.params.reviewId);
+            
+            await pool.request()
+                .input('reviewId', sql.Int, reviewId)
+                .query(`
+                    DELETE FROM ProductReviews 
+                    WHERE ReviewID = @reviewId
+                `);
+            
+            res.json({
+                success: true,
+                message: 'Review deleted successfully'
+            });
+        } catch (error) {
+            console.error('Error deleting review:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to delete review',
+                details: error.message
             });
         }
     });

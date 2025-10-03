@@ -98,21 +98,7 @@
             background-color: #e0ac06;
             color: #111;
         }
-        .delete-user-btn {
-            background-color: #dc3545;
-            color: #222;
-            border: none;
-            border-radius: 5px;
-            padding: 6px 16px;
-            font-size: 1em;
-            font-weight: 400;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        .delete-user-btn:hover, .delete-user-btn:focus {
-            background-color: #c82333;
-            color: #111;
-        }
+        /* Delete functionality removed for security */
 
         .access-btn {
             background-color: #007bff;
@@ -258,6 +244,12 @@
     </style>
 </head>
 <body>
+    <%
+        // Ensure userRole is defined with a fallback
+        if (typeof userRole === 'undefined') {
+            userRole = user && user.role ? user.role : 'Guest';
+        }
+    %>
     <div class="dashboard-container">
         <!-- Sidebar content -->
         <div class="sidebar">
@@ -382,18 +374,14 @@
                                             >
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 20h9"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16.5 3.5a2.121 2.121 0 113 3L7 19.5 3 21l1.5-4L16.5 3.5z"/></svg>
                                             </button>
-                                            <button class="access-btn" onclick="showAccessModal(<%= user.UserID %>)">Access</button>
-                                            <button class="toggle-btn" 
+                                            <% if (typeof locals.userRole !== 'undefined' && locals.userRole === 'Admin') { %>
+                                                <button class="access-btn" onclick="showAccessModal(<%= user.UserID %>)">Access</button>
+                                            <% } %>
+                                            <button class="toggle-btn"
                                                 onclick="toggleUserStatus(<%= user.UserID %>, <%= user.IsActive ? 0 : 1 %>)"
-                                                style="background-color: <%= user.IsActive ? '#dc3545' : '#28a745' %>; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.9em; margin-left: 5px;"
+                                                style="background-color: <%= user.IsActive ? '#dc3545' : '#28a745' %>; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.9em; margin-left: 5px;">
                                             >
                                                 <%= user.IsActive ? 'Deactivate' : 'Activate' %>
-                                            </button>
-                                            <button class="delete-user-btn" 
-                                                onclick="deleteUser(<%= user.UserID %>, '<%= user.FullName %>')"
-                                                style="background-color: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.9em; margin-left: 5px;"
-                                            >
-                                                Delete
                                             </button>
                                         </td>
                                     </tr>
@@ -448,7 +436,7 @@
                     <option value="1">InventoryManager</option>
                     <option value="2">TransactionManager</option>
                     <option value="3">UserManager</option>
-                    <option value="4">OrderSupport</option>
+                    <option value="8">OrderSupport</option>
                     <option value="5">Admin</option>
                 </select><br><br>
                 <label for="editIsActive">Status:</label>
@@ -598,31 +586,7 @@
             }
         }
 
-        // Delete user function
-        function deleteUser(userId, userName) {
-            if (confirm(`Are you sure you want to delete user "${userName}"? This action cannot be undone.`)) {
-                fetch(`/Employee/Admin/ManageUsers/Delete/${userId}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
-                })
-                .then(response => {
-                    if (response.ok) {
-                        showCustomPopup(`User "${userName}" deleted successfully!`);
-                        setTimeout(() => {
-                            location.reload();
-                        }, 1500);
-                    } else {
-                        alert('Failed to delete user');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('An error occurred while deleting user');
-                });
-            }
-        }
+        // Delete functionality removed for security reasons
         document.body.addEventListener('click', function(e) {
             if (e.target && e.target.id === 'saveAccessPermissionsBtn') {
                 const userId = document.getElementById('accessUserId').value;

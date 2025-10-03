@@ -2,6 +2,10 @@ import React from 'react';
 
 const ReviewStats = ({ stats, productName }) => {
   const { averageRating, totalReviews, ratingDistribution } = stats;
+  
+  // Debug logging
+  console.log('ReviewStats: Received stats:', stats);
+  console.log('ReviewStats: Average rating:', averageRating, 'Total reviews:', totalReviews);
 
   const renderStars = (rating, size = 'large') => {
     const stars = [];

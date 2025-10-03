@@ -30,14 +30,98 @@
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  border-radius: 8px 8px 0 0;
 }
 
 .product-card-redesigned .product-card-image-container .product-image {
   width: 100% !important;
   height: 100% !important;
   object-fit: cover !important;
-  object-position: center !important;
+  object-position: center center !important;
   border-radius: 8px 8px 0 0;
+  /* Ensure image always fills container regardless of aspect ratio */
+  min-width: 100%;
+  min-height: 100%;
+  max-width: none;
+  max-height: none;
+  flex-shrink: 0;
+  display: block;
+  /* Additional properties for perfect fit */
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+
+/* Fallback for images that might not load properly */
+.product-card-redesigned .product-card-image-container .product-image[src=""],
+.product-card-redesigned .product-card-image-container .product-image:not([src]),
+.product-card-redesigned .product-card-image-container .product-image[src*="placeholder"] {
+  background: #f8f9fa;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23f8f9fa'/%3E%3Ctext x='50' y='50' text-anchor='middle' dy='0.3em' font-family='Arial, sans-serif' font-size='12' fill='%23666'%3EImage%3C/text%3E%3C/svg%3E");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* Handle different aspect ratios */
+.product-card-redesigned .product-card-image-container .product-image {
+  /* For very wide images */
+  object-fit: cover !important;
+}
+
+/* Alternative fit options for specific cases */
+.product-card-redesigned .product-card-image-container .product-image.fit-contain {
+  object-fit: contain !important;
+  background: #f8f9fa;
+}
+
+.product-card-redesigned .product-card-image-container .product-image.fit-fill {
+  object-fit: fill !important;
+}
+
+/* Ensure images load and display properly */
+.product-card-redesigned .product-card-image-container .product-image {
+  /* Prevent image from being smaller than container */
+  min-width: 100% !important;
+  min-height: 100% !important;
+  /* Ensure proper scaling */
+  width: 100% !important;
+  height: 100% !important;
+  /* Force cover behavior */
+  object-fit: cover !important;
+  object-position: center center !important;
+}
+
+/* Handle loading states */
+.product-card-redesigned .product-card-image-container .product-image:not([src]),
+.product-card-redesigned .product-card-image-container .product-image[src=""] {
+  background: #f8f9fa;
+  position: relative;
+}
+
+.product-card-redesigned .product-card-image-container .product-image:not([src])::before,
+.product-card-redesigned .product-card-image-container .product-image[src=""]::before {
+  content: "📷";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 2rem;
+  color: #ccc;
+}
+
+/* Aspect ratio preservation for extreme cases */
+.product-card-image-container::before {
+  content: "";
+  display: block;
+  width: 100%;
+  height: 0;
+  padding-bottom: 100%; /* 1:1 aspect ratio fallback */
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: -1;
 }
 
 /* Discount Badge - Top Left */
@@ -242,6 +326,12 @@
     height: 200px;
   }
   
+  .product-card-redesigned .product-card-image-container .product-image {
+    /* Maintain perfect fit on tablet */
+    object-fit: cover !important;
+    object-position: center center !important;
+  }
+  
   .discount-badge {
     font-size: 10px;
     padding: 2px 5px;
@@ -319,6 +409,14 @@
   
   .product-card-image-container {
     height: 180px;
+  }
+  
+  .product-card-redesigned .product-card-image-container .product-image {
+    /* Maintain perfect fit on mobile */
+    object-fit: cover !important;
+    object-position: center center !important;
+    min-width: 100%;
+    min-height: 100%;
   }
   
   .product-name {

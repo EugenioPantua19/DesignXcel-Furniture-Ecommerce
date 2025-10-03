@@ -107,6 +107,102 @@
             background-color: #c82333;
             color: #111;
         }
+
+        /* Customer modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: none;
+            border-radius: 8px;
+            width: 80%;
+            max-width: 500px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+
+        .close-button {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close-button:hover,
+        .close-button:focus {
+            color: black;
+            text-decoration: none;
+        }
+
+        .customer-details-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+
+        .customer-details-section h4 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 1.1em;
+        }
+
+        .customer-details-section p {
+            margin: 5px 0;
+            color: #666;
+        }
+
+        .address-card {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .address-card.default {
+            border-left: 4px solid #28a745;
+        }
+
+        .address-label {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .address-label.default {
+            color: #28a745;
+        }
+
+        .view-customer-btn {
+            background-color: #17a2b8;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 6px 16px;
+            font-size: 1em;
+            font-weight: 400;
+            cursor: pointer;
+            margin-right: 7px;
+            transition: background-color 0.2s;
+        }
+
+        .view-customer-btn:hover {
+            background-color: #138496;
+        }
     </style>
 </head>
 <body>
@@ -120,6 +216,7 @@
                 <li class="sidebar-section-label" style="font-weight:normal;">Inventory</li>
                 <ul class="sidebar-submenu" style="display:block;">
                     <li><a href="/Employee/Inventory/InvManagerProducts">Products</a></li>
+                    <li><a href="/Employee/Inventory/InvManagerVariations">Variations</a></li>
                     <li><a href="/Employee/Inventory/InvManagerMaterials">Raw Materials</a></li>
                     <li><a href="/Employee/Inventory/InvManagerAlerts">Alerts</a></li>
                     <li><a href="/Employee/Inventory/InvManagerArchived">Archived items</a></li>
@@ -137,6 +234,7 @@
                     <li><a href="/Employee/Inventory/InvManCompletedOrders">Completed Orders</a></li>
                 </ul>
                 <li><a href="/Employee/Inventory/InvManagerManUsers">Manage Users</a></li>
+                <li><a href="/Employee/Inventory/InvManagerReviews">Reviews</a></li>
                 <li><a href="/Employee/Inventory/InvManChatSupport">Chat Support</a></li>
                 <li><a href="/Employee/Inventory/InvManagerCMS">Content Management</a></li>
                 <li><a href="/Employee/Inventory/InvManagerLogs">Activity Logs</a></li>
@@ -283,6 +381,41 @@
                 <button type="submit">Save Changes</button>
                 <button type="button" id="cancelEditUser">Cancel</button>
             </form>
+        </div>
+    </div>
+
+    <!-- Edit Customer Modal -->
+    <div id="editCustomerModal" class="modal" style="display:none;">
+        <div class="modal-content" style="max-width: 420px;">
+            <span class="close-button" id="closeEditCustomerModal" style="float:right;cursor:pointer;font-size:1.5em;">&times;</span>
+            <h3>Edit Customer</h3>
+            <form id="editCustomerForm">
+                <input type="hidden" id="editCustomerID" name="customerId">
+                <label for="editCustomerFullName">Full Name:</label>
+                <input type="text" id="editCustomerFullName" name="fullName" required><br><br>
+                <label for="editCustomerEmail">Email:</label>
+                <input type="email" id="editCustomerEmail" name="email" required><br><br>
+                <label for="editCustomerPhone">Phone Number:</label>
+                <input type="text" id="editCustomerPhone" name="phoneNumber"><br><br>
+                <label for="editCustomerIsActive">Status:</label>
+                <select id="editCustomerIsActive" name="isActive" required>
+                    <option value="1">Active</option>
+                    <option value="0">Inactive</option>
+                </select><br><br>
+                <button type="submit">Save Changes</button>
+                <button type="button" id="cancelEditCustomer">Cancel</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- View Customer Modal -->
+    <div id="viewCustomerModal" class="modal" style="display:none;">
+        <div class="modal-content" style="max-width: 600px;">
+            <span class="close-button" id="closeViewCustomerModal" style="float:right;cursor:pointer;font-size:1.5em;">&times;</span>
+            <h3>Customer Details</h3>
+            <div id="customerDetailsContent">
+                <!-- Customer details will be loaded here -->
+            </div>
         </div>
     </div>
     <!-- Custom Success Popup -->

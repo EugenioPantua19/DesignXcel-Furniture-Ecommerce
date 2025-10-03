@@ -17,6 +17,7 @@
                 <li class="sidebar-section-label" style="font-weight:normal;">Inventory</li>
                 <ul class="sidebar-submenu" style="display:block;">
                     <li><a href="/Employee/Inventory/InvManagerProducts">Products</a></li>
+                    <li><a href="/Employee/Inventory/InvManagerVariations">Variations</a></li>
                     <li><a href="/Employee/Inventory/InvManagerMaterials">Raw Materials</a></li>
                     <li><a href="/Employee/Inventory/InvManagerAlerts">Alerts</a></li>
                     <li><a href="/Employee/Inventory/InvManagerArchived">Archived items</a></li>
@@ -34,6 +35,7 @@
                     <li><a href="/Employee/Inventory/InvManCompletedOrders">Completed Orders</a></li>
                 </ul>
                 <li><a href="/Employee/Inventory/InvManagerManUsers">Manage Users</a></li>
+                <li><a href="/Employee/Inventory/InvManagerReviews">Reviews</a></li>
                 <li><a href="/Employee/Inventory/InvManChatSupport">Chat Support</a></li>
                 <li><a href="/Employee/Inventory/InvManagerCMS">Content Management</a></li>
                 <li><a href="/Employee/Inventory/InvManagerLogs">Activity Logs</a></li>
@@ -70,13 +72,13 @@
                                         <% if (order.items && order.items.length > 0) { %>
                                             <% order.items.forEach(function(item) { %>
                                                 <div style="display: flex; align-items: center; gap: 12px; background: #f8f9fa; border-radius: 6px; padding: 7px 10px; margin-bottom: 6px;">
-                                                    <% if (item.ImageURL) { %>
-                                                        <img src="<%= item.ImageURL %>" alt="<%= item.Name %>" style="width: 44px; height: 44px; object-fit: cover; border-radius: 6px; background: #eee;" />
+                                                    <% if (item.DisplayImageURL) { %>
+                                                        <img src="<%= item.DisplayImageURL %>" alt="<%= item.DisplayName %>" style="width: 44px; height: 44px; object-fit: cover; border-radius: 6px; background: #eee;" />
                                                     <% } else { %>
                                                         <div style="width: 44px; height: 44px; background: #eee; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #aaa; font-size: 20px;">🖼️</div>
                                                     <% } %>
                                                     <div style="flex:1;">
-                                                        <div style="font-weight: 600; font-size: 1em;"><%= item.Name %></div>
+                                                        <div style="font-weight: 600; font-size: 1em;"><%= item.DisplayName %></div>
                                                         <div style="font-size: 0.93em; color: #888;">Qty: <%= item.Quantity %></div>
                                                     </div>
                                                     <div style="font-weight: 600; color: #333;">₱<%= Number(item.PriceAtPurchase).toLocaleString(undefined, { minimumFractionDigits: 2 }) %></div>
@@ -96,6 +98,13 @@
                                         <div style="font-weight: bold;">Delivery Method:</div>
                                         <div><%= order.DeliveryTypeName || 'Pick up' %></div>
                                     </div>
+                                    <% if (order.DeliveryType === 'pickup') { %>
+                                    <hr style="border: none; border-top: 1.5px solid #e0e0e0; margin: 10px 0;" />
+                                    <div style="margin-bottom: 10px;">
+                                        <div style="font-weight: bold;">Pick-up Date:</div>
+                                        <div><%= order.PickupDate ? new Date(order.PickupDate).toLocaleDateString('en-US') : '-' %></div>
+                                    </div>
+                                    <% } %>
                                     <hr style="border: none; border-top: 1.5px solid #e0e0e0; margin: 10px 0;" />
                                     <div style="margin-bottom: 10px;">
                                         <div style="font-weight: bold;">Delivery Cost:</div>

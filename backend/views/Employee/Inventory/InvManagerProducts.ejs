@@ -446,6 +446,7 @@
                 <li class="sidebar-section-label" style="font-weight:normal;">Inventory</li>
                 <ul class="sidebar-submenu" style="display:block;">
                     <li><a href="/Employee/Inventory/InvManagerProducts">Products</a></li>
+                    <li><a href="/Employee/Inventory/InvManagerVariations">Variations</a></li>
                     <li><a href="/Employee/Inventory/InvManagerMaterials">Raw Materials</a></li>
                     <li><a href="/Employee/Inventory/InvManagerAlerts">Alerts</a></li>
                     <li><a href="/Employee/Inventory/InvManagerArchived">Archived items</a></li>
@@ -463,6 +464,7 @@
                     <li><a href="/Employee/Inventory/InvManCompletedOrders">Completed Orders</a></li>
                 </ul>
                 <li><a href="/Employee/Inventory/InvManagerManUsers">Manage Users</a></li>
+                <li><a href="/Employee/Inventory/InvManagerReviews">Reviews</a></li>
                 <li><a href="/Employee/Inventory/InvManChatSupport">Chat Support</a></li>
                 <li><a href="/Employee/Inventory/InvManagerCMS">Content Management</a></li>
                 <li><a href="/Employee/Inventory/InvManagerLogs">Activity Logs</a></li>
@@ -531,17 +533,10 @@
                                     <button id="cancelAddCategoryBtn">Cancel</button>
                                 </div>
                             </div>
+                            <label for="dimensions">Dimensions (L x W x H in cm):</label>
+                            <input type="text" id="dimensions" name="dimensions" placeholder="e.g., 100x50x75"><br><br>
                             <label for="image">Product Image:</label><br>
                             <input type="file" id="image" name="image" accept="image/*"><br><br>
-
-                            <label for="thumbnails">Product Thumbnails (up to 4 images):</label><br>
-                            <input type="file" id="thumbnails" name="thumbnails" accept="image/*" multiple><br>
-                            <small style="color: #666;">Select multiple images to show as thumbnails in the product detail page</small><br><br>
-
-                            <label for="model3d">3D Model File (GLB/GLTF):</label><br>
-                            <input type="file" id="model3d" name="model3d" accept=".glb,.gltf"><br>
-                            <small style="color: #666;">Upload a 3D model file for 3D customization feature (GLB or GLTF format)</small><br><br>
-
                             <div class="materials-section">
                                 <h4>Required Materials for Production</h4>
                                 <div id="addMaterialsContainer"></div>
@@ -613,6 +608,7 @@
                                             data-price="<%= product.Price %>"
                                             data-stock="<%= product.StockQuantity %>"
                                             data-category="<%= product.Category %>"
+                                            data-dimensions="<%= product.Dimensions %>"
                                             data-imageurl="<%= product.ImageURL %>"
                                             data-dateadded="<%= product.DateAdded ? new Date(product.DateAdded).toLocaleDateString() : 'N/A' %>"
                                             data-isactive="<%= product.IsActive ? 'Yes' : 'No' %>"
@@ -620,7 +616,7 @@
                                         >
                                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                                         </button>
-                                        <button class="edit-btn" data-id="<%= product.ProductID %>" data-name="<%= product.Name %>" data-description="<%= product.Description %>" data-price="<%= product.Price %>" data-stock="<%= product.StockQuantity %>" data-category="<%= product.Category %>" data-imageurl="<%= product.ImageURL %>" data-model3durl="<%= product.Model3D %>" data-has3dmodel="<%= product.Has3DModel %>" title="Edit">
+                                        <button class="edit-btn" data-id="<%= product.ProductID %>" data-name="<%= product.Name %>" data-description="<%= product.Description %>" data-price="<%= product.Price %>" data-stock="<%= product.StockQuantity %>" data-category="<%= product.Category %>" data-dimensions="<%= product.Dimensions %>" data-imageurl="<%= product.ImageURL %>" title="Edit">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 20h9"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16.5 3.5a2.121 2.121 0 113 3L7 19.5 3 21l1.5-4L16.5 3.5z"/></svg>
                                         </button>
                                         <form action="/Employee/Inventory/InvManagerProducts/Delete/<%= product.ProductID %>" method="POST" style="display:inline;">
@@ -655,7 +651,6 @@
             <form id="editProductForm" action="/Employee/Inventory/InvManagerProducts/Edit" method="POST" enctype="multipart/form-data">
                 <input type="hidden" id="editProductID" name="productid">
                 <input type="hidden" id="editCurrentImageURL" name="currentImageURL">
-                <input type="hidden" id="editCurrentModel3dURL" name="currentModel3dURL">
                 <label for="editName">Name:</label>
                 <input type="text" id="editName" name="name" required><br><br>
                 <label for="editDescription">Description:</label>
@@ -676,22 +671,10 @@
                         <button id="cancelAddCategoryBtnEdit">Cancel</button>
                     </div>
                 </div>
+                
+                
                 <label for="editImage">Product Image:</label><br>
                 <input type="file" id="editImage" name="image" accept="image/*"><br>
-
-                <label for="editThumbnails">Product Thumbnails (up to 4 images):</label><br>
-                <input type="file" id="editThumbnails" name="thumbnails" accept="image/*" multiple><br>
-                <small style="color: #666;">Select multiple images to show as thumbnails in the product detail page</small><br>
-                <div id="currentThumbnailsPreview" style="margin-top: 10px;"></div>
-                <br>
-
-                <label for="editModel3d">3D Model File (GLB/GLTF):</label><br>
-                <input type="file" id="editModel3d" name="model3d" accept=".glb,.gltf"><br>
-                <small style="color: #666;">Upload a 3D model file for 3D customization feature (GLB or GLTF format)</small><br>
-                <div id="currentModel3dPreview" style="margin-top: 10px;"></div>
-                <br>
-
-
                 <img id="currentImagePreview" src="" alt="Current Image" style="max-width: 50px; max-height: 50px; margin-top: 5px; display: none;" />
                 <br><br>
                 <div class="materials-section">
@@ -859,8 +842,5 @@
             addCategoryModalEdit.classList.remove('show');
         };
     </script>
-    
-    <!-- Admin Session Handler -->
-    <script src="/js/admin/AdminSessionHandler.js"></script>
 </body>
 </html> 

@@ -333,7 +333,7 @@ app.use((req, res, next) => {
 
 // Debug middleware to log all requests
 app.use((req, res, next) => {
-    if (req.url.includes('/api/customer/addresses') || req.url.includes('/api/auth/validate-session')) {
+    if (req.url.includes('/api/customer/addresses')) {
         console.log(`[REQUEST DEBUG] ${req.method} ${req.url} - Session ID: ${req.sessionID}`);
         console.log(`[REQUEST DEBUG] Session user:`, req.session.user);
         console.log(`[REQUEST DEBUG] Session customerData:`, req.session.customerData);
@@ -350,6 +350,25 @@ app.get('/login', (req, res) => {
     res.render('EmpLogin/EmpLogin');
 });
 
+// Enhanced User Management Interface Route
+app.get('/Employee/Admin/UserManagement', async (req, res) => {
+    // Check if user is authenticated and has admin access
+    if (!req.session.user || req.session.user.role !== 'Admin') {
+        req.flash('error', 'Access denied. Admin privileges required.');
+        return res.redirect('/login');
+    }
+    
+    try {
+        res.render('admin/AdminUserManagement');
+    } catch (error) {
+        console.error('Error rendering user management page:', error);
+        req.flash('error', 'Error loading user management page.');
+        res.redirect('/Employee/AdminIndex');
+    }
+});
+
+// OLD LOGIN ROUTE - Replaced by enhanced authentication system
+/*
 app.post('/auth/login', async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -415,7 +434,10 @@ app.post('/auth/login', async (req, res) => {
         res.redirect('/login');
     }
 });
+*/
 
+// OLD CUSTOMER LOGIN ROUTE - Replaced by enhanced authentication system
+/*
 // Customer login endpoint for frontend
 app.post('/api/auth/customer/login', async (req, res) => {
     try {
@@ -480,195 +502,6 @@ app.post('/api/auth/customer/login', async (req, res) => {
     }
 });
 
-// Session validation endpoint for frontend customers
-app.get('/api/auth/validate-session', async (req, res) => {
-    try {
-        console.log('[SESSION VALIDATION] ===== SESSION VALIDATION REQUEST =====');
-        console.log('[SESSION VALIDATION] Session ID:', req.sessionID);
-        console.log('[SESSION VALIDATION] Session:', req.session);
-        console.log('[SESSION VALIDATION] Session user:', req.session.user);
-        console.log('[SESSION VALIDATION] Session customerData:', req.session.customerData);
-        
-        // Check if there's a session with user data
-        if (!req.session || !req.session.customerData) {
-            console.log('[SESSION VALIDATION] No valid session found');
-            return res.status(401).json({
-                success: false,
-                message: 'No valid session found'
-            });
-        }
-
-        const customerId = req.session.customerData.id;
-        console.log('[SESSION VALIDATION] Customer ID:', customerId);
-        
-        // Verify the customer still exists and is active in the database
-        await poolConnect;
-        const result = await pool.request()
-            .input('customerId', sql.Int, customerId)
-            .query(`
-                SELECT CustomerID as id, FullName as fullName, Email as email, 
-                       PhoneNumber as phoneNumber, IsActive 
-                FROM Customers 
-                WHERE CustomerID = @customerId AND IsActive = 1
-            `);
-
-        const customer = result.recordset[0];
-        
-        if (!customer) {
-            // Customer no longer exists or is inactive - clear session
-            req.session.destroy();
-            return res.status(401).json({
-                success: false,
-                message: 'Customer account no longer valid'
-            });
-        }
-
-        // Update session data with latest customer info
-        req.session.customerData = {
-            id: customer.id,
-            fullName: customer.fullName,
-            email: customer.email,
-            phoneNumber: customer.phoneNumber,
-            role: 'Customer'
-        };
-
-        console.log('[SESSION VALIDATION] Session validation successful for customer:', customer.fullName);
-        
-        res.json({
-            success: true,
-            user: req.session.customerData
-        });
-
-    } catch (error) {
-        console.error('[SESSION VALIDATION] Session validation error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Session validation failed'
-        });
-    }
-});
-
-// Session restoration endpoint for frontend customers
-app.post('/api/auth/restore-session', async (req, res) => {
-    try {
-        const { email } = req.body;
-        
-        if (!email) {
-            return res.status(400).json({
-                success: false,
-                message: 'Email is required for session restoration'
-            });
-        }
-
-        await poolConnect;
-        
-        // Find the customer by email
-        const result = await pool.request()
-            .input('email', sql.NVarChar, email)
-            .query(`
-                SELECT CustomerID as id, FullName as fullName, Email as email, 
-                       PhoneNumber as phoneNumber, IsActive 
-                FROM Customers 
-                WHERE Email = @email AND IsActive = 1
-            `);
-
-        const customer = result.recordset[0];
-        
-        if (!customer) {
-            return res.status(401).json({
-                success: false,
-                message: 'Customer account not found or inactive'
-            });
-        }
-
-        // Create new session data
-        const customerData = {
-            id: customer.id,
-            fullName: customer.fullName,
-            email: customer.email,
-            phoneNumber: customer.phoneNumber,
-            role: 'Customer',
-            type: 'customer'
-        };
-
-        // Store in session
-        req.session.user = customerData;
-        req.session.customerData = customerData;
-
-        res.json({
-            success: true,
-            message: 'Session restored successfully',
-            user: customerData
-        });
-
-    } catch (error) {
-        console.error('Session restoration error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Session restoration failed'
-        });
-    }
-});
-
-// Admin session validation endpoint
-app.get('/api/auth/admin/validate-session', async (req, res) => {
-    try {
-        // Check if there's a session with admin user data
-        if (!req.session || !req.session.user) {
-            return res.status(401).json({
-                success: false,
-                message: 'No valid admin session found',
-                requiresLogin: true
-            });
-        }
-
-        const userId = req.session.user.id;
-        
-        // Verify the user still exists and is active in the database
-        await poolConnect;
-        const result = await pool.request()
-            .input('userId', sql.Int, userId)
-            .query(`
-                SELECT UserID as id, Username as username, FullName as fullName, 
-                       Email as email, RoleName as role, IsActive 
-                FROM Users 
-                WHERE UserID = @userId AND IsActive = 1
-            `);
-
-        const user = result.recordset[0];
-        
-        if (!user) {
-            // User no longer exists or is inactive - clear session
-            req.session.destroy();
-            return res.status(401).json({
-                success: false,
-                message: 'Admin account no longer valid',
-                requiresLogin: true
-            });
-        }
-
-        // Update session data with latest user info
-        req.session.user = {
-            id: user.id,
-            username: user.username,
-            fullName: user.fullName,
-            email: user.email,
-            role: user.role
-        };
-
-        res.json({
-            success: true,
-            user: req.session.user
-        });
-
-    } catch (error) {
-        console.error('Admin session validation error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Session validation failed'
-        });
-    }
-});
 
 // Admin endpoint to get contact messages
 app.get('/api/admin/contact-messages', async (req, res) => {
@@ -805,7 +638,10 @@ app.post('/api/contact/submit', async (req, res) => {
         });
     }
 });
+*/
 
+// OLD CUSTOMER REGISTRATION ROUTE - Replaced by enhanced authentication system
+/*
 // Customer registration endpoint
 app.post('/api/auth/customer/register', async (req, res) => {
     try {
@@ -836,6 +672,7 @@ app.post('/api/auth/customer/register', async (req, res) => {
         res.status(500).json({ success: false, message: 'An error occurred during registration.' });
     }
 });
+*/
 
 // --- OTP EMAIL ENDPOINTS ---
 const nodemailer = require('nodemailer');
@@ -1542,7 +1379,14 @@ app.post('/logout', (req, res) => {
     res.json({ success: true });
 });
 
-// Mount the routes from routes.js
+// Enhanced Role-Based Authentication System
+// All routes are now consolidated in routes.js
+
+// Make database connection available to middleware
+app.locals.pool = pool;
+app.locals.sql = sql;
+
+// Mount the consolidated routes
 const employeeRoutes = require('./routes')(sql, pool);
 const apiRoutes = require('./api-routes')(sql, pool);
 

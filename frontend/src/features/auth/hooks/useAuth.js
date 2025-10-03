@@ -17,6 +17,7 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
     const [token, setToken] = useState(localStorage.getItem('token'));
 
+    // Initialize auth on mount only
     useEffect(() => {
         const initializeAuth = async () => {
             try {
@@ -93,8 +94,16 @@ export const AuthProvider = ({ children }) => {
 
         window.addEventListener('sessionRestored', handleSessionRestored);
 
-        // Start session refresh for authenticated users
+        // Cleanup listener on unmount
+        return () => {
+            window.removeEventListener('sessionRestored', handleSessionRestored);
+        };
+    }, []); // Empty dependency array - only run on mount
+
+    // Separate effect for session management based on user state
+    useEffect(() => {
         if (user) {
+            // Start session refresh for authenticated users
             sessionManager.startSessionRefresh(async () => {
                 try {
                     const validation = await authService.validateSession();
@@ -115,9 +124,8 @@ export const AuthProvider = ({ children }) => {
             sessionManager.stopSessionRefresh();
         }
 
-        // Cleanup listener on unmount
+        // Cleanup on user change or unmount
         return () => {
-            window.removeEventListener('sessionRestored', handleSessionRestored);
             sessionManager.stopSessionRefresh();
         };
     }, [user]);

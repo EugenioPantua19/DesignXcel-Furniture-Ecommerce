@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reviews Management - Design Excellence</title>
+    <link rel="stylesheet" href="/css/Employee/Admin/AdminIndexStyles.css">
+    <style>
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        .sidebar-menu {
+            flex-grow: 1;
+        }
+        .logout-section {
+            padding: 40px;
+            border-top: 1px solid #ddd;
+            margin-top: auto;
+            text-align: center;
+        }
+        .logout-button {
+            display: inline-block;
+            width: auto;
+            padding: 12px 25px;
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            font-weight: bold;
+            transition: background-color 0.3s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        .logout-button:hover {
+            background-color: #c82333;
+        }
+
+        /* Custom Confirmation Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            visibility: hidden;
+            opacity: 0;
+            transition: visibility 0s, opacity 0.3s ease;
+        }
+
+        .modal-overlay.show {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .modal-content {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-overlay.show .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-content h3 {
+            margin-top: 0;
+            color: #333;
+            font-size: 1.5em;
+            margin-bottom: 20px;
+        }
+
+        .modal-content p {
+            color: #555;
+            font-size: 1.1em;
+            margin-bottom: 30px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .modal-button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+
+        .modal-button.confirm {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .modal-button.confirm:hover {
+            background-color: #c82333;
+        }
+
+        .modal-button.cancel {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .modal-button.cancel:hover {
+            background-color: #5a6268;
+        }
+
+        /* Sidebar submenu and section label styles */
+        .sidebar-section-label {
+            color: #fff;
+            font-weight: bold;
+            padding: 12px 18px 6px 18px;
+            background: #333;
+            border-top: 1px solid #444;
+            border-bottom: none;
+            margin-top: 2px;
+            margin-bottom: 0;
+            font-size: 1.08em;
+        }
+        .sidebar-submenu {
+            list-style: none;
+            margin: 0 0 0 0;
+            padding: 0 0 0 18px;
+            background: #444;
+        }
+        .sidebar-submenu li a {
+            color: #fff;
+            display: block;
+            padding: 10px 0 10px 10px;
+            text-decoration: none;
+            font-size: 1em;
+            border-bottom: 1px solid #555;
+            transition: background 0.2s;
+        }
+        .sidebar-submenu li a:hover {
+            background: #555;
+        }
+
+        /* Reviews Management Styles */
+        .reviews-section {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .reviews-section h3 {
+            color: #333;
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+            padding-bottom: 10px;
+        }
+
+        .reviews-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            margin-bottom: 30px;
+        }
+
+        .reviews-table th,
+        .reviews-table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+
+        .reviews-table th {
+            background-color: #f2f2f2;
+            color: #333;
+            font-weight: bold;
+        }
+
+        .reviews-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        .reviews-table tr:hover {
+            background-color: #e9e9e9;
+        }
+
+        .review-rating {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .star {
+            color: #ffc107;
+            font-size: 1.2em;
+        }
+
+        .review-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .btn-approve {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+
+        .btn-approve:hover {
+            background-color: #218838;
+        }
+
+        .btn-reject {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+
+        .btn-reject:hover {
+            background-color: #c82333;
+        }
+
+        .btn-delete {
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+
+        .btn-delete:hover {
+            background-color: #5a6268;
+        }
+
+        .review-status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+
+        .status-pending {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        .status-approved {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .status-rejected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .filters {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            align-items: center;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .filter-group label {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .filter-group select,
+        .filter-group input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        .search-box {
+            flex: 1;
+            max-width: 300px;
+        }
+
+        .search-box input {
+            width: 100%;
+        }
+
+        /* Rejected review styling */
+        .review-row[data-review-active="false"] {
+            opacity: 0.6;
+            background-color: #f8f9fa;
+        }
+
+        .review-row[data-review-active="false"] td {
+            color: #6c757d;
+        }
+
+        .review-row {
+            transition: all 0.3s ease;
+        }
+
+        .filter-group label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: normal;
+        }
+
+        .filter-group input[type="checkbox"] {
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h3>User Manager Panel</h3>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="/Employee/UserManager">Dashboard</a></li>
+                <li class="sidebar-section-label" style="font-weight:normal;">Inventory</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/UserManager/UserManProducts">Products</a></li>
+                    <li><a href="/Employee/UserManager/UserManVariations">Variations</a></li>
+                    <li><a href="/Employee/UserManager/UserManMaterials">Raw Materials</a></li>
+                    <li><a href="/Employee/UserManager/UserManAlerts">Alerts</a></li>
+                    <li><a href="/Employee/UserManager/UserManArchived">Archived items</a></li>
+                </ul>
+                <li class="sidebar-section-label" style="font-weight:normal;">Transactions</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/UserManager/DeliveryRates">Delivery Rates</a></li>
+                    <li><a href="/Employee/UserManager/WalkIn">Walk In</a></li>
+                    <li><a href="/Employee/UserManager/UserManOrdersPending">Orders Pending</a></li>
+                    <li><a href="/Employee/UserManager/UserManOrdersProcessing">Orders Processing</a></li>
+                    <li><a href="/Employee/UserManager/UserManOrdersShipping">Orders Shipping</a></li>
+                    <li><a href="/Employee/UserManager/UserManOrdersDelivery">Orders Delivery</a></li>
+                    <li><a href="/Employee/UserManager/UserManOrdersReceive">Orders Receive</a></li>
+                    <li><a href="/Employee/UserManager/UserManCancelledOrders">Cancelled Orders</a></li>
+                    <li><a href="/Employee/UserManager/UserManCompletedOrders">Completed Orders</a></li>
+                </ul>
+                <li><a href="/Employee/UserManager/UserManManUsers">Manage Users</a></li>
+                <li><a href="/Employee/UserManager/UserManReviews">Reviews</a></li>
+                <li><a href="/Employee/UserManager/UserManChatSupport">Chat Support</a></li>
+                <li><a href="/Employee/UserManager/UserManCMS">Content Management</a></li>
+                <li><a href="/Employee/UserManager/UserManLogs">Activity Logs</a></li>
+            </ul>
+            <div class="logout-section">
+                <a href="/logout" class="logout-button" onclick="handleLogout(event)">Logout</a>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="content-header">
+                <h1>Reviews Management</h1>
+                <p>Manage customer reviews and ratings</p>
+            </div>
+
+            <div class="reviews-section">
+                <h3>Customer Reviews</h3>
+                
+                <div class="filters">
+                    <div class="filter-group">
+                        <label for="statusFilter">Status:</label>
+                        <select id="statusFilter">
+                            <option value="">All Status</option>
+                            <option value="approved">Approved</option>
+                            <option value="rejected">Rejected</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="ratingFilter">Rating:</label>
+                        <select id="ratingFilter">
+                            <option value="">All Ratings</option>
+                            <option value="5">5 Stars</option>
+                            <option value="4">4 Stars</option>
+                            <option value="3">3 Stars</option>
+                            <option value="2">2 Stars</option>
+                            <option value="1">1 Star</option>
+                        </select>
+                    </div>
+                    <div class="filter-group search-box">
+                        <label for="searchReview">Search:</label>
+                        <input type="text" id="searchReview" placeholder="Search by customer name or product...">
+                    </div>
+                    <div class="filter-group">
+                        <label>
+                            <input type="checkbox" id="showRejected" onchange="toggleRejectedReviews()">
+                            Show Rejected Reviews
+                        </label>
+                    </div>
+                </div>
+
+                <table class="reviews-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Customer</th>
+                            <th>Product</th>
+                            <th>Rating</th>
+                            <th>Review</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reviewsTableBody">
+                        <% if (reviews && reviews.length > 0) { %>
+                            <% reviews.forEach(function(review) { %>
+                                <tr class="review-row" data-review-active="<%= review.IsActive %>" <% if (!review.IsActive) { %>style="display: none;"<% } %>>
+                                    <td><%= review.ReviewID %></td>
+                                    <td><%= review.CustomerName %></td>
+                                    <td><%= review.ProductName %></td>
+                                    <td>
+                                        <div class="review-rating">
+                                            <% for (let i = 1; i <= 5; i++) { %>
+                                                <% if (i <= review.Rating) { %>
+                                                    <span class="star">★</span>
+                                                <% } else { %>
+                                                    <span class="star" style="color: #ddd;">☆</span>
+                                                <% } %>
+                                            <% } %>
+                                        </div>
+                                    </td>
+                                    <td><%= review.Comment %></td>
+                                    <td><%= new Date(review.CreatedAt).toLocaleDateString() %></td>
+                                    <td>
+                                        <span class="review-status status-<%= review.IsActive ? 'approved' : 'rejected' %>">
+                                            <%= review.IsActive ? 'Approved' : 'Rejected' %>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="review-actions">
+                                            <% if (review.IsActive) { %>
+                                                <button class="btn-reject" data-review-id="<%= review.ReviewID %>" data-action="reject">Reject</button>
+                                            <% } else { %>
+                                                <button class="btn-approve" data-review-id="<%= review.ReviewID %>" data-action="approve">Un-Reject</button>
+                                            <% } %>
+                                            <button class="btn-delete" data-review-id="<%= review.ReviewID %>" data-action="delete">Delete</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <% }); %>
+                        <% } else { %>
+                            <tr>
+                                <td colspan="8" style="text-align: center; padding: 20px;">
+                                    <em>No reviews found.</em>
+                                </td>
+                            </tr>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logout Confirmation Modal -->
+    <div class="modal-overlay" id="logoutModal">
+        <div class="modal-content">
+            <h3>Confirm Logout</h3>
+            <p>Are you sure you want to logout?</p>
+            <div class="modal-buttons">
+                <button class="modal-button confirm" onclick="confirmLogout()">Yes, Logout</button>
+                <button class="modal-button cancel" onclick="cancelLogout()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* eslint-disable */
+        // Logout functionality
+        function handleLogout(event) {
+            event.preventDefault();
+            document.getElementById('logoutModal').classList.add('show');
+        }
+
+        function confirmLogout() {
+            window.location.href = '/logout';
+        }
+
+        function cancelLogout() {
+            document.getElementById('logoutModal').classList.remove('show');
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('logoutModal').addEventListener('click', function(event) {
+            if (event.target === this) {
+                cancelLogout();
+            }
+        });
+
+        // Reviews management functionality
+        function updateReviewStatus(reviewId, isActive) {
+            const action = isActive ? 'un-reject' : 'reject';
+            if (confirm('Are you sure you want to ' + action + ' this review?')) {
+                fetch('/api/user/reviews/' + reviewId + '/status', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ isActive: isActive })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Update the UI without reloading
+                        updateReviewRow(reviewId, isActive);
+                    } else {
+                        alert('Failed to update review status: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error updating review status:', error);
+                    alert('Failed to update review status');
+                });
+            }
+        }
+
+        function updateReviewRow(reviewId, isActive) {
+            const row = document.querySelector('tr:has(button[data-review-id="' + reviewId + '"])');
+            
+            if (row) {
+                // Update the data attribute
+                row.setAttribute('data-review-active', isActive);
+                
+                // Update the status span
+                const statusSpan = row.querySelector('.review-status');
+                statusSpan.className = 'review-status status-' + (isActive ? 'approved' : 'rejected');
+                statusSpan.textContent = isActive ? 'Approved' : 'Rejected';
+                
+                // Update the action button
+                const actionButton = row.querySelector('.review-actions button:first-child');
+                actionButton.textContent = isActive ? 'Reject' : 'Un-Reject';
+                actionButton.className = isActive ? 'btn-reject' : 'btn-approve';
+                actionButton.setAttribute('data-action', isActive ? 'reject' : 'approve');
+                
+                // Hide/show based on rejected status and checkbox
+                const showRejected = document.getElementById('showRejected').checked;
+                if (!isActive && !showRejected) {
+                    row.style.display = 'none';
+                } else {
+                    row.style.display = '';
+                }
+            }
+        }
+
+        function deleteReview(reviewId) {
+            if (confirm('Are you sure you want to delete this review? This action cannot be undone.')) {
+                fetch('/api/user/reviews/' + reviewId, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload(); // Reload the page to show updated data
+                    } else {
+                        alert('Failed to delete review: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error deleting review:', error);
+                    alert('Failed to delete review');
+                });
+            }
+        }
+
+        // Add event listeners for review action buttons
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('btn-reject') || e.target.classList.contains('btn-approve')) {
+                const reviewId = parseInt(e.target.getAttribute('data-review-id'));
+                const action = e.target.getAttribute('data-action');
+                const isActive = action === 'approve';
+                updateReviewStatus(reviewId, isActive);
+            } else if (e.target.classList.contains('btn-delete')) {
+                const reviewId = parseInt(e.target.getAttribute('data-review-id'));
+                deleteReview(reviewId);
+            }
+        });
+
+        // Filter functionality
+        document.getElementById('statusFilter').addEventListener('change', filterReviews);
+        document.getElementById('ratingFilter').addEventListener('change', filterReviews);
+        document.getElementById('searchReview').addEventListener('input', filterReviews);
+
+        function toggleRejectedReviews() {
+            const showRejected = document.getElementById('showRejected').checked;
+            const rejectedRows = document.querySelectorAll('.review-row[data-review-active="false"]');
+            
+            rejectedRows.forEach(row => {
+                if (showRejected) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+            
+            // Reapply other filters
+            filterReviews();
+        }
+
+        function filterReviews() {
+            const statusFilter = document.getElementById('statusFilter').value;
+            const ratingFilter = document.getElementById('ratingFilter').value;
+            const searchTerm = document.getElementById('searchReview').value.toLowerCase();
+            const showRejected = document.getElementById('showRejected').checked;
+            
+            const rows = document.querySelectorAll('#reviewsTableBody tr');
+            
+            rows.forEach(row => {
+                if (row.querySelector('td[colspan]')) return; // Skip "No reviews found" row
+                
+                const status = row.querySelector('.review-status').textContent.trim();
+                const rating = row.querySelectorAll('.star').length;
+                const customerName = row.cells[1].textContent.toLowerCase();
+                const productName = row.cells[2].textContent.toLowerCase();
+                const isRejected = row.getAttribute('data-review-active') === 'false';
+                
+                let showRow = true;
+                
+                // Filter by rejected status
+                if (isRejected && !showRejected) {
+                    showRow = false;
+                }
+                
+                // Filter by status
+                if (statusFilter && status !== statusFilter) {
+                    showRow = false;
+                }
+                
+                // Filter by rating
+                if (ratingFilter && rating !== parseInt(ratingFilter)) {
+                    showRow = false;
+                }
+                
+                // Filter by search term
+                if (searchTerm && !customerName.includes(searchTerm) && !productName.includes(searchTerm)) {
+                    showRow = false;
+                }
+                
+                row.style.display = showRow ? '' : 'none';
+            });
+        }
+    </script>
+</body>
+</html>

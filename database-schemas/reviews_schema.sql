@@ -90,7 +90,7 @@ BEGIN
         pr.ReviewID,
         pr.ProductID,
         pr.CustomerID,
-        c.FullName AS CustomerName,
+        COALESCE(c.FullName, 'Anonymous') AS CustomerName,
         c.Email AS CustomerEmail,
         pr.Rating,
         pr.Comment,

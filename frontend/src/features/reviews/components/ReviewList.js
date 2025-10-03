@@ -34,12 +34,18 @@ const ReviewList = ({ reviews, loading, currentPage, totalPages, onPageChange })
   };
 
   const getInitials = (name) => {
+    if (!name || typeof name !== 'string') {
+      return 'AN'; // Anonymous - default initials
+    }
+    
     return name
+      .trim()
       .split(' ')
+      .filter(word => word.length > 0) // Filter out empty strings
       .map(word => word.charAt(0))
       .join('')
       .toUpperCase()
-      .slice(0, 2);
+      .slice(0, 2) || 'AN'; // Fallback to 'AN' if no valid initials
   };
 
   if (loading) {
@@ -80,7 +86,7 @@ const ReviewList = ({ reviews, loading, currentPage, totalPages, onPageChange })
                 )}
               </div>
               <div className="reviewer-details">
-                <div className="reviewer-name">{review.customerName}</div>
+                <div className="reviewer-name">{review.customerName || 'Anonymous'}</div>
                 {review.isVerified && (
                   <div className="verified-badge">(Verified)</div>
                 )}

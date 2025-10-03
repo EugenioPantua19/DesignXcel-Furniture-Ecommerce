@@ -55,6 +55,63 @@
         .date-header td {
             padding: 15px !important;
         }
+
+        /* Enhanced log display styling */
+        .log-details {
+            max-width: 300px;
+            word-wrap: break-word;
+        }
+
+        .log-changes {
+            background-color: #f8f9fa;
+            border-left: 3px solid #007bff;
+            padding: 8px 12px;
+            margin: 5px 0;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+
+        .log-old-values {
+            background-color: #fff3cd;
+            border-left: 3px solid #ffc107;
+            padding: 6px 10px;
+            margin: 3px 0;
+            border-radius: 3px;
+            font-size: 0.85em;
+        }
+
+        .log-new-values {
+            background-color: #d4edda;
+            border-left: 3px solid #28a745;
+            padding: 6px 10px;
+            margin: 3px 0;
+            border-radius: 3px;
+            font-size: 0.85em;
+        }
+
+        .log-action-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .log-action-insert {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .log-action-update {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        .log-action-delete {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
         .error-message {
             color: #dc3545;
             padding: 15px;
@@ -113,6 +170,7 @@
                 <li class="sidebar-section-label" style="font-weight:normal;">Inventory</li>
                 <ul class="sidebar-submenu" style="display:block;">
                     <li><a href="/Employee/Inventory/InvManagerProducts">Products</a></li>
+                    <li><a href="/Employee/Inventory/InvManagerVariations">Variations</a></li>
                     <li><a href="/Employee/Inventory/InvManagerMaterials">Raw Materials</a></li>
                     <li><a href="/Employee/Inventory/InvManagerAlerts">Alerts</a></li>
                     <li><a href="/Employee/Inventory/InvManagerArchived">Archived items</a></li>
@@ -130,6 +188,7 @@
                     <li><a href="/Employee/Inventory/InvManCompletedOrders">Completed Orders</a></li>
                 </ul>
                 <li><a href="/Employee/Inventory/InvManagerManUsers">Manage Users</a></li>
+                <li><a href="/Employee/Inventory/InvManagerReviews">Reviews</a></li>
                 <li><a href="/Employee/Inventory/InvManChatSupport">Chat Support</a></li>
                 <li><a href="/Employee/Inventory/InvManagerCMS">Content Management</a></li>
             </ul>
@@ -151,6 +210,9 @@
                                 <th>User</th>
                                 <th>Role</th>
                                 <th>Action</th>
+                                <th>Table</th>
+                                <th>Details</th>
+                                <th>Changes</th>
                                 <th>Timestamp</th>
                             </tr>
                         </thead>

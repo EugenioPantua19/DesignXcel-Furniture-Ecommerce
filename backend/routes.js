@@ -7,10 +7,27 @@ const sql = require('mssql');
 module.exports = function(sql, pool) {
     const router = express.Router();
 
-    // Middleware to check if user is logged in
+    // =============================================================================
+    // AUTHENTICATION & AUTHORIZATION MIDDLEWARE (moved from middleware/auth.js)
+    // =============================================================================
+
+    const bcrypt = require('bcrypt');
+    const crypto = require('crypto');
+
+    /**
+     * Middleware to check if user is logged in
+     * Supports both session-based and token-based authentication
+     */
     function isAuthenticated(req, res, next) {
-        if (req.session.user) {
+        // Check session-based authentication first
+        if (req.session && req.session.user) {
             return next();
+        }
+
+        // Check token-based authentication for API requests
+        const token = req.headers.authorization?.replace('Bearer ', '') || req.query.token;
+        if (token) {
+            return validateToken(req, res, next, token);
         }
         
         // Check if this is an AJAX/API request
@@ -22,8 +39,9 @@ module.exports = function(sql, pool) {
         if (isAjaxRequest) {
             return res.status(401).json({
                 success: false,
-                message: 'Session expired. Please log in again.',
-                requiresLogin: true
+                message: 'Authentication required. Please log in.',
+                requiresLogin: true,
+                code: 'AUTHENTICATION_REQUIRED'
             });
         }
         
@@ -31,18 +49,450 @@ module.exports = function(sql, pool) {
         res.redirect('/login');
     }
 
-    // Middleware to check user role
+    /**
+     * Validate API token
+     */
+    async function validateToken(req, res, next, token) {
+        try {
+            const pool = req.app.locals.pool;
+            const sql = req.app.locals.sql;
+            
+            const result = await pool.request()
+                .input('token', sql.NVarChar, token)
+                .query(`
+                    SELECT t.*, u.Username, u.FullName, u.Email, u.RoleID, r.RoleName
+                    FROM SessionTokens t
+                    LEFT JOIN Users u ON t.UserID = u.UserID
+                    LEFT JOIN Roles r ON u.RoleID = r.RoleID
+                    WHERE t.Token = @token AND t.IsActive = 1 AND t.ExpiresAt > GETDATE()
+                `);
+
+            if (result.recordset.length === 0) {
+                return res.status(401).json({
+                    success: false,
+                    message: 'Invalid or expired token.',
+                    code: 'INVALID_TOKEN'
+                });
+            }
+
+            const tokenData = result.recordset[0];
+            
+            // Set user session based on token data
+            if (tokenData.UserType === 'Employee' && tokenData.UserID) {
+                req.session.user = {
+                    id: tokenData.UserID,
+                    username: tokenData.Username,
+                    fullName: tokenData.FullName,
+                    email: tokenData.Email,
+                    role: tokenData.RoleName,
+                    type: 'employee'
+                };
+            } else if (tokenData.UserType === 'Customer' && tokenData.CustomerID) {
+                req.session.user = {
+                    id: tokenData.CustomerID,
+                    fullName: tokenData.CustomerName,
+                    email: tokenData.CustomerEmail,
+                    role: 'Customer',
+                    type: 'customer'
+                };
+            }
+
+            next();
+
+        } catch (error) {
+            console.error('Token validation error:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Authentication service error.',
+                code: 'AUTH_SERVICE_ERROR'
+            });
+        }
+    }
+
+    /**
+     * Middleware to check user role
+     * @param {string} role - Required role name
+     */
     function hasRole(role) {
         return function(req, res, next) {
-            const userRole = req.session.user?.role || req.session.user?.roleName || req.session.user?.RoleName;
-            console.log('hasRole middleware - checking role:', role, 'user role:', userRole);
-            if (req.session.user && userRole === role) {
+            if (!req.session || !req.session.user) {
+                return redirectToLogin(req, res, 'Authentication required.');
+            }
+
+            const userRole = req.session.user.role || req.session.user.roleName || req.session.user.RoleName;
+            
+            console.log(`hasRole middleware - checking role: ${role}, user role: ${userRole}`);
+            
+            if (userRole === role) {
                 return next();
             }
-            console.log('hasRole middleware - access denied for role:', role);
-            req.flash('error', 'You do not have permission to access this page.');
-            res.redirect('/login'); // Or a different unauthorized page
+            
+            console.log(`hasRole middleware - access denied for role: ${role}`);
+            
+            const isAjaxRequest = req.xhr || 
+                                (req.headers.accept && req.headers.accept.indexOf('json') > -1) ||
+                                req.path.startsWith('/api/');
+            
+            if (isAjaxRequest) {
+                return res.status(403).json({
+                    success: false,
+                    message: 'Insufficient permissions to access this resource.',
+                    code: 'INSUFFICIENT_PERMISSIONS'
+                });
+            }
+            
+            // Render role-specific forbidden page
+            
+            switch(userRole) {
+                case 'Admin':
+                    return res.status(403).render('Employee/Admin/Forbidden');
+                case 'InventoryManager':
+                    return res.status(403).render('Employee/Inventory/Forbidden');
+                case 'TransactionManager':
+                    return res.status(403).render('Employee/Transaction/Forbidden');
+                case 'UserManager':
+                    return res.status(403).render('Employee/UserManager/Forbidden');
+                case 'OrderSupport':
+                    return res.status(403).render('Employee/Support/Forbidden');
+                default:
+                    req.flash('error', 'You do not have permission to access this page.');
+                    res.redirect('/unauthorized');
+            }
         };
+    }
+
+    /**
+     * Middleware to check multiple roles (user needs any one of them)
+     * @param {Array<string>} roles - Array of role names
+     */
+    function hasAnyRole(roles) {
+        return function(req, res, next) {
+            if (!req.session || !req.session.user) {
+                return redirectToLogin(req, res, 'Authentication required.');
+            }
+
+            const userRole = req.session.user.role || req.session.user.roleName || req.session.user.RoleName;
+            
+            console.log(`hasAnyRole middleware - checking roles: ${roles.join(', ')}, user role: ${userRole}`);
+            
+            if (roles.includes(userRole)) {
+                return next();
+            }
+            
+            console.log(`hasAnyRole middleware - access denied for roles: ${roles.join(', ')}`);
+            
+            const isAjaxRequest = req.xhr || 
+                                (req.headers.accept && req.headers.accept.indexOf('json') > -1) ||
+                                req.path.startsWith('/api/');
+            
+            if (isAjaxRequest) {
+                return res.status(403).json({
+                    success: false,
+                    message: 'Insufficient permissions to access this resource.',
+                    code: 'INSUFFICIENT_PERMISSIONS'
+                });
+            }
+            
+            // Render role-specific forbidden page
+            
+            switch(userRole) {
+                case 'Admin':
+                    return res.status(403).render('Employee/Admin/Forbidden');
+                case 'InventoryManager':
+                    return res.status(403).render('Employee/Inventory/Forbidden');
+                case 'TransactionManager':
+                    return res.status(403).render('Employee/Transaction/Forbidden');
+                case 'UserManager':
+                    return res.status(403).render('Employee/UserManager/Forbidden');
+                case 'OrderSupport':
+                    return res.status(403).render('Employee/Support/Forbidden');
+                default:
+                    req.flash('error', 'You do not have permission to access this page.');
+                    res.redirect('/unauthorized');
+            }
+        };
+    }
+
+    /**
+     * Helper function to redirect to login
+     */
+    function redirectToLogin(req, res, message) {
+        const isAjaxRequest = req.xhr || 
+                            (req.headers.accept && req.headers.accept.indexOf('json') > -1) ||
+                            req.path.startsWith('/api/');
+        
+        if (isAjaxRequest) {
+            return res.status(401).json({
+                success: false,
+                message: message,
+                requiresLogin: true,
+                code: 'AUTHENTICATION_REQUIRED'
+            });
+        }
+        
+        req.flash('error', message);
+        res.redirect('/login');
+    }
+
+    /**
+     * Check if user has access to a specific section
+     * @param {Object} pool - Database connection pool
+     * @param {Object} sql - SQL object
+     * @param {number} userId - User ID
+     * @param {string} section - Section name
+     * @param {string} permission - Permission type ('CanAccess', 'CanCreate', 'CanRead', 'CanUpdate', 'CanDelete')
+     */
+    async function hasSectionPermission(pool, sql, userId, section, permission = 'CanAccess') {
+        try {
+            await pool.connect();
+            
+            const result = await pool.request()
+                .input('userId', sql.Int, userId)
+                .input('section', sql.NVarChar, section)
+                .query(`
+                    SELECT DISTINCT
+                        CASE WHEN up.${permission} IS NOT NULL THEN up.${permission} ELSE rp.${permission} END as HasPermission
+                    FROM Users u
+                    INNER JOIN Roles r ON u.RoleID = r.RoleID
+                    LEFT JOIN RolePermissions rp ON rp.RoleID = r.RoleID AND rp.Section = @section
+                    LEFT JOIN UserPermissions up ON up.UserID = u.UserID AND up.Section = @section
+                    WHERE u.UserID = @userId AND u.IsActive = 1
+                    AND (rp.RoleID IS NOT NULL OR up.UserID IS NOT NULL)
+                `);
+
+            return result.recordset[0]?.HasPermission === true;
+        } catch (error) {
+            console.error('Permission check error:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Middleware for section-specific permissions
+     * @param {string} section - Section name
+     * @param {string} permission - Permission type (default: 'CanAccess')
+     */
+    function requireSectionPermission(section, permission = 'CanAccess') {
+        return async function(req, res, next) {
+            if (!req.session || !req.session.user) {
+                return redirectToLogin(req, res, 'Authentication required.');
+            }
+
+            const userId = req.session.user.id;
+            const userType = req.session.user.type;
+            
+            // Skip permission check for customers on their allowed sections
+            if (userType === 'customer') {
+                const customerAllowedSections = ['profile', 'orders', 'products', 'cart'];
+                if (customerAllowedSections.includes(section)) {
+                    return next();
+                }
+            }
+            
+            // Admin always has access
+            if (req.session.user.role === 'Admin') {
+                return next();
+            }
+
+            try {
+                const pool = req.app.locals.pool;
+                const sql = req.app.locals.sql;
+                
+                const hasPermission = await hasSectionPermission(pool, sql, userId, section, permission);
+                
+                if (!hasPermission) {
+                    console.log(`Permission denied - User ${userId} lacks ${permission} permission for section: ${section}`);
+                    
+                    const isAjaxRequest = req.xhr || 
+                                        (req.headers.accept && req.headers.accept.indexOf('json') > -1) ||
+                                        req.path.startsWith('/api/');
+                    
+                    if (isAjaxRequest) {
+                        return res.status(403).json({
+                            success: false,
+                            message: `Insufficient permissions to ${permission.toLowerCase().replace('can', '')} ${section}.`,
+                            code: 'INSUFFICIENT_PERMISSIONS',
+                            section: section,
+                            permission: permission
+                        });
+                    }
+                    
+                    req.flash('error', `You do not have permission to access ${section}.`);
+                    return res.redirect('/unauthorized');
+                }
+                
+                next();
+            } catch (error) {
+                console.error('Section permission check error:', error);
+                
+                const isAjaxRequest = req.xhr || 
+                                    (req.headers.accept && req.headers.accept.indexOf('json') > -1) ||
+                                    req.path.startsWith('/api/');
+                
+                if (isAjaxRequest) {
+                    return res.status(500).json({
+                        success: false,
+                        message: 'Permission check failed.',
+                        code: 'PERMISSION_CHECK_ERROR'
+                    });
+                }
+                
+                req.flash('error', 'An error occurred while checking permissions.');
+                res.redirect('/login');
+            }
+        };
+    }
+
+    /**
+     * Get user permissions for a specific user
+     * @param {Object} pool - Database connection pool
+     * @param {Object} sql - SQL object
+     * @param {number} userId - User ID
+     */
+    async function getUserPermissions(pool, sql, userId) {
+        try {
+            await pool.connect();
+            
+            const result = await pool.request()
+                .input('userId', sql.Int, userId)
+                .query(`
+                    SELECT DISTINCT
+                        p.Section,
+                        CASE WHEN up.CanAccess IS NOT NULL THEN up.CanAccess ELSE rp.CanAccess END as CanAccess,
+                        CASE WHEN up.CanCreate IS NOT NULL THEN up.CanCreate ELSE rp.CanCreate END as CanCreate,
+                        CASE WHEN up.CanRead IS NOT NULL THEN up.CanRead ELSE rp.CanRead END as CanRead,
+                        CASE WHEN up.CanUpdate IS NOT NULL THEN up.CanUpdate ELSE rp.CanUpdate END as CanUpdate,
+                        CASE WHEN up.CanDelete IS NOT NULL THEN up.CanDelete ELSE rp.CanDelete END as CanDelete
+                    FROM Users u
+                    INNER JOIN Roles r ON u.RoleID = r.RoleID
+                    LEFT JOIN RolePermissions rp ON rp.RoleID = r.RoleID
+                    LEFT JOIN UserPermissions up ON up.UserID = u.UserID
+                    LEFT JOIN Permissions p ON (rp.PermissionID = p.PermissionID OR up.PermissionID = p.PermissionID)
+                    WHERE u.UserID = @userId AND u.IsActive = 1
+                `);
+
+            const permissions = {};
+            result.recordset.forEach(row => {
+                permissions[row.Section] = {
+                    CanAccess: row.CanAccess || false,
+                    CanCreate: row.CanCreate || false,
+                    CanRead: row.CanRead || false,
+                    CanUpdate: row.CanUpdate || false,
+                    CanDelete: row.CanDelete || false
+                };
+            });
+
+            return permissions;
+        } catch (error) {
+            console.error('Get user permissions error:', error);
+            return {};
+        }
+    }
+
+    /**
+     * Create API token for user
+     * @param {Object} pool - Database connection pool
+     * @param {Object} sql - SQL object
+     * @param {number} userId - User ID
+     * @param {string} userType - User type (Employee/Customer)
+     * @param {number} customerId - Customer ID (for customer tokens)
+     * @param {Object} req - Request object
+     */
+    async function createToken(pool, sql, userId, userType, customerId, req) {
+        try {
+            const token = crypto.randomBytes(32).toString('hex');
+            const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+            await pool.request()
+                .input('token', sql.NVarChar, token)
+                .input('userId', sql.Int, userId)
+                .input('userType', sql.NVarChar, userType)
+                .input('customerId', sql.Int, customerId)
+                .input('expiresAt', sql.DateTime, expiresAt)
+                .query(`
+                    INSERT INTO SessionTokens (Token, UserID, UserType, CustomerID, ExpiresAt, IsActive, CreatedAt)
+                    VALUES (@token, @userId, @userType, @customerId, @expiresAt, 1, GETDATE())
+                `);
+
+            return token;
+        } catch (error) {
+            console.error('Token creation error:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Revoke API token
+     * @param {Object} pool - Database connection pool
+     * @param {Object} sql - SQL object
+     * @param {string} token - Token to revoke
+     */
+    async function revokeToken(pool, sql, token) {
+        try {
+            await pool.request()
+                .input('token', sql.NVarChar, token)
+                .query('UPDATE SessionTokens SET IsActive = 0 WHERE Token = @token');
+
+            return true;
+        } catch (error) {
+            console.error('Token revocation error:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Log user action
+     * @param {Object} pool - Database connection pool
+     * @param {Object} sql - SQL object
+     * @param {Object} user - User object
+     * @param {string} action - Action performed
+     * @param {string} section - Section where action occurred
+     * @param {number} targetId - Target ID (optional)
+     * @param {string} targetType - Target type (optional)
+     * @param {number} customerId - Customer ID (optional)
+     * @param {Object} details - Additional details (optional)
+     * @param {Object} req - Request object
+     */
+    async function logUserAction(pool, sql, user, action, section, targetId, targetType, customerId, details, req) {
+        try {
+            await pool.request()
+                .input('userId', sql.Int, user.id)
+                .input('action', sql.NVarChar, action)
+                .input('section', sql.NVarChar, section)
+                .input('targetId', sql.Int, targetId)
+                .input('targetType', sql.NVarChar, targetType)
+                .input('customerId', sql.Int, customerId)
+                .input('details', sql.NVarChar, details ? JSON.stringify(details) : null)
+                .input('ipAddress', sql.NVarChar, req.ip || req.connection.remoteAddress)
+                .input('userAgent', sql.NVarChar, req.get('User-Agent'))
+                .query(`
+                    INSERT INTO ActivityLogs (UserID, Action, Section, TargetID, TargetType, CustomerID, Details, IPAddress, UserAgent, CreatedAt)
+                    VALUES (@userId, @action, @section, @targetId, @targetType, @customerId, @details, @ipAddress, @userAgent, GETDATE())
+                `);
+        } catch (error) {
+            console.error('Log user action error:', error);
+        }
+    }
+
+    /**
+     * Middleware to check if user is admin
+     */
+    function isAdmin(req, res, next) {
+        return hasRole('Admin')(req, res, next);
+    }
+
+    /**
+     * Middleware to check if user is employee (any employee role)
+     */
+    function isEmployee(req, res, next) {
+        return hasAnyRole(['Admin', 'TransactionManager', 'InventoryManager', 'UserManager', 'OrderSupport', 'Employee'])(req, res, next);
+    }
+
+    /**
+     * Middleware to check if user is customer
+     */
+    function isCustomer(req, res, next) {
+        return hasRole('Customer')(req, res, next);
     }
 
     // Multer storage config with feature-based folders
@@ -1478,9 +1928,12 @@ module.exports = function(sql, pool) {
         res.render('Employee/Admin/AdminAlerts', { user: req.session.user });
     });
 
-    // Admin Manage Users route
-    router.get('/Employee/Admin/ManageUsers', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    // Admin Manage Users route - Admin and UserManager access
+    router.get('/Employee/Admin/ManageUsers', isAuthenticated, hasAnyRole(['Admin', 'UserManager']), async (req, res) => {
         try {
+            const userRole = req.session.user.role || req.session.user.roleName || req.session.user.RoleName;
+            console.log(`ManageUsers access - User role: ${userRole}`);
+            
             await pool.connect();
             const result = await pool.request().query(`
                 SELECT u.UserID, u.Username, u.FullName, u.Email, u.RoleID, r.RoleName, u.IsActive, u.CreatedAt
@@ -1489,11 +1942,21 @@ module.exports = function(sql, pool) {
                 ORDER BY u.CreatedAt DESC
             `);
             const users = result.recordset;
-            res.render('Employee/Admin/AdminManageUsers', { user: req.session.user, users: users });
+            
+            // Pass user role for conditional rendering
+            res.render('Employee/Admin/AdminManageUsers', { 
+                user: req.session.user, 
+                users: users,
+                userRole: userRole
+            });
         } catch (err) {
             console.error('Error fetching users:', err);
             req.flash('error', 'Could not fetch user data.');
-            res.render('Employee/Admin/AdminManageUsers', { user: req.session.user, users: [] });
+            res.render('Employee/Admin/AdminManageUsers', { 
+                user: req.session.user, 
+                users: [],
+                userRole: req.session.user.role || req.session.user.roleName || req.session.user.RoleName
+            });
         }
     });
 
@@ -8170,6 +8633,997 @@ router.get('/api/hero-banner', async (req, res) => {
             res.status(500).json({ error: 'Failed to fetch terms and conditions' });
         }
     });
+
+    // =============================================================================
+    // AUTHENTICATION ROUTES (moved from routes/auth.js)
+    // =============================================================================
+
+    /**
+     * Employee/Admin Login
+     * POST /auth/login
+     */
+    router.post('/auth/login', async (req, res) => {
+        try {
+            const { email, password, rememberMe } = req.body;
+            
+            console.log('=== LOGIN ATTEMPT ===');
+            console.log('Email:', email);
+            console.log('Password provided:', password ? 'Yes' : 'No');
+            
+            if (!email || !password) {
+                console.log('Missing email or password');
+                req.flash('error', 'Email and password are required.');
+                return res.redirect('/login');
+            }
+
+            console.log('Connecting to database...');
+            await pool.connect();
+            console.log('Database connected successfully');
+            
+            // Use stored procedure to get user with role information
+            const result = await pool.request()
+                .input('email', sql.NVarChar, email)
+                .execute('GetUserForAuth');
+
+            const user = result.recordset[0];
+            const permissions = []; // Will be implemented later when permission system is enhanced
+
+            console.log('Login attempt for email:', email);
+            console.log('User found:', user ? 'Yes' : 'No');
+            if (user) {
+                console.log('User details:', {
+                    UserID: user.UserID,
+                    Username: user.Username,
+                    Email: user.Email,
+                    IsActive: user.IsActive,
+                    PasswordHash: user.PasswordHash ? user.PasswordHash.substring(0, 10) + '...' : 'NULL'
+                });
+            }
+
+            if (!user) {
+                req.flash('error', 'Invalid email or password.');
+                return res.redirect('/login');
+            }
+
+            // Check if account is active
+            if (!user.IsActive) {
+                req.flash('error', 'Your account has been deactivated. Please contact an administrator.');
+                return res.redirect('/login');
+            }
+
+            // Verify password - temporarily handle both plain text and bcrypt
+            console.log('Verifying password...');
+            console.log('Stored password hash:', user.PasswordHash);
+            console.log('Is BCrypt hash:', user.PasswordHash.startsWith('$2b$'));
+            
+            let passwordMatch = false;
+            
+            if (user.PasswordHash.startsWith('$2b$')) {
+                // BCrypt hash
+                console.log('Using BCrypt comparison');
+                passwordMatch = await bcrypt.compare(password, user.PasswordHash);
+            } else {
+                // Plain text comparison (temporary for testing)
+                console.log('Using plain text comparison');
+                passwordMatch = password === user.PasswordHash;
+            }
+            
+            console.log('Password match result:', passwordMatch);
+            
+            if (!passwordMatch) {
+                console.log('Password verification failed');
+                req.flash('error', 'Invalid email or password.');
+                return res.redirect('/login');
+            }
+            
+            console.log('Password verification successful!');
+
+            // Update last login timestamp
+            await pool.request()
+                .input('userId', sql.Int, user.UserID)
+                .query('UPDATE Users SET LastLogin = GETDATE() WHERE UserID = @userId');
+
+            // Create user session data
+            const userData = {
+                id: user.UserID,
+                username: user.Username,
+                fullName: user.FullName,
+                email: user.Email,
+                role: user.RoleName,
+                type: 'employee',
+                profileImage: user.ProfileImage,
+                phoneNumber: user.PhoneNumber,
+                department: user.Department
+            };
+
+            // Store user in session
+            console.log('Storing user in session...');
+            req.session.user = userData;
+            console.log('Session user set:', req.session.user);
+
+            console.log('Setting success flash message...');
+            req.flash('success', `Welcome back, ${user.FullName}!`);
+
+            console.log('Determining redirect based on role:', user.RoleName);
+            // Redirect based on role
+            switch (user.RoleName) {
+                case 'Admin':
+                    res.redirect('/Employee/AdminIndex');
+                    break;
+                case 'TransactionManager':
+                    res.redirect('/Employee/TransactionManager');
+                    break;
+                case 'InventoryManager':
+                    res.redirect('/Employee/InventoryManager');
+                    break;
+                case 'UserManager':
+                    res.redirect('/Employee/UserManager');
+                    break;
+                case 'OrderSupport':
+                    res.redirect('/Employee/OrderSupport');
+                    break;
+                default:
+                    res.redirect('/Employee/Dashboard');
+            }
+
+        } catch (err) {
+            console.error('=== LOGIN ERROR ===');
+            console.error('Error type:', err.name);
+            console.error('Error message:', err.message);
+            console.error('Full error:', err);
+            console.error('===================');
+            
+            req.flash('error', 'An error occurred during login. Please try again.');
+            res.redirect('/login');
+        }
+    });
+
+    /**
+     * Customer Login (API endpoint)
+     * POST /api/auth/customer/login
+     */
+    router.post('/api/auth/customer/login', async (req, res) => {
+        try {
+            const { email, password, rememberMe } = req.body;
+            
+            console.log('=== CUSTOMER LOGIN ATTEMPT ===');
+            console.log('Email:', email);
+            console.log('Password provided:', password ? 'Yes' : 'No');
+            
+            if (!email || !password) {
+                console.log('Missing email or password');
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Email and password are required.',
+                    code: 'MISSING_CREDENTIALS'
+                });
+            }
+
+            console.log('Connecting to database...');
+            await pool.connect();
+            console.log('Database connected successfully');
+            
+            // Check if customer exists and is active
+            const customerCheckResult = await pool.request()
+                .input('email', sql.NVarChar, email)
+                .query(`
+                    SELECT CustomerID, Email, IsActive 
+                    FROM Customers 
+                    WHERE Email = @email
+                `);
+
+            const customerCheck = customerCheckResult.recordset[0];
+
+            if (!customerCheck) {
+                return res.status(401).json({ 
+                    success: false, 
+                    message: 'Invalid email or password.',
+                    code: 'INVALID_CREDENTIALS'
+                });
+            }
+
+            // Check if customer account is inactive
+            if (!customerCheck.IsActive) {
+                return res.status(403).json({ 
+                    success: false, 
+                    message: 'Your account has been deactivated. Please contact customer support.',
+                    code: 'ACCOUNT_INACTIVE'
+                });
+            }
+
+            // Get full customer data
+            const result = await pool.request()
+                .input('email', sql.NVarChar, email)
+                .query(`
+                    SELECT CustomerID, FullName, Email, PhoneNumber, PasswordHash, IsActive, CreatedAt
+                    FROM Customers 
+                    WHERE Email = @email AND IsActive = 1
+                `);
+
+            const customer = result.recordset[0];
+
+            if (!customer) {
+                return res.status(401).json({ 
+                    success: false, 
+                    message: 'Invalid email or password.',
+                    code: 'INVALID_CREDENTIALS'
+                });
+            }
+
+            // Verify password using bcrypt
+            console.log('Verifying password...');
+            const passwordMatch = await bcrypt.compare(password, customer.PasswordHash);
+            console.log('Password match result:', passwordMatch);
+            if (!passwordMatch) {
+                console.log('Password verification failed');
+                return res.status(401).json({ 
+                    success: false, 
+                    message: 'Invalid email or password.',
+                    code: 'INVALID_CREDENTIALS'
+                });
+            }
+            
+            console.log('Password verification successful!');
+
+            // Update last login timestamp
+            await pool.request()
+                .input('customerId', sql.Int, customer.CustomerID)
+                .query('UPDATE Customers SET LastLogin = GETDATE() WHERE CustomerID = @customerId');
+
+            // Create customer session data
+            const customerData = {
+                id: customer.CustomerID,
+                fullName: customer.FullName,
+                email: customer.Email,
+                phoneNumber: customer.PhoneNumber,
+                role: 'Customer',
+                type: 'customer',
+                profileImage: customer.ProfileImage
+            };
+
+            // Store in session
+            req.session.user = customerData;
+            req.session.customerData = customerData;
+
+            // Create API token
+            let token = null;
+            try {
+                token = await createToken(pool, sql, customer.CustomerID, 'Customer', customer.CustomerID, req);
+            } catch (tokenError) {
+                console.error('Customer token creation error:', tokenError);
+                // Continue without token - session auth will work
+            }
+
+            // Return success response for frontend
+            res.json({
+                success: true,
+                message: 'Login successful',
+                user: customerData,
+                token: token,
+                sessionId: req.sessionID
+            });
+
+        } catch (err) {
+            console.error('=== CUSTOMER LOGIN ERROR ===');
+            console.error('Error type:', err.name);
+            console.error('Error message:', err.message);
+            console.error('Error stack:', err.stack);
+            console.error('=============================');
+            res.status(500).json({ 
+                success: false, 
+                message: 'An error occurred during login. Please try again.',
+                code: 'SERVER_ERROR'
+            });
+        }
+    });
+
+    /**
+     * Customer Registration (API endpoint)
+     * POST /api/auth/customer/register
+     */
+    router.post('/api/auth/customer/register', async (req, res) => {
+        try {
+            const { fullName, email, phoneNumber, password, confirmPassword } = req.body;
+            
+            // Validation
+            if (!fullName || !email || !password) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Full name, email, and password are required.',
+                    code: 'MISSING_REQUIRED_FIELDS'
+                });
+            }
+
+            if (password !== confirmPassword) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Passwords do not match.',
+                    code: 'PASSWORD_MISMATCH'
+                });
+            }
+
+            if (password.length < 6) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Password must be at least 6 characters long.',
+                    code: 'PASSWORD_TOO_SHORT'
+                });
+            }
+
+            // Email validation
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Please enter a valid email address.',
+                    code: 'INVALID_EMAIL'
+                });
+            }
+
+            await pool.connect();
+
+            // Check for duplicate email
+            const existing = await pool.request()
+                .input('email', sql.NVarChar, email)
+                .query('SELECT CustomerID FROM Customers WHERE Email = @email');
+
+            if (existing.recordset.length > 0) {
+                return res.status(409).json({ 
+                    success: false, 
+                    message: 'An account with this email already exists.',
+                    code: 'EMAIL_ALREADY_EXISTS'
+                });
+            }
+
+            // Hash password
+            const saltRounds = 12;
+            const hash = await bcrypt.hash(password, saltRounds);
+
+            // Insert new customer
+            const insertResult = await pool.request()
+                .input('fullName', sql.NVarChar, fullName.trim())
+                .input('email', sql.NVarChar, email.toLowerCase().trim())
+                .input('phoneNumber', sql.NVarChar, phoneNumber || null)
+                .input('passwordHash', sql.NVarChar, hash)
+                .query(`
+                    INSERT INTO Customers (FullName, Email, PhoneNumber, PasswordHash) 
+                    OUTPUT INSERTED.CustomerID
+                    VALUES (@fullName, @email, @phoneNumber, @passwordHash)
+                `);
+
+            const newCustomerId = insertResult.recordset[0].CustomerID;
+
+            // Create customer session data
+            const customerData = {
+                id: newCustomerId,
+                fullName: fullName.trim(),
+                email: email.toLowerCase().trim(),
+                phoneNumber: phoneNumber,
+                role: 'Customer',
+                type: 'customer',
+                isEmailVerified: false
+            };
+
+            // Store in session
+            req.session.user = customerData;
+            req.session.customerData = customerData;
+
+            // Create API token
+            let token = null;
+            try {
+                token = await createToken(pool, sql, newCustomerId, 'Customer', newCustomerId, req);
+            } catch (tokenError) {
+                console.error('Customer token creation error:', tokenError);
+                // Continue without token - session auth will work
+            }
+
+            res.status(201).json({ 
+                success: true, 
+                message: 'Registration successful! Welcome to DesignXcel!',
+                user: customerData,
+                token: token
+            });
+
+        } catch (err) {
+            console.error('Customer registration error:', err);
+            res.status(500).json({ 
+                success: false, 
+                message: 'An error occurred during registration. Please try again.',
+                code: 'SERVER_ERROR'
+            });
+        }
+    });
+
+    /**
+     * Check Authentication Status
+     * GET /api/auth/status
+     */
+    router.get('/api/auth/status', async (req, res) => {
+        try {
+            if (!req.session || !req.session.user) {
+                return res.json({
+                    success: false,
+                    authenticated: false,
+                    message: 'Not authenticated'
+                });
+            }
+
+            const user = req.session.user;
+
+            // Get fresh permissions for employees
+            let permissions = {};
+            if (user.type === 'employee') {
+                try {
+                    permissions = await getUserPermissions(pool, sql, user.id);
+                } catch (permError) {
+                    console.error('Error fetching permissions:', permError);
+                }
+            }
+
+            res.json({
+                success: true,
+                authenticated: true,
+                user: {
+                    id: user.id,
+                    fullName: user.fullName,
+                    email: user.email,
+                    role: user.role,
+                    type: user.type,
+                    profileImage: user.profileImage,
+                    phoneNumber: user.phoneNumber,
+                    department: user.department,
+                    isEmailVerified: user.isEmailVerified
+                },
+                permissions: permissions,
+                sessionId: req.sessionID
+            });
+
+        } catch (err) {
+            console.error('Auth status error:', err);
+            res.status(500).json({
+                success: false,
+                authenticated: false,
+                message: 'Error checking authentication status'
+            });
+        }
+    });
+
+    /**
+     * Logout
+     * POST /auth/logout
+     */
+    router.post('/auth/logout', async (req, res) => {
+        try {
+            const user = req.session?.user;
+
+            // Revoke API token if it exists
+            if (req.session?.apiToken) {
+                try {
+                    await revokeToken(pool, sql, req.session.apiToken);
+                } catch (tokenError) {
+                    console.error('Token revocation error:', tokenError);
+                }
+            }
+
+            // Destroy session
+            req.session.destroy((err) => {
+                if (err) {
+                    console.error('Session destruction error:', err);
+                }
+                
+                // Clear session cookie
+                res.clearCookie('connect.sid');
+                
+                // Check if this is an API request
+                const isAjaxRequest = req.xhr || 
+                                    (req.headers.accept && req.headers.accept.indexOf('json') > -1) ||
+                                    req.path.startsWith('/api/');
+                
+                if (isAjaxRequest) {
+                    return res.json({
+                        success: true,
+                        message: 'Logged out successfully'
+                    });
+                }
+                
+                req.flash('success', 'You have been logged out successfully.');
+                res.redirect('/login');
+            });
+
+        } catch (err) {
+            console.error('Logout error:', err);
+            
+            // Force session destruction even if there's an error
+            req.session.destroy(() => {
+                res.clearCookie('connect.sid');
+                
+                const isAjaxRequest = req.xhr || 
+                                    (req.headers.accept && req.headers.accept.indexOf('json') > -1) ||
+                                    req.path.startsWith('/api/');
+                
+                if (isAjaxRequest) {
+                    return res.status(500).json({
+                        success: false,
+                        message: 'Error during logout, but session cleared'
+                    });
+                }
+                
+                res.redirect('/login');
+            });
+        }
+    });
+
+    /**
+     * Change Password
+     * POST /api/auth/change-password
+     */
+    router.post('/api/auth/change-password', isAuthenticated, async (req, res) => {
+        try {
+            const { currentPassword, newPassword, confirmPassword } = req.body;
+            const user = req.session.user;
+
+            if (!currentPassword || !newPassword || !confirmPassword) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'All password fields are required.'
+                });
+            }
+
+            if (newPassword !== confirmPassword) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'New passwords do not match.'
+                });
+            }
+
+            if (newPassword.length < 6) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'New password must be at least 6 characters long.'
+                });
+            }
+
+            await pool.connect();
+
+            // Get current password hash
+            let currentHashResult;
+            if (user.type === 'employee') {
+                currentHashResult = await pool.request()
+                    .input('userId', sql.Int, user.id)
+                    .query('SELECT PasswordHash FROM Users WHERE UserID = @userId');
+            } else {
+                currentHashResult = await pool.request()
+                    .input('customerId', sql.Int, user.id)
+                    .query('SELECT PasswordHash FROM Customers WHERE CustomerID = @customerId');
+            }
+
+            const currentHash = currentHashResult.recordset[0]?.PasswordHash;
+            if (!currentHash) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'User not found.'
+                });
+            }
+
+            // Verify current password
+            const passwordMatch = await bcrypt.compare(currentPassword, currentHash);
+            if (!passwordMatch) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Current password is incorrect.'
+                });
+            }
+
+            // Hash new password
+            const saltRounds = 12;
+            const newHash = await bcrypt.hash(newPassword, saltRounds);
+
+            // Update password in database
+            if (user.type === 'employee') {
+                await pool.request()
+                    .input('userId', sql.Int, user.id)
+                    .input('passwordHash', sql.NVarChar, newHash)
+                    .query('UPDATE Users SET PasswordHash = @passwordHash, UpdatedAt = GETDATE() WHERE UserID = @userId');
+            } else {
+                await pool.request()
+                    .input('customerId', sql.Int, user.id)
+                    .input('passwordHash', sql.NVarChar, newHash)
+                    .query('UPDATE Customers SET PasswordHash = @passwordHash, UpdatedAt = GETDATE() WHERE CustomerID = @customerId');
+            }
+
+            res.json({
+                success: true,
+                message: 'Password changed successfully.'
+            });
+
+        } catch (err) {
+            console.error('Change password error:', err);
+            res.status(500).json({
+                success: false,
+                message: 'Error changing password.'
+            });
+        }
+    });
+
+    // =============================================================================
+    // USER MANAGEMENT ROUTES (moved from routes/userManagement.js)
+    // =============================================================================
+
+    /**
+     * Get all employees
+     * GET /api/users/employees
+     */
+    router.get('/api/users/employees', 
+        isAuthenticated, 
+        hasAnyRole(['Admin', 'UserManager']), 
+        async (req, res) => {
+            try {
+                await pool.connect();
+                
+                const result = await pool.request().query(`
+                    SELECT 
+                        U.UserID, 
+                        U.Username, 
+                        U.FullName, 
+                        U.Email, 
+                        U.PhoneNumber,
+                        U.Department,
+                        U.ProfileImage,
+                        R.RoleName, 
+                        R.Description as RoleDescription,
+                        U.IsActive, 
+                        U.CreatedAt, 
+                        U.UpdatedAt,
+                        U.LastLogin,
+                        CreatedByUser.FullName as CreatedByName
+                    FROM Users U
+                    INNER JOIN Roles R ON U.RoleID = R.RoleID
+                    LEFT JOIN Users CreatedByUser ON U.CreatedBy = CreatedByUser.UserID
+                    ORDER BY U.CreatedAt DESC
+                `);
+
+                res.json({ 
+                    success: true, 
+                    employees: result.recordset,
+                    total: result.recordset.length
+                });
+
+            } catch (err) {
+                console.error('Error fetching employees:', err);
+                res.status(500).json({ 
+                    success: false, 
+                    message: 'Failed to fetch employees.' 
+                });
+            }
+        }
+    );
+
+    /**
+     * Create new employee
+     * POST /api/users/employees
+     */
+    router.post('/api/users/employees', 
+        isAuthenticated, 
+        hasAnyRole(['Admin', 'UserManager']), 
+        async (req, res) => {
+            try {
+                const { 
+                    username, 
+                    fullName, 
+                    email, 
+                    password, 
+                    roleId, 
+                    phoneNumber, 
+                    department 
+                } = req.body;
+
+                // Validation
+                if (!username || !fullName || !email || !password || !roleId) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Username, full name, email, password, and role are required.'
+                    });
+                }
+
+                if (password.length < 6) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Password must be at least 6 characters long.'
+                    });
+                }
+
+                await pool.connect();
+
+                // Check for duplicate username
+                const usernameCheck = await pool.request()
+                    .input('username', sql.NVarChar, username.trim())
+                    .query('SELECT UserID FROM Users WHERE Username = @username');
+
+                if (usernameCheck.recordset.length > 0) {
+                    return res.status(409).json({
+                        success: false,
+                        message: 'Username already exists.'
+                    });
+                }
+
+                // Check for duplicate email
+                const emailCheck = await pool.request()
+                    .input('email', sql.NVarChar, email.toLowerCase().trim())
+                    .query('SELECT UserID FROM Users WHERE Email = @email');
+
+                if (emailCheck.recordset.length > 0) {
+                    return res.status(409).json({
+                        success: false,
+                        message: 'Email already exists.'
+                    });
+                }
+
+                // Verify role exists
+                const roleCheck = await pool.request()
+                    .input('roleId', sql.Int, roleId)
+                    .query('SELECT RoleName FROM Roles WHERE RoleID = @roleId AND IsActive = 1');
+
+                if (roleCheck.recordset.length === 0) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Invalid role selected.'
+                    });
+                }
+
+                // Hash password
+                const saltRounds = 12;
+                const passwordHash = await bcrypt.hash(password, saltRounds);
+
+                // Insert new user
+                const insertResult = await pool.request()
+                    .input('username', sql.NVarChar, username.trim())
+                    .input('fullName', sql.NVarChar, fullName.trim())
+                    .input('email', sql.NVarChar, email.toLowerCase().trim())
+                    .input('passwordHash', sql.NVarChar, passwordHash)
+                    .input('roleId', sql.Int, roleId)
+                    .input('phoneNumber', sql.NVarChar, phoneNumber || null)
+                    .input('department', sql.NVarChar, department || null)
+                    .input('createdBy', sql.Int, req.session.user.id)
+                    .query(`
+                        INSERT INTO Users (Username, FullName, Email, PasswordHash, RoleID, PhoneNumber, Department, CreatedBy)
+                        OUTPUT INSERTED.UserID
+                        VALUES (@username, @fullName, @email, @passwordHash, @roleId, @phoneNumber, @department, @createdBy)
+                    `);
+
+                const newUserId = insertResult.recordset[0].UserID;
+
+                res.status(201).json({
+                    success: true,
+                    message: 'Employee created successfully.',
+                    employee: {
+                        UserID: newUserId,
+                        Username: username,
+                        FullName: fullName,
+                        Email: email,
+                        RoleName: roleCheck.recordset[0].RoleName
+                    }
+                });
+
+            } catch (err) {
+                console.error('Error creating employee:', err);
+                res.status(500).json({
+                    success: false,
+                    message: 'Failed to create employee.'
+                });
+            }
+        }
+    );
+
+    /**
+     * Update employee
+     * PUT /api/users/employees/:id
+     */
+    router.put('/api/users/employees/:id', 
+        isAuthenticated, 
+        hasAnyRole(['Admin', 'UserManager']), 
+        async (req, res) => {
+            try {
+                const userId = parseInt(req.params.id);
+                const { 
+                    username, 
+                    fullName, 
+                    email, 
+                    roleId, 
+                    phoneNumber, 
+                    department, 
+                    isActive 
+                } = req.body;
+
+                if (!userId || isNaN(userId)) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Invalid user ID.'
+                    });
+                }
+
+                if (!username || !fullName || !email || !roleId) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Username, full name, email, and role are required.'
+                    });
+                }
+
+                await pool.connect();
+
+                // Check if user exists
+                const userCheck = await pool.request()
+                    .input('userId', sql.Int, userId)
+                    .query('SELECT UserID FROM Users WHERE UserID = @userId');
+
+                if (userCheck.recordset.length === 0) {
+                    return res.status(404).json({
+                        success: false,
+                        message: 'User not found.'
+                    });
+                }
+
+                // Check for duplicate username (excluding current user)
+                const usernameCheck = await pool.request()
+                    .input('username', sql.NVarChar, username.trim())
+                    .input('userId', sql.Int, userId)
+                    .query('SELECT UserID FROM Users WHERE Username = @username AND UserID != @userId');
+
+                if (usernameCheck.recordset.length > 0) {
+                    return res.status(409).json({
+                        success: false,
+                        message: 'Username already exists.'
+                    });
+                }
+
+                // Check for duplicate email (excluding current user)
+                const emailCheck = await pool.request()
+                    .input('email', sql.NVarChar, email.toLowerCase().trim())
+                    .input('userId', sql.Int, userId)
+                    .query('SELECT UserID FROM Users WHERE Email = @email AND UserID != @userId');
+
+                if (emailCheck.recordset.length > 0) {
+                    return res.status(409).json({
+                        success: false,
+                        message: 'Email already exists.'
+                    });
+                }
+
+                // Verify role exists
+                const roleCheck = await pool.request()
+                    .input('roleId', sql.Int, roleId)
+                    .query('SELECT RoleName FROM Roles WHERE RoleID = @roleId AND IsActive = 1');
+
+                if (roleCheck.recordset.length === 0) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Invalid role selected.'
+                    });
+                }
+
+                // Update user
+                await pool.request()
+                    .input('userId', sql.Int, userId)
+                    .input('username', sql.NVarChar, username.trim())
+                    .input('fullName', sql.NVarChar, fullName.trim())
+                    .input('email', sql.NVarChar, email.toLowerCase().trim())
+                    .input('roleId', sql.Int, roleId)
+                    .input('phoneNumber', sql.NVarChar, phoneNumber || null)
+                    .input('department', sql.NVarChar, department || null)
+                    .input('isActive', sql.Bit, isActive !== undefined ? isActive : 1)
+                    .query(`
+                        UPDATE Users 
+                        SET Username = @username, 
+                            FullName = @fullName, 
+                            Email = @email, 
+                            RoleID = @roleId, 
+                            PhoneNumber = @phoneNumber, 
+                            Department = @department, 
+                            IsActive = @isActive,
+                            UpdatedAt = GETDATE()
+                        WHERE UserID = @userId
+                    `);
+
+                res.json({
+                    success: true,
+                    message: 'Employee updated successfully.'
+                });
+
+            } catch (err) {
+                console.error('Error updating employee:', err);
+                res.status(500).json({
+                    success: false,
+                    message: 'Failed to update employee.'
+                });
+            }
+        }
+    );
+
+    /**
+     * Toggle user active status
+     * POST /api/users/employees/:id/toggle-active
+     */
+    router.post('/api/users/employees/:id/toggle-active', 
+        isAuthenticated, 
+        hasAnyRole(['Admin', 'UserManager']), 
+        async (req, res) => {
+            try {
+                const userId = parseInt(req.params.id);
+                const { isActive } = req.body;
+
+                if (!userId || isNaN(userId)) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Invalid user ID.'
+                    });
+                }
+
+                await pool.connect();
+
+                // Check if user exists
+                const userCheck = await pool.request()
+                    .input('userId', sql.Int, userId)
+                    .query('SELECT UserID, FullName FROM Users WHERE UserID = @userId');
+
+                if (userCheck.recordset.length === 0) {
+                    return res.status(404).json({
+                        success: false,
+                        message: 'User not found.'
+                    });
+                }
+
+                // Update active status
+                await pool.request()
+                    .input('userId', sql.Int, userId)
+                    .input('isActive', sql.Bit, isActive)
+                    .query('UPDATE Users SET IsActive = @isActive, UpdatedAt = GETDATE() WHERE UserID = @userId');
+
+                res.json({
+                    success: true,
+                    message: `User ${isActive ? 'activated' : 'deactivated'} successfully.`
+                });
+
+            } catch (err) {
+                console.error('Error toggling user status:', err);
+                res.status(500).json({
+                    success: false,
+                    message: 'Failed to update user status.'
+                });
+            }
+        }
+    );
+
+    /**
+     * Get all roles
+     * GET /api/users/roles
+     */
+    router.get('/api/users/roles', 
+        isAuthenticated, 
+        hasAnyRole(['Admin', 'UserManager']), 
+        async (req, res) => {
+            try {
+                await pool.connect();
+                
+                const result = await pool.request().query(`
+                    SELECT RoleID, RoleName, Description, IsActive, CreatedAt
+                    FROM Roles 
+                    WHERE IsActive = 1
+                    ORDER BY RoleName
+                `);
+
+                res.json({ 
+                    success: true, 
+                    roles: result.recordset
+                });
+
+            } catch (err) {
+                console.error('Error fetching roles:', err);
+                res.status(500).json({ 
+                    success: false, 
+                    message: 'Failed to fetch roles.' 
+                });
+            }
+        }
+    );
 
     return router; 
 } 

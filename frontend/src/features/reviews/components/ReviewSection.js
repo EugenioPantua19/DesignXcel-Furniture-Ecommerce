@@ -3,6 +3,13 @@ import { useAuth } from '../../auth/hooks/useAuth';
 import ReviewForm from './ReviewForm';
 import ReviewList from './ReviewList';
 import ReviewStats from './ReviewStats';
+import { 
+  ReviewIcon, 
+  FilterIcon, 
+  SortIcon, 
+  MessageIcon,
+  StarIcon 
+} from '../../../shared/components/ui/SvgIcons';
 import './review-section.css';
 
 const ReviewSection = ({ productId, productName }) => {
@@ -44,11 +51,19 @@ const ReviewSection = ({ productId, productName }) => {
 
   const loadReviewStats = async () => {
     try {
-      const response = await fetch(`/api/products/${productId}/reviews/stats`);
+      // Add cache-busting parameter to ensure fresh data
+      const timestamp = new Date().getTime();
+      const response = await fetch(`/api/products/${productId}/reviews/stats?_t=${timestamp}`);
       const data = await response.json();
       
+      console.log('Frontend: Loading review stats for product', productId);
+      console.log('Frontend: Stats API response:', data);
+      
       if (data.success) {
+        console.log('Frontend: Setting review stats:', data.stats);
         setReviewStats(data.stats);
+      } else {
+        console.error('Frontend: Stats API error:', data.error);
       }
     } catch (error) {
       console.error('Error loading review stats:', error);
@@ -57,15 +72,29 @@ const ReviewSection = ({ productId, productName }) => {
 
   const handleReviewSubmit = async (reviewData) => {
     try {
+      // Check if reviewData is FormData (for file uploads) or regular object
+      let requestBody;
+      let headers = {};
+      
+      if (reviewData instanceof FormData) {
+        // Add customerId to FormData
+        const customerId = user?.id || user?.customerId || 1; // Default to 1 if no user
+        reviewData.append('customerId', customerId);
+        requestBody = reviewData;
+        // Don't set Content-Type header for FormData - browser will set it with boundary
+      } else {
+        // Handle regular JSON data
+        headers['Content-Type'] = 'application/json';
+        requestBody = JSON.stringify({
+          ...reviewData,
+          customerId: user?.id || user?.customerId || 1
+        });
+      }
+
       const response = await fetch(`/api/products/${productId}/reviews`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...reviewData,
-          customerId: user?.id || 'guest'
-        }),
+        headers: headers,
+        body: requestBody,
       });
 
       const data = await response.json();
@@ -100,27 +129,45 @@ const ReviewSection = ({ productId, productName }) => {
         productName={productName}
       />
 
-      {/* Review List Header */}
-      <div className="review-list-header">
-        <h3>Review List</h3>
-        <div className="review-controls">
-          <span className="review-count">
-            Showing {((currentPage - 1) * reviewsPerPage) + 1}-{Math.min(currentPage * reviewsPerPage, reviewStats.totalReviews)} of {reviewStats.totalReviews} results
-          </span>
-          <div className="sort-controls">
-            <label>Sort by:</label>
-            <select 
-              value={sortBy} 
-              onChange={(e) => handleSortChange(e.target.value)}
-              className="sort-select"
-            >
-              <option value="newest">Newest</option>
-              <option value="oldest">Oldest</option>
-              <option value="highest">Highest Rating</option>
-              <option value="lowest">Lowest Rating</option>
-            </select>
+      {/* Reviews Header */}
+      <div className="reviews-header">
+        <div className="header-title">
+          <MessageIcon size={24} className="header-icon" />
+          <div>
+            <h3>Customer Reviews</h3>
+            <p className="header-subtitle">
+              {reviewStats.totalReviews > 0 
+                ? `${reviewStats.totalReviews} verified reviews from customers who purchased this product`
+                : 'Be the first to share your experience with this product'
+              }
+            </p>
           </div>
         </div>
+        
+        {/* Review Controls */}
+        {reviewStats.totalReviews > 0 && (
+          <div className="review-controls">
+            <div className="results-info">
+              <span className="review-count">
+                Showing {((currentPage - 1) * reviewsPerPage) + 1}-{Math.min(currentPage * reviewsPerPage, reviewStats.totalReviews)} of {reviewStats.totalReviews} reviews
+              </span>
+            </div>
+            <div className="sort-controls">
+              <SortIcon size={16} className="sort-icon" />
+              <label>Sort by:</label>
+              <select 
+                value={sortBy} 
+                onChange={(e) => handleSortChange(e.target.value)}
+                className="sort-select"
+              >
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+                <option value="highest">Highest Rating</option>
+                <option value="lowest">Lowest Rating</option>
+              </select>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Review List */}
@@ -132,17 +179,42 @@ const ReviewSection = ({ productId, productName }) => {
         onPageChange={setCurrentPage}
       />
 
-      {/* Add Review Button */}
-      {user && (
-        <div className="add-review-section">
-          <button 
-            className="add-review-btn"
-            onClick={() => setShowReviewForm(!showReviewForm)}
-          >
-            {showReviewForm ? 'Cancel' : 'Add Your Review'}
-          </button>
-        </div>
-      )}
+      {/* Add Review Section */}
+      <div className="add-review-section">
+        {user ? (
+          <div className="review-action-card">
+            <div className="action-content">
+              <div className="action-header">
+                <StarIcon size={24} className="action-icon" />
+                <div>
+                  <h4>Share Your Experience</h4>
+                  <p>Help other customers by sharing your honest review</p>
+                </div>
+              </div>
+              <button 
+                className={`add-review-btn ${showReviewForm ? 'active' : ''}`}
+                onClick={() => setShowReviewForm(!showReviewForm)}
+              >
+                <ReviewIcon size={18} />
+                {showReviewForm ? 'Cancel Review' : 'Write a Review'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="login-prompt-card">
+            <div className="prompt-content">
+              <MessageIcon size={32} className="prompt-icon" />
+              <div className="prompt-text">
+                <h4>Want to share your experience?</h4>
+                <p>Join our community of verified customers and help others make informed decisions</p>
+                <a href="/login" className="login-link">
+                  Sign in to write a review
+                </a>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Review Form */}
       {showReviewForm && (
@@ -152,13 +224,6 @@ const ReviewSection = ({ productId, productName }) => {
           onSubmit={handleReviewSubmit}
           onCancel={() => setShowReviewForm(false)}
         />
-      )}
-
-      {/* Login Prompt for Non-authenticated Users */}
-      {!user && (
-        <div className="login-prompt">
-          <p>Please <a href="/login">login</a> to leave a review.</p>
-        </div>
       )}
     </div>
   );

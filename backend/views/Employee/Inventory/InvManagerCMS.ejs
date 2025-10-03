@@ -17,6 +17,7 @@
                 <li class="sidebar-section-label" style="font-weight:normal;">Inventory</li>
                 <ul class="sidebar-submenu" style="display:block;">
                     <li><a href="/Employee/Inventory/InvManagerProducts">Products</a></li>
+                    <li><a href="/Employee/Inventory/InvManagerVariations">Variations</a></li>
                     <li><a href="/Employee/Inventory/InvManagerMaterials">Raw Materials</a></li>
                     <li><a href="/Employee/Inventory/InvManagerAlerts">Alerts</a></li>
                     <li><a href="/Employee/Inventory/InvManagerArchived">Archived items</a></li>
@@ -33,6 +34,7 @@
                     <li><a href="/Employee/Inventory/InvManCompletedOrders">Completed Orders</a></li>
                 </ul>
                 <li><a href="/Employee/Inventory/InvManagerManUsers">Manage Users</a></li>
+                <li><a href="/Employee/Inventory/InvManagerReviews">Reviews</a></li>
                 <li><a href="/Employee/Inventory/InvManChatSupport">Chat Support</a></li>
                 <li><a href="/Employee/Inventory/InvManagerCMS">Content Management</a></li>
                 <li><a href="/Employee/Inventory/InvManagerLogs">Activity Logs</a></li>
@@ -516,8 +518,6 @@
                                         <input type="file" id="inv-gallery-main-image" name="mainImage" accept="image/*" style="width: 100%; padding: 0.5em; margin-top: 0.5em;" required>
                                         <small style="color: #666; display: block; margin-top: 0.5em;">This is the image that appears in the gallery grid before clicking. Recommended size: 800x600 or larger.</small>
                                     </div>
-                                    <!-- Current Image Display (for edit mode) -->
-                                    <div id="current-main-image" style="margin-top: 15px;"></div>
                                 </div>
                                 
                                 <!-- Gallery Item Details -->
@@ -1306,6 +1306,7 @@
                         const showRating = document.getElementById('inv-testimonials-show-rating').checked;
                         const showImage = document.getElementById('inv-testimonials-show-image').checked;
                         const showTitle = document.getElementById('inv-testimonials-show-title').checked;
+                        const textAlign = document.getElementById('inv-testimonials-text-align').value || 'left';
                         
                         const previewContainer = document.getElementById('inv-testimonials-preview');
                         const previewContent = document.getElementById('inv-testimonials-preview-content');
@@ -1590,7 +1591,7 @@
                             const designInputs = [
                                 'inv-testimonials-theme', 'inv-testimonials-layout', 'inv-testimonials-per-row', 'inv-testimonials-animation',
                                 'inv-testimonials-bg-color', 'inv-testimonials-text-color', 'inv-testimonials-accent-color', 'inv-testimonials-border-radius',
-                                'inv-testimonials-show-rating', 'inv-testimonials-show-image', 'inv-testimonials-show-title'
+                                'inv-testimonials-show-rating', 'inv-testimonials-show-image', 'inv-testimonials-show-title', 'inv-testimonials-text-align'
                             ];
                             designInputs.forEach(inputId => {
                                 const input = document.getElementById(inputId);
@@ -1693,47 +1694,10 @@
                     }
                     
                     // Edit gallery item - populate form with existing data
-                    async function editInvGalleryItem(id) {
-                        try {
-                            // Fetch gallery item data
-                            const response = await fetch(`/api/admin/gallery/${id}`);
-                            if (!response.ok) {
-                                throw new Error('Failed to fetch gallery item');
-                            }
-                            const item = await response.json();
-                            
-                            // Populate the form with existing data
-                            document.getElementById('gallery-title').value = item.title || '';
-                            document.getElementById('gallery-category').value = item.category || '';
-                            document.getElementById('gallery-tags').value = item.tags || '';
-                            document.getElementById('gallery-description').value = item.description || '';
-                            
-                            // Set the form to edit mode
-                            const form = document.getElementById('inv-gallery-form');
-                            form.setAttribute('data-edit-id', id);
-                            
-                            // Change submit button text
-                            const submitBtn = form.querySelector('button[type="submit"]');
-                            submitBtn.textContent = 'Update Gallery Item';
-                            
-                            // Scroll to form
-                            form.scrollIntoView({ behavior: 'smooth' });
-                            
-                            // Show current main image if exists
-                            if (item.mainImageUrl) {
-                                const currentImageDiv = document.getElementById('current-main-image');
-                                if (currentImageDiv) {
-                                    currentImageDiv.innerHTML = `
-                                        <p><strong>Current Main Image:</strong></p>
-                                        <img src="${item.mainImageUrl}" alt="Current main image" style="max-width: 200px; max-height: 150px; border: 1px solid #ddd; border-radius: 4px;">
-                                    `;
-                                }
-                            }
-                            
-                        } catch (error) {
-                            console.error('Error loading gallery item for edit:', error);
-                            alert('Failed to load gallery item for editing. Please try again.');
-                        }
+                    function editInvGalleryItem(id) {
+                        // This function will be implemented to populate the form with existing data
+                        // For now, we'll show an alert
+                        alert('Edit functionality will be implemented. Item ID: ' + id);
                     }
                     
                     // Handle gallery form submit
@@ -1742,17 +1706,11 @@
                         const form = e.target;
                         const formData = new FormData(form);
                         
-                        // Check if this is an edit operation
-                        const editId = form.getAttribute('data-edit-id');
-                        const isEdit = editId !== null;
-                        
-                        // For new items, validate that main image is selected
-                        if (!isEdit) {
-                            const mainImage = formData.get('mainImage');
-                            if (!mainImage || mainImage.size === 0) {
-                                alert('Please select a main image.');
-                                return;
-                            }
+                        // Validate that main image is selected
+                        const mainImage = formData.get('mainImage');
+                        if (!mainImage || mainImage.size === 0) {
+                            alert('Please select a main image.');
+                            return;
                         }
                         
                         // Validate that title and category are provided
@@ -1764,53 +1722,18 @@
                         }
                         
                         try {
-                            if (isEdit) {
-                                // Update existing gallery item
-                                await updateInvGalleryImage(editId, formData);
-                                alert('Gallery item updated successfully!');
-                            } else {
-                                // Add new gallery item
-                                await addInvGalleryImage(formData);
-                                alert('Gallery item added successfully!');
-                            }
-                            
-                            // Reset form and clear edit mode
+                            await addInvGalleryImage(formData);
                             form.reset();
-                            form.removeAttribute('data-edit-id');
-                            
-                            // Reset submit button text
-                            const submitBtn = form.querySelector('button[type="submit"]');
-                            submitBtn.textContent = 'Add Gallery Item';
-                            
                             // Clear thumbnail preview
                             const thumbnailPreview = document.getElementById('inv-thumbnail-preview-container');
                             if (thumbnailPreview) {
                                 thumbnailPreview.innerHTML = '<span id="inv-no-thumbnails-text">No thumbnails selected</span>';
                             }
-                            
-                            // Clear current image display
-                            const currentImageDiv = document.getElementById('current-main-image');
-                            if (currentImageDiv) {
-                                currentImageDiv.innerHTML = '';
-                            }
-                            
                             renderInvGalleryAdmin();
+                            alert('Gallery item added successfully!');
                         } catch (err) {
-                            alert(`Failed to ${isEdit ? 'update' : 'add'} gallery item: ` + err.message);
+                            alert('Failed to add gallery item: ' + err.message);
                         }
-                    }
-                    
-                    // Update gallery image function
-                    async function updateInvGalleryImage(id, formData) {
-                        const response = await fetch(`/api/admin/gallery/${id}`, {
-                            method: 'PUT',
-                            body: formData
-                        });
-                        if (!response.ok) {
-                            const errorData = await response.json().catch(() => ({}));
-                            throw new Error(errorData.error || 'Failed to update gallery item');
-                        }
-                        return response.json();
                     }
                     
                     // Delete gallery handler

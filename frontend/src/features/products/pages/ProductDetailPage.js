@@ -183,8 +183,45 @@ const ProductDetail = () => {
     setIsWishlisted(!isWishlisted);
   };
 
+  // Generate structured data for SEO
+  const structuredData = {
+    "@context": "https://schema.org/",
+    "@type": "Product",
+    "name": product?.name,
+    "description": product?.description,
+    "sku": product?.sku || "FRNC87654ABC",
+    "category": product?.categoryName,
+    "brand": {
+      "@type": "Brand",
+      "name": "DesignXcel"
+    },
+    "offers": {
+      "@type": "Offer",
+      "url": window.location.href,
+      "priceCurrency": "PHP",
+      "price": displayPrice,
+      "availability": isInStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+      "seller": {
+        "@type": "Organization",
+        "name": "DesignXcel"
+      }
+    },
+    "aggregateRating": product?.rating > 0 ? {
+      "@type": "AggregateRating",
+      "ratingValue": product.rating,
+      "reviewCount": product.reviews || 0
+    } : undefined,
+    "image": allImages.map(img => img.startsWith('/') ? `${window.location.origin}${img}` : img)
+  };
+
   return (
     <div className="product-detail-page">
+      {/* Structured Data for SEO */}
+      <script 
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
+      
       <div className="pdp-container">
         <Breadcrumb items={breadcrumbItems} />
         
@@ -542,6 +579,28 @@ const ProductDetail = () => {
           
           {activeTab === 'review' && (
             <div className="review-content">
+              <div className="review-tab-header">
+                <div className="tab-header-content">
+                  <div className="header-info">
+                    <h3>Customer Reviews & Ratings</h3>
+                    <p>Real feedback from verified customers who purchased {product?.name}</p>
+                  </div>
+                  <div className="product-review-summary">
+                    <div className="summary-item">
+                      <span className="summary-label">Product</span>
+                      <span className="summary-value">{product?.name}</span>
+                    </div>
+                    <div className="summary-item">
+                      <span className="summary-label">Category</span>
+                      <span className="summary-value">{product?.categoryName || 'Furniture'}</span>
+                    </div>
+                    <div className="summary-item">
+                      <span className="summary-label">SKU</span>
+                      <span className="summary-value">{product?.sku || 'FRNC87654ABC'}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
               <ReviewSection 
                 productId={id} 
                 productName={product?.name || 'Product'} 

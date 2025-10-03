@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orders Pending - Transaction Manager</title>
+    <link rel="stylesheet" href="/css/Employee/Admin/AdminIndexStyles.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h3>Transaction Manager Panel</h3>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="/Employee/TransactionManager">Dashboard</a></li>
+                <li class="sidebar-section-label" style="font-weight:normal;">Inventory</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/Transaction/TransacProducts">Products</a></li>
+                    <li><a href="/Employee/Transaction/TransacVariations">Variations</a></li>
+                    <li><a href="/Employee/Transaction/TransacMaterials">Raw Materials</a></li>
+                    <li><a href="/Employee/Transaction/TransacAlerts">Alerts</a></li>
+                    <li><a href="/Employee/Transaction/TransacArchived">Archived items</a></li>
+                </ul>
+                <li class="sidebar-section-label" style="font-weight:normal;">Transactions</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/Transaction/TransacRates">Delivery Rates</a></li>
+                    <li><a href="/Employee/Transaction/TransacWalkIn">Walk In</a></li>
+                    <li><a href="/Employee/Transaction/OrdersPending">Orders Pending</a></li>
+                    <li><a href="/Employee/Transaction/OrdersProcessing">Orders Processing</a></li>
+                    <li><a href="/Employee/Transaction/OrdersShipping">Orders Shipping</a></li>
+                    <li><a href="/Employee/Transaction/OrdersDelivery">Orders Delivery</a></li>
+                    <li><a href="/Employee/Transaction/OrdersReceive">Orders Receive</a></li>
+                    <li><a href="/Employee/Transaction/CancelledOrders">Cancelled Orders</a></li>
+                    <li><a href="/Employee/Transaction/CompletedOrders">Completed Orders</a></li>
+                </ul>
+                <li><a href="/Employee/Transaction/TransacManUsers">Manage Users</a></li>
+                <li><a href="/Employee/Transaction/TransacReviews">Reviews</a></li>
+                <li><a href="/Employee/Transaction/TransacChatSupport">Chat Support</a></li>
+                <li><a href="/Employee/Transaction/TransacCMS">Content Management</a></li>
+                <li><a href="/Employee/Transaction/TransacLogs">Activity Logs</a></li>
+            </ul>
+        </div>
+        <div class="main-content">
+            <div class="header">
+                <h2>Orders Pending</h2>
+            </div>
+            <div class="content-area">
+                <% if (orders && orders.length > 0) { %>
+                    <div style="display: flex; flex-wrap: wrap; gap: 24px;">
+                        <% orders.forEach(function(order) { %>
+                            <div style="background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 24px; min-width: 340px; max-width: 420px; flex: 1 1 340px; border-left: 6px solid #f0b21b; margin-bottom: 12px; display: flex; flex-direction: column; height: 520px;">
+                                <div style="flex: 1 1 auto; overflow-y: auto; min-height: 0;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                        <div style="font-weight: 600; font-size: 1.1em;">Order #<%= order.OrderID %></div>
+                                        <span style="background: #f0b21b; color: #fff; border-radius: 12px; padding: 4px 14px; font-size: 0.95em; font-weight: 600;">Pending</span>
+                                    </div>
+                                    <div style="font-size: 0.97em; color: #555; margin-bottom: 8px;">Placed: <%= order.FormattedOrderDate || new Date(order.OrderDate).toLocaleString('en-US') %></div>
+                                    <hr style="border: none; border-top: 1.5px solid #e0e0e0; margin: 10px 0;" />
+                                    <div style="margin-bottom: 10px;">
+                                        <div style="font-weight: bold;">Customer:</div>
+                                        <div><%= order.CustomerName %> (<%= order.CustomerEmail %>)<br>Phone: <%= order.CustomerPhone %></div>
+                                    </div>
+                                    <hr style="border: none; border-top: 1.5px solid #e0e0e0; margin: 10px 0;" />
+                                    <div style="margin-bottom: 10px;">
+                                        <div style="font-weight: bold;">Shipping Address:</div>
+                                        <div><%= order.AddressLabel ? order.AddressLabel + ': ' : '' %><%= [order.HouseNumber, order.Street, order.Barangay, order.City, order.Province, order.Region, order.PostalCode, order.Country].filter(Boolean).join(', ') %></div>
+                                    </div>
+                                    <hr style="border: none; border-top: 1.5px solid #e0e0e0; margin: 10px 0;" />
+                                    <div style="margin-bottom: 10px;">
+                                        <div style="font-weight: bold;">Products:</div>
+                                        <% if (order.items && order.items.length > 0) { %>
+                                            <% order.items.forEach(function(item) { %>
+                                                <div style="display: flex; align-items: center; gap: 12px; background: #f8f9fa; border-radius: 6px; padding: 7px 10px; margin-bottom: 6px;">
+                                                    <% if (item.DisplayImageURL) { %>
+                                                        <img src="<%= item.DisplayImageURL %>" alt="<%= item.DisplayName %>" style="width: 44px; height: 44px; object-fit: cover; border-radius: 6px; background: #eee;" />
+                                                    <% } else { %>
+                                                        <div style="width: 44px; height: 44px; background: #eee; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #aaa; font-size: 20px;">🖼️</div>
+                                                    <% } %>
+                                                    <div style="flex:1;">
+                                                        <div style="font-weight: 600; font-size: 1em;"><%= item.DisplayName %></div>
+                                                        <div style="font-size: 0.93em; color: #888;">Qty: <%= item.Quantity %></div>
+                                                    </div>
+                                                    <div style="font-weight: 600; color: #333;">₱<%= Number(item.PriceAtPurchase).toLocaleString(undefined, { minimumFractionDigits: 2 }) %></div>
+                                                </div>
+                                            <% }); %>
+                                        <% } else { %>
+                                            <div>No products found.</div>
+                                        <% } %>
+                                    </div>
+                                    <hr style="border: none; border-top: 1.5px solid #e0e0e0; margin: 10px 0;" />
+                                    <div style="margin-bottom: 10px;">
+                                        <div style="font-weight: bold;">Payment Method:</div>
+                                        <div><%= order.PaymentMethod %></div>
+                                    </div>
+                                    <hr style="border: none; border-top: 1.5px solid #e0e0e0; margin: 10px 0;" />
+                                    <div style="margin-bottom: 10px;">
+                                        <div style="font-weight: bold;">Delivery Method:</div>
+                                        <div><%= order.DeliveryTypeName || 'Pick up' %></div>
+                                    </div>
+                                    <% if (order.DeliveryType === 'pickup') { %>
+                                    <hr style="border: none; border-top: 1.5px solid #e0e0e0; margin: 10px 0;" />
+                                    <div style="margin-bottom: 10px;">
+                                        <div style="font-weight: bold;">Pick-up Date:</div>
+                                        <div><%= order.PickupDate ? new Date(order.PickupDate).toLocaleDateString('en-US') : '-' %></div>
+                                    </div>
+                                    <% } %>
+                                    <hr style="border: none; border-top: 1.5px solid #e0e0e0; margin: 10px 0;" />
+                                    <div style="margin-bottom: 10px;">
+                                        <div style="font-weight: bold;">Delivery Cost:</div>
+                                        <div>₱<%= Number(order.DeliveryCost || 0).toLocaleString(undefined, { minimumFractionDigits: 2 }) %></div>
+                                    </div>
+                                    <hr style="border: none; border-top: 1.5px solid #e0e0e0; margin: 10px 0;" />
+                                    <div style="margin-bottom: 10px;">
+                                        <div style="font-weight: bold;">Order Total:</div>
+                                        <div style="font-weight: bold; font-size: 1.1em; color: #222;">₱<%= Number(order.TotalAmount).toLocaleString(undefined, { minimumFractionDigits: 2 }) %></div>
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 10px; margin-top: 18px; flex-shrink: 0;">
+                                    <button type="button" class="reactivate-btn" style="background: #27ae60; color: #fff; border: none; border-radius: 4px; padding: 8px 18px; font-weight: 600; cursor: pointer;" onclick="showModal(<%= order.OrderID %>, 'proceed')">Proceed to Next Process</button>
+                                    <button type="button" class="delete-cancel-btn" style="background: #e74c3c; color: #fff; border: none; border-radius: 4px; padding: 8px 18px; font-weight: 600; cursor: pointer;" onclick="showModal(<%= order.OrderID %>, 'cancel')">Cancel Order</button>
+                                </div>
+                            </div>
+                            <div id="modal-<%= order.OrderID %>-proceed" class="order-modal-overlay">
+                                <div class="order-modal-content">
+                                    <h4>Proceed to Next Process?</h4>
+                                    <p>Are you sure you want to move this order to <b>Processing</b>?<br>This action cannot be undone.</p>
+                                    <div class="modal-btns">
+                                        <button class="btn btn-secondary" onclick="closeModal(<%= order.OrderID %>, 'proceed')">No, go back</button>
+                                        <button class="btn btn-primary confirm-btn" onclick="handleAction(<%= order.OrderID %>, 'proceed')">Proceed</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="modal-<%= order.OrderID %>-cancel" class="order-modal-overlay">
+                                <div class="order-modal-content">
+                                    <h4>Cancel Order?</h4>
+                                    <p>Are you sure you want to cancel this order?<br>This action cannot be undone.</p>
+                                    <div class="modal-btns">
+                                        <button class="btn btn-secondary" onclick="closeModal(<%= order.OrderID %>, 'cancel')">No, go back</button>
+                                        <button class="btn btn-primary confirm-btn" style="background:#e74c3c;" onclick="handleAction(<%= order.OrderID %>, 'cancel')">Cancel</button>
+                                    </div>
+                                </div>
+                            </div>
+                        <% }); %>
+                    </div>
+                <% } else { %>
+                    <div style="text-align:center; color:#888; font-size:1.1em;">No pending orders found.</div>
+                <% } %>
+            </div>
+        </div>
+    </div>
+    <div id="order-success-popup" style="display:none; position:fixed; top:32px; left:50%; transform:translateX(-50%); background:#27ae60; color:#fff; padding:18px 32px; border-radius:8px; font-size:1.1em; font-weight:600; z-index:10000; box-shadow:0 4px 18px rgba(0,0,0,0.13); transition:opacity 0.3s;">
+        <span id="order-success-message"></span>
+    </div>
+    <script>
+function showModal(orderId, action) {
+    const modal = document.getElementById('modal-' + orderId + '-' + action);
+    if (!modal) return;
+    modal.style.display = 'flex';
+    let countdown = 5;
+    const btn = modal.querySelector('.confirm-btn');
+    btn.disabled = true;
+    btn.textContent = action === 'proceed' ? `Proceed (${countdown})` : `Cancel (${countdown})`;
+    const interval = setInterval(() => {
+        countdown--;
+        btn.textContent = action === 'proceed' ? `Proceed (${countdown})` : `Cancel (${countdown})`;
+        if (countdown <= 0) {
+            clearInterval(interval);
+            btn.disabled = false;
+            btn.textContent = action === 'proceed' ? 'Proceed' : 'Cancel';
+        }
+    }, 1000);
+}
+function closeModal(orderId, action) {
+    const modal = document.getElementById('modal-' + orderId + '-' + action);
+    if (modal) modal.style.display = 'none';
+}
+function showOrderSuccess(message) {
+    var popup = document.getElementById('order-success-popup');
+    var msg = document.getElementById('order-success-message');
+    msg.textContent = message;
+    popup.style.display = 'block';
+    popup.style.opacity = '1';
+    setTimeout(function() {
+        popup.style.opacity = '0';
+        setTimeout(function() { popup.style.display = 'none'; }, 300);
+    }, 2000);
+}
+function handleAction(orderId, action) {
+    const url = action === 'proceed'
+        ? `/Employee/Transaction/OrdersPending/Proceed/${orderId}`
+        : `/Employee/Transaction/OrdersPending/Cancel/${orderId}`;
+    fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                showOrderSuccess(action === 'proceed' ? 'Order proceeded to Processing!' : 'Order cancelled successfully!');
+                setTimeout(() => location.reload(), 2000);
+            } else {
+                alert(data.message || 'Action failed.');
+            }
+        })
+        .catch(() => alert('Action failed.'));
+}
+</script>
+    <style>
+.order-modal-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.25); z-index: 9999;
+    display: none; align-items: center; justify-content: center;
+}
+.order-modal-content {
+    background: #fff; border-radius: 10px; padding: 2rem 2.5rem; min-width: 320px; box-shadow: 0 8px 32px rgba(0,0,0,0.18); text-align: center;
+}
+.order-modal-content h4 { margin-bottom: 18px; }
+.order-modal-content p { margin-bottom: 24px; color: #444; }
+.order-modal-content .modal-btns { display: flex; gap: 16px; justify-content: center; }
+.order-modal-content .modal-btns button { min-width: 90px; }
+
+/* New styles for order cards */
+.order-card {
+    max-height: 200px; /* Initial smaller height */
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+    position: relative; /* For proper positioning of elements within */
+}
+
+.order-card.expanded {
+    max-height: 1000px; /* Greatly expanded height, adjust as needed */
+    overflow-y: auto;
+}
+
+.order-card .order-details-summary {
+    /* Optional: styles to specifically show only a summary part when collapsed */
+}
+
+.order-actions-bar {
+    display: flex;
+    gap: 10px;
+    margin-top: 18px;
+    flex-shrink: 0;
+}
+
+.view-details-btn {
+    background: #555;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 18px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 10px;
+    width: 100%;
+}
+</style>
+</body>
+</html> 

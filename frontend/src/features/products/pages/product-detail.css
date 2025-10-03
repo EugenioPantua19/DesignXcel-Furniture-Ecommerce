@@ -490,6 +490,75 @@
   margin-right: auto;
 }
 
+/* Review Tab Header */
+.review-tab-header {
+  background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+  border-radius: 12px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  border: 1px solid #e2e8f0;
+}
+
+.tab-header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 2rem;
+}
+
+.header-info h3 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 0.5rem 0;
+  line-height: 1.2;
+}
+
+.header-info p {
+  font-size: 0.875rem;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.product-review-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 200px;
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.summary-item:last-child {
+  border-bottom: none;
+}
+
+.summary-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.summary-value {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  text-align: right;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .info-tabs {
   display: flex;
   gap: 8px;
@@ -796,6 +865,38 @@
   .social-btn {
     width: 20px;
     height: 20px;
+  }
+  
+  /* Review Tab Header Mobile */
+  .review-tab-header {
+    padding: 1.5rem;
+  }
+  
+  .tab-header-content {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  
+  .header-info {
+    text-align: center;
+  }
+  
+  .header-info h3 {
+    font-size: 1.25rem;
+  }
+  
+  .product-review-summary {
+    min-width: auto;
+    width: 100%;
+  }
+  
+  .summary-item {
+    padding: 0.75rem 0;
+  }
+  
+  .summary-value {
+    max-width: none;
+    text-align: left;
   }
 }
 
