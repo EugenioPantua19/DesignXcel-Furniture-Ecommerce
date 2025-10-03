@@ -15,14 +15,14 @@ PORT=5000
 NODE_ENV=development
 SESSION_SECRET=your_very_secure_session_secret_key_here_2024
 
-# Stripe Configuration
-STRIPE_SECRET_KEY=sk_test_51RCLlxPoc51pdmcaRdEOLr1oO3eIIuM3mry7cIkHFQuhukWXcE3ImEEcGz5NggwuFwpbLIRGhUOjkfM8uRJCrrlJ00snnxrsrb
-STRIPE_PUBLISHABLE_KEY=pk_test_51RCLlxPoc51pdmcaSH32LZIiLHJjHEmEkm3csrujxIKBcNa6gb6DG1KblYrBsRqtmWS5syIj9mT5P4UgWsprmQv500cFgYV6Sw
-STRIPE_WEBHOOK_SECRET=whsec_36c2b51ed69a2e0688d89394559a391ae1cc3812335ed0c2d1564a81c76a8dc8
+# Stripe Configuration (Use your actual keys)
+STRIPE_SECRET_KEY=your_stripe_secret_key_here
+STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key_here
+STRIPE_WEBHOOK_SECRET=your_stripe_webhook_secret_here
 
-# Email Configuration for OTP
-OTP_EMAIL_USER=design.xcel01@gmail.com
-OTP_EMAIL_PASS=mdvc ebdd axqj lhug
+# Email Configuration for OTP (Use your actual credentials)
+OTP_EMAIL_USER=your_email_here
+OTP_EMAIL_PASS=your_app_password_here
 
 # CORS Configuration
 FRONTEND_URL=http://localhost:3000
