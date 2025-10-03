@@ -16,9 +16,9 @@ NODE_ENV=development
 SESSION_SECRET=your_very_secure_session_secret_key_here_2024
 
 # Stripe Configuration (Use your actual keys)
-STRIPE_SECRET_KEY=your_stripe_secret_key_here
-STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key_here
-STRIPE_WEBHOOK_SECRET=your_stripe_webhook_secret_here
+STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key_here
+STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key_here
+STRIPE_WEBHOOK_SECRET=whsec_your_stripe_webhook_secret_here
 
 # Email Configuration for OTP (Use your actual credentials)
 OTP_EMAIL_USER=your_email_here
