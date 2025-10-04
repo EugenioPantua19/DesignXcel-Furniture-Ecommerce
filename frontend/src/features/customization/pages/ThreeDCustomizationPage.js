@@ -158,8 +158,25 @@ const useModelLoader = (modelPath) => {
 };
 
 
+// 360-degree rotation component
+const RotatingModel = ({ children, isRotating }) => {
+  const groupRef = useRef();
+  
+  useFrame((state, delta) => {
+    if (isRotating && groupRef.current) {
+      groupRef.current.rotation.y += delta * 0.5; // Rotate 0.5 radians per second
+    }
+  });
+  
+  return (
+    <group ref={groupRef}>
+      {children}
+    </group>
+  );
+};
+
 // Enhanced 3D Model Component with Material Support and Dimension Scaling
-const CustomizableModel = ({ modelPath, customizations }) => {
+const CustomizableModel = ({ modelPath, customizations, isRotating360 }) => {
   const [materials, setMaterials] = useState({});
   const [originalMaterials, setOriginalMaterials] = useState({});
   const meshRef = useRef();
@@ -340,11 +357,13 @@ const CustomizableModel = ({ modelPath, customizations }) => {
   return (
     <>
       {scene && (
-        <primitive 
-          ref={meshRef}
-          object={scene} 
-          position={[0, 0, 0]}
-        />
+        <RotatingModel isRotating={isRotating360}>
+          <primitive 
+            ref={meshRef}
+            object={scene} 
+            position={[0, 0, 0]}
+          />
+        </RotatingModel>
       )}
     </>
   );
@@ -468,8 +487,10 @@ const ThreeDCustomization = () => {
   const [priceAdjustment, setPriceAdjustment] = useState(0);
   const [isResizing, setIsResizing] = useState(false);
   const [cameraAngle, setCameraAngle] = useState('front');
+  const [isRotating360, setIsRotating360] = useState(false);
   const controlsRef = useRef();
   const cameraRef = useRef();
+  const modelRef = useRef();
 
   // Use the uploaded 3D model from the product, or show placeholder
   const modelPath = product?.model3d ? 
@@ -524,6 +545,11 @@ const ThreeDCustomization = () => {
     if (controlsRef.current) {
       controlsRef.current.reset();
     }
+  };
+
+  // Handle 360-degree rotation
+  const handle360Rotation = () => {
+    setIsRotating360(!isRotating360);
   };
 
   // Camera angle configurations
@@ -620,7 +646,11 @@ const ThreeDCustomization = () => {
         {/* 3D Viewer - Left Side */}
         <div className="viewer-container">
           <div className="viewer-controls-top">
-            <button className="btn-360">
+            <button 
+              className={`btn-360 ${isRotating360 ? 'active' : ''}`}
+              onClick={handle360Rotation}
+              title={isRotating360 ? 'Stop 360° Rotation' : 'Start 360° Rotation'}
+            >
               <svg className="icon-360" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
                 <path d="M12 3v9l4-4"/>
@@ -745,6 +775,7 @@ const ThreeDCustomization = () => {
                 <CustomizableModel
                   modelPath={modelPath}
                   customizations={customizations}
+                  isRotating360={isRotating360}
                 />
               </React.Suspense>
               

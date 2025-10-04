@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Transaction Manager Dashboard - Design Excellence</title>
+    <title>Transaction Dashboard - Design Excellence</title>
     <link rel="stylesheet" href="/css/Employee/Admin/AdminIndexStyles.css">
     <style>
         .sidebar {
@@ -407,22 +407,21 @@
     <div class="dashboard-container">
         <div class="sidebar">
             <div class="sidebar-header">
-                <h3>Transaction Manager Panel</h3>
+                <h3>Transaction Panel</h3>
             </div>
             <ul class="sidebar-menu">
-                <li><a href="/Employee/TransactionManager">Dashboard</a></li>
                 <li class="sidebar-section-label" style="font-weight:normal;">Inventory</li>
                 <ul class="sidebar-submenu" style="display:block;">
-                    <li><a href="/Employee/Transaction/TransacProducts">Products</a></li>
-                    <li><a href="/Employee/Transaction/TransacVariations">Variations</a></li>
-                    <li><a href="/Employee/Transaction/TransacMaterials">Raw Materials</a></li>
-                    <li><a href="/Employee/Transaction/TransacAlerts">Alerts</a></li>
-                    <li><a href="/Employee/Transaction/TransacArchived">Archived items</a></li>
+                    <li><a href="/Employee/Transaction/Products">Products</a></li>
+                    <li><a href="/Employee/Transaction/Variations">Variations</a></li>
+                    <li><a href="/Employee/Transaction/RawMaterials">Raw Materials</a></li>
+                    <li><a href="/Employee/Transaction/Alerts">Alerts</a></li>
+                    <li><a href="/Employee/Transaction/Archived">Archived items</a></li>
                 </ul>
                 <li class="sidebar-section-label" style="font-weight:normal;">Transactions</li>
                 <ul class="sidebar-submenu" style="display:block;">
-                    <li><a href="/Employee/Transaction/TransacRates">Delivery Rates</a></li>
-                    <li><a href="/Employee/Transaction/TransacWalkIn">Walk In</a></li>
+                    <li><a href="/Employee/Transaction/DeliveryRates">Delivery Rates</a></li>
+                    <li><a href="/Employee/Transaction/WalkIn">Walk In</a></li>
                     <li><a href="/Employee/Transaction/OrdersPending">Orders Pending</a></li>
                     <li><a href="/Employee/Transaction/OrdersProcessing">Orders Processing</a></li>
                     <li><a href="/Employee/Transaction/OrdersShipping">Orders Shipping</a></li>
@@ -431,11 +430,10 @@
                     <li><a href="/Employee/Transaction/CancelledOrders">Cancelled Orders</a></li>
                     <li><a href="/Employee/Transaction/CompletedOrders">Completed Orders</a></li>
                 </ul>
-                <li><a href="/Employee/Transaction/TransacManUsers">Manage Users</a></li>
-                <li><a href="/Employee/Transaction/TransacReviews">Reviews</a></li>
-                <li><a href="/Employee/Transaction/TransacChatSupport">Chat Support</a></li>
-                <li><a href="/Employee/Transaction/TransacCMS">Content Management</a></li>
-                <li><a href="/Employee/Transaction/TransacLogs">Activity Logs</a></li>
+                <li><a href="/Employee/Transaction/ManageUsers">Manage Users</a></li>
+                <li><a href="/Employee/Transaction/ChatSupport">Chat Support</a></li>
+                <li><a href="/Employee/Transaction/CMS">Content Management</a></li>
+                <li><a href="/Employee/Transaction/Logs">Activity Logs</a></li>
             </ul>
             <div class="logout-section">
                 <a href="/logout" class="logout-button" onclick="handleLogout(event)">Logout</a>
@@ -456,7 +454,7 @@
                     <div id="alertsDropdown" style="display: none; position: absolute; right: 0; top: 38px; background: #fff; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.13); min-width: 320px; max-width: 400px; z-index: 3000;">
                         <div style="padding: 14px 18px; border-bottom: 1px solid #eee; font-weight: bold; color: #333;">Low & Out of Stock Alerts</div>
                         <div id="alertsDropdownContent" style="max-height: 320px; overflow-y: auto;"></div>
-                        <a href="/Employee/Transaction/TransacAlerts" id="alertsDropdownFooter" style="display:block;text-align:center;padding:12px 0 10px 0;font-size:0.98em;font-weight:600;color:#2196F3;text-decoration:none;border-top:1px solid #eee;transition:background 0.18s;cursor:pointer;">Go to Alerts</a>
+                        <a href="/Employee/Transaction/Alerts" id="alertsDropdownFooter" style="display:block;text-align:center;padding:12px 0 10px 0;font-size:0.98em;font-weight:600;color:#2196F3;text-decoration:none;border-top:1px solid #eee;transition:background 0.18s;cursor:pointer;">Go to Alerts</a>
                     </div>
                 </div>
             </div>

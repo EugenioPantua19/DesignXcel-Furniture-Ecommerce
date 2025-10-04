@@ -115,15 +115,23 @@ module.exports = function(sql, pool) {
      */
     function hasRole(role) {
         return function(req, res, next) {
+            console.log('hasRole middleware called for route:', req.path);
+            console.log('Session exists:', !!req.session);
+            console.log('User exists:', !!req.session?.user);
+            
             if (!req.session || !req.session.user) {
+                console.log('No session or user - redirecting to login');
                 return redirectToLogin(req, res, 'Authentication required.');
             }
 
             const userRole = req.session.user.role || req.session.user.roleName || req.session.user.RoleName;
-            
+            console.log('Full user object:', req.session.user);
             console.log(`hasRole middleware - checking role: ${role}, user role: ${userRole}`);
+            console.log(`hasRole middleware - role comparison: ${userRole} === ${role} = ${userRole === role}`);
+            console.log(`hasRole middleware - role type: ${typeof userRole}, expected type: ${typeof role}`);
             
             if (userRole === role) {
+                console.log('hasRole middleware - access granted');
                 return next();
             }
             
@@ -156,7 +164,7 @@ module.exports = function(sql, pool) {
                     return res.status(403).render('Employee/Support/Forbidden');
                 default:
                     req.flash('error', 'You do not have permission to access this page.');
-                    res.redirect('/unauthorized');
+                    res.redirect('/login');
             }
         };
     }
@@ -208,7 +216,7 @@ module.exports = function(sql, pool) {
                     return res.status(403).render('Employee/Support/Forbidden');
                 default:
                     req.flash('error', 'You do not have permission to access this page.');
-                    res.redirect('/unauthorized');
+                    res.redirect('/login');
             }
         };
     }
@@ -318,7 +326,7 @@ module.exports = function(sql, pool) {
                     }
                     
                     req.flash('error', `You do not have permission to access ${section}.`);
-                    return res.redirect('/unauthorized');
+                    return res.redirect('/login');
                 }
                 
                 next();
@@ -538,7 +546,7 @@ module.exports = function(sql, pool) {
         }
 
         // Products (Admin + Inventory)
-        if (routePath.includes('/Products/')) {
+        if (routePath.includes('/Products/') || routePath.includes('/InventoryProducts/')) {
             if (field === 'image') return uploadsPaths.productImages;
             if (field === 'thumbnails') return uploadsPaths.productThumbnails;
             if (field === 'model3d' || field === 'model') return uploadsPaths.productModels;
@@ -546,7 +554,7 @@ module.exports = function(sql, pool) {
         }
 
         // Variations
-        if (routePath.includes('/Variations/')) return uploadsPaths.variations;
+        if (routePath.includes('/Variations/') || routePath.includes('/InventoryVariations/')) return uploadsPaths.variations;
 
         // Hero banner
         if (routePath.includes('/api/admin/hero-banner')) return uploadsPaths.heroBanners;
@@ -563,6 +571,12 @@ module.exports = function(sql, pool) {
         }
 
         // Purely by field name fallbacks (route-agnostic) to avoid placing in root uploads
+        // Check if this is likely a product thumbnail based on context
+        if (routePath.includes('/Inventory/') || routePath.includes('/Admin/')) {
+            if (/^thumbnails?(\[\])?$/i.test(field || '') || /(thumbnail\d+)/i.test(field || '')) {
+                return uploadsPaths.productThumbnails;
+            }
+        }
         if (/^thumbnails?(\[\])?$/i.test(field || '') || /(thumbnail\d+)/i.test(field || '')) {
             return uploadsPaths.projectsThumbnails;
         }
@@ -673,24 +687,102 @@ module.exports = function(sql, pool) {
         res.render('Employee/Admin/AdminIndex', { user: req.session.user });
     });
 
-    // Transaction Manager route
-    router.get('/Employee/TransactionManager', isAuthenticated, hasRole('TransactionManager'), (req, res) => {
+    // Transaction Manager route - DENY BY DEFAULT
+    router.get('/Employee/TransactionManager', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        const userRole = req.session.user.role || req.session.user.roleName || req.session.user.RoleName;
+        
+        // Admin has full access, other roles need permission
+        if (userRole !== 'Admin') {
+            const hasAccess = await checkSectionAccess(pool, req.session.user.id, userRole, 'transactions');
+            if (!hasAccess) {
+                if (userRole === 'TransactionManager') {
+                    return res.redirect('/Employee/Transaction/Forbidden');
+                } else if (userRole === 'InventoryManager') {
+                    return res.redirect('/Employee/Inventory/Forbidden');
+                } else if (userRole === 'UserManager') {
+                    return res.redirect('/Employee/UserManager/Forbidden');
+                } else if (userRole === 'OrderSupport') {
+                    return res.redirect('/Employee/Support/Forbidden');
+                } else {
+                    return res.redirect('/Employee/Support/Forbidden');
+                }
+            }
+        }
+        
         res.render('Employee/Transaction/TransactionManager', { user: req.session.user });
     });
 
-    // Inventory Manager route
-    router.get('/Employee/InventoryManager', isAuthenticated, hasRole('InventoryManager'), (req, res) => {
+    // Inventory Manager route - DENY BY DEFAULT
+    router.get('/Employee/InventoryManager', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        const userRole = req.session.user.role || req.session.user.roleName || req.session.user.RoleName;
+        
+        // Admin has full access, other roles need permission
+        if (userRole !== 'Admin') {
+            const hasAccess = await checkSectionAccess(pool, req.session.user.id, userRole, 'inventory');
+            if (!hasAccess) {
+                if (userRole === 'InventoryManager') {
+                    return res.redirect('/Employee/Inventory/Forbidden');
+                } else if (userRole === 'TransactionManager') {
+                    return res.redirect('/Employee/Transaction/Forbidden');
+                } else if (userRole === 'UserManager') {
+                    return res.redirect('/Employee/UserManager/Forbidden');
+                } else if (userRole === 'OrderSupport') {
+                    return res.redirect('/Employee/Support/Forbidden');
+                } else {
+                    return res.redirect('/Employee/Support/Forbidden');
+                }
+            }
+        }
+        
         res.render('Employee/Inventory/InventoryManager', { user: req.session.user });
     });
 
-    // User Manager route
-    router.get('/Employee/UserManager', isAuthenticated, hasRole('UserManager'), (req, res) => {
+    // User Manager route - DENY BY DEFAULT
+    router.get('/Employee/UserManager', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        const userRole = req.session.user.role || req.session.user.roleName || req.session.user.RoleName;
+        
+        // Admin has full access, other roles need permission
+        if (userRole !== 'Admin') {
+            const hasAccess = await checkSectionAccess(pool, req.session.user.id, userRole, 'users');
+            if (!hasAccess) {
+                if (userRole === 'UserManager') {
+                    return res.redirect('/Employee/UserManager/Forbidden');
+                } else if (userRole === 'InventoryManager') {
+                    return res.redirect('/Employee/Inventory/Forbidden');
+                } else if (userRole === 'TransactionManager') {
+                    return res.redirect('/Employee/Transaction/Forbidden');
+                } else if (userRole === 'OrderSupport') {
+                    return res.redirect('/Employee/Support/Forbidden');
+                } else {
+                    return res.redirect('/Employee/Support/Forbidden');
+                }
+            }
+        }
+        
         res.render('Employee/UserManager/UserManager', { user: req.session.user });
     });
 
-    // Order Support route
-    router.get('/Employee/OrderSupport', isAuthenticated, hasRole('OrderSupport'), (req, res) => {
-        res.render('Employee/Support/OrderSupport', { user: req.session.user });
+    // Order Support route - DENY BY DEFAULT
+    router.get('/Employee/OrderSupport', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        const userRole = req.session.user.role || req.session.user.roleName || req.session.user.RoleName;
+        
+        // Admin has full access, other roles need permission
+        if (userRole !== 'Admin') {
+            const hasAccess = await checkSectionAccess(pool, req.session.user.id, userRole, 'chat');
+            if (!hasAccess) {
+                if (userRole === 'InventoryManager') {
+                    return res.redirect('/Employee/Inventory/Forbidden');
+                } else if (userRole === 'TransactionManager') {
+                    return res.redirect('/Employee/Transaction/Forbidden');
+                } else if (userRole === 'UserManager') {
+                    return res.redirect('/Employee/UserManager/Forbidden');
+                } else {
+                    return res.redirect('/Employee/Support/Forbidden');
+                }
+            }
+        }
+        
+        res.render('Employee/Support/SupportManager', { user: req.session.user });
     });
 
     // Admin Products route
@@ -764,9 +856,19 @@ module.exports = function(sql, pool) {
         }
     });
 
-    // API endpoint to get all raw materials for frontend dropdowns
-    router.get('/api/rawmaterials', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    // API endpoint to get all raw materials for frontend dropdowns - DENY BY DEFAULT
+    router.get('/api/rawmaterials', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
+            const userRole = req.session.user.role || req.session.user.roleName || req.session.user.RoleName;
+            
+            // Admin has full access, other roles need permission
+            if (userRole !== 'Admin') {
+                const hasAccess = await checkSectionAccess(pool, req.session.user.id, userRole, 'inventory');
+                if (!hasAccess) {
+                    return res.json({ success: false, message: 'Access denied - no permission for inventory section' });
+                }
+            }
+            
             await pool.connect();
             const result = await pool.request().query('SELECT MaterialID, Name FROM RawMaterials WHERE IsActive = 1');
             res.json({ success: true, materials: result.recordset });
@@ -776,9 +878,19 @@ module.exports = function(sql, pool) {
         }
     });
 
-    // Dashboard API endpoints
-    router.get('/api/dashboard/products-count', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    // Dashboard API endpoints - DENY BY DEFAULT
+    router.get('/api/dashboard/products-count', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
+            const userRole = req.session.user.role || req.session.user.roleName || req.session.user.RoleName;
+            
+            // Admin has full access, other roles need permission
+            if (userRole !== 'Admin') {
+                const hasAccess = await checkSectionAccess(pool, req.session.user.id, userRole, 'inventory');
+                if (!hasAccess) {
+                    return res.json({ success: false, message: 'Access denied - no permission for inventory section' });
+                }
+            }
+            
             await pool.connect();
             const result = await pool.request().query('SELECT COUNT(*) as count FROM Products WHERE IsActive = 1');
             res.json({ success: true, count: result.recordset[0].count });
@@ -788,8 +900,18 @@ module.exports = function(sql, pool) {
         }
     });
 
-    router.get('/api/dashboard/materials-count', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    router.get('/api/dashboard/materials-count', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
+            const userRole = req.session.user.role || req.session.user.roleName || req.session.user.RoleName;
+            
+            // Admin has full access, other roles need permission
+            if (userRole !== 'Admin') {
+                const hasAccess = await checkSectionAccess(pool, req.session.user.id, userRole, 'inventory');
+                if (!hasAccess) {
+                    return res.json({ success: false, message: 'Access denied - no permission for inventory section' });
+                }
+            }
+            
             await pool.connect();
             const result = await pool.request().query('SELECT COUNT(*) as count FROM RawMaterials WHERE IsActive = 1');
             res.json({ success: true, count: result.recordset[0].count });
@@ -800,9 +922,19 @@ module.exports = function(sql, pool) {
     });
 
     // --- Products API for AdminCMS ---
-    // Get all products
-    router.get('/api/admin/products', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    // Get all products - DENY BY DEFAULT
+    router.get('/api/admin/products', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
+            const userRole = req.session.user.role || req.session.user.roleName || req.session.user.RoleName;
+            
+            // Admin has full access, other roles need permission
+            if (userRole !== 'Admin') {
+                const hasAccess = await checkSectionAccess(pool, req.session.user.id, userRole, 'inventory');
+                if (!hasAccess) {
+                    return res.json({ success: false, message: 'Access denied - no permission for inventory section' });
+                }
+            }
+            
             await pool.connect();
             const result = await pool.request().query(`
                 SELECT 
@@ -819,6 +951,7 @@ module.exports = function(sql, pool) {
                     IsFeatured,
                     Has3DModel
                 FROM Products
+                WHERE IsActive = 1
             `);
             res.json(result.recordset);
         } catch (err) {
@@ -828,7 +961,7 @@ module.exports = function(sql, pool) {
     });
 
     // Set/unset featured
-    router.post('/api/admin/products/:id/feature', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    router.post('/api/admin/products/:id/feature', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             const { isFeatured } = req.body;
             const productId = req.params.id;
@@ -846,7 +979,7 @@ module.exports = function(sql, pool) {
 
 
     // Get product discount
-    router.get('/api/admin/products/:productId/discount', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    router.get('/api/admin/products/:productId/discount', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             const { productId } = req.params;
             await pool.connect();
@@ -871,7 +1004,7 @@ module.exports = function(sql, pool) {
     });
 
     // Add/Update product discount
-    router.post('/api/admin/products/:productId/discount', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    router.post('/api/admin/products/:productId/discount', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             const { productId } = req.params;
             const { discountType, discountValue, startDate, endDate } = req.body;
@@ -927,7 +1060,8 @@ module.exports = function(sql, pool) {
     });
 
     // Delete product (must come before more specific routes)
-    router.delete('/api/admin/products/:productId', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    router.delete('/api/admin/products/:productId', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        const transaction = pool.transaction();
         try {
             console.log('=== DELETE PRODUCT ROUTE HIT ===');
             console.log('DELETE /api/admin/products/:productId - Request received');
@@ -939,29 +1073,84 @@ module.exports = function(sql, pool) {
             const productId = req.params.productId;
             await pool.connect();
             
-            // First, delete related records (discounts, materials, etc.)
-            await pool.request()
+            // Start transaction for hard delete
+            await transaction.begin();
+            
+            // Get product name for logging
+            const productResult = await transaction.request()
+                .input('productId', sql.Int, productId)
+                .query('SELECT Name FROM Products WHERE ProductID = @productId');
+            const productName = productResult.recordset[0]?.Name || '';
+            
+            if (!productName) {
+                await transaction.rollback();
+                return res.status(404).json({ error: 'Product not found' });
+            }
+            
+            // Delete related data in correct order (child tables first)
+            console.log('Deleting related data for product:', productId);
+            
+            // 1. Delete ProductReviews
+            await transaction.request()
+                .input('productId', sql.Int, productId)
+                .query('DELETE FROM ProductReviews WHERE ProductID = @productId');
+            
+            // 2. Delete ProductVariations
+            await transaction.request()
+                .input('productId', sql.Int, productId)
+                .query('DELETE FROM ProductVariations WHERE ProductID = @productId');
+            
+            // 3. Delete ProductDiscounts
+            await transaction.request()
                 .input('productId', sql.Int, productId)
                 .query('DELETE FROM ProductDiscounts WHERE ProductID = @productId');
             
-            await pool.request()
+            // 4. Delete ProductMaterials
+            await transaction.request()
                 .input('productId', sql.Int, productId)
                 .query('DELETE FROM ProductMaterials WHERE ProductID = @productId');
             
-            // Then delete the product
-            await pool.request()
+            // 5. Delete OrderItems (be careful - this affects order history)
+            // Note: This will remove the product from order history
+            await transaction.request()
+                .input('productId', sql.Int, productId)
+                .query('DELETE FROM OrderItems WHERE ProductID = @productId');
+            
+            // 6. Finally, delete the product itself
+            await transaction.request()
                 .input('productId', sql.Int, productId)
                 .query('DELETE FROM Products WHERE ProductID = @productId');
             
-            res.json({ success: true, message: 'Product deleted successfully' });
+            // Commit the transaction
+            await transaction.commit();
+            
+            // Log the activity
+            const activityRequest = pool.request();
+            activityRequest.input('userid', sql.Int, req.session.user.id);
+            activityRequest.input('action', sql.NVarChar, 'DELETE');
+            activityRequest.input('tableaffected', sql.NVarChar, 'Products');
+            activityRequest.input('description', sql.NVarChar, `Permanently deleted Product: "${productName}" (ID: ${productId}) and all related data`);
+            await activityRequest.query(`
+                INSERT INTO ActivityLogs (UserID, Action, TableAffected, Description)
+                VALUES (@userid, @action, @tableaffected, @description)
+            `);
+            
+            console.log(`Product ${productId} and all related data deleted successfully`);
+            res.json({ success: true, message: 'Product and all related data deleted permanently' });
         } catch (err) {
             console.error('Error deleting product:', err);
+            try {
+                await transaction.rollback();
+                console.log('Transaction rolled back due to error');
+            } catch (rollbackErr) {
+                console.error('Error during rollback:', rollbackErr);
+            }
             res.status(500).json({ error: 'Failed to delete product', details: err.message });
         }
     });
 
     // Delete product discount (must come after general delete route)
-    router.delete('/api/admin/products/:productId/discount', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    router.delete('/api/admin/products/:productId/discount', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             const { productId } = req.params;
             await pool.connect();
@@ -1820,7 +2009,7 @@ module.exports = function(sql, pool) {
     });
 
     // API endpoint to get materials for a specific product
-    router.get('/api/products/:productId/materials', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    router.get('/api/products/:productId/materials', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             const { productId } = req.params;
             await pool.connect();
@@ -1928,11 +2117,45 @@ module.exports = function(sql, pool) {
         res.render('Employee/Admin/AdminAlerts', { user: req.session.user });
     });
 
-    // Admin Manage Users route - Admin and UserManager access
-    router.get('/Employee/Admin/ManageUsers', isAuthenticated, hasAnyRole(['Admin', 'UserManager']), async (req, res) => {
+    // Admin Manage Users route - Admin and UserManager access with section access control
+    router.get('/Employee/Admin/ManageUsers', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             const userRole = req.session.user.role || req.session.user.roleName || req.session.user.RoleName;
             console.log(`ManageUsers access - User role: ${userRole}`);
+            console.log('User session in ManageUsers:', req.session.user);
+            
+            // Admin has full access, all other roles are blocked by default
+            if (userRole !== 'Admin') {
+                await pool.connect();
+                const accessResult = await pool.request()
+                    .input('userId', sql.Int, req.session.user.id)
+                    .input('section', sql.NVarChar, 'users')
+                    .query(`
+                        SELECT CanAccess FROM UserPermissions 
+                        WHERE UserID = @userId AND Section = @section
+                    `);
+                
+                // Default behavior: NO ACCESS unless explicitly granted permission
+                // If no permission record exists OR access is explicitly denied, block access
+                if (accessResult.recordset.length === 0 || accessResult.recordset[0].CanAccess !== true) {
+                    console.log(`User ${req.session.user.id} (${userRole}) does not have access to users section - BLOCKED by default`);
+                    // Redirect to appropriate forbidden page based on user role
+                    if (userRole === 'InventoryManager') {
+                        return res.redirect('/Employee/Inventory/Forbidden');
+                    } else if (userRole === 'UserManager') {
+                        return res.redirect('/Employee/UserManager/Forbidden');
+                    } else if (userRole === 'TransactionManager') {
+                        return res.redirect('/Employee/Transaction/Forbidden');
+                    } else if (userRole === 'OrderSupport') {
+                        return res.redirect('/Employee/Support/Forbidden');
+                    } else {
+                        return res.redirect('/Employee/Support/Forbidden'); // Default fallback
+                    }
+                }
+                
+                // Only allow access if explicitly granted permission (CanAccess = true)
+                console.log(`User ${req.session.user.id} (${userRole}) has explicit permission to access users section`);
+            }
             
             await pool.connect();
             const result = await pool.request().query(`
@@ -1943,11 +2166,44 @@ module.exports = function(sql, pool) {
             `);
             const users = result.recordset;
             
+            // Fetch permissions for each user
+            const usersWithPermissions = [];
+            for (const user of users) {
+                const permissionsResult = await pool.request()
+                    .input('userId', sql.Int, user.UserID)
+                    .query(`
+                        SELECT Section, CanAccess 
+                        FROM UserPermissions 
+                        WHERE UserID = @userId
+                    `);
+                
+                const permissions = {};
+                permissionsResult.recordset.forEach(perm => {
+                    permissions[perm.Section] = perm.CanAccess;
+                });
+                
+                usersWithPermissions.push({
+                    ...user,
+                    permissions: permissions
+                });
+            }
+            
+            // Define available sections
+            const availableSections = [
+                { key: 'users', name: 'User Management' },
+                { key: 'inventory', name: 'Inventory Management' },
+                { key: 'transactions', name: 'Transaction Management' },
+                { key: 'orders', name: 'Order Management' },
+                { key: 'chat', name: 'Chat Support' },
+                { key: 'content', name: 'Content Management' }
+            ];
+            
             // Pass user role for conditional rendering
             res.render('Employee/Admin/AdminManageUsers', { 
                 user: req.session.user, 
-                users: users,
-                userRole: userRole
+                users: usersWithPermissions,
+                userRole: userRole,
+                availableSections: availableSections
             });
         } catch (err) {
             console.error('Error fetching users:', err);
@@ -1961,7 +2217,7 @@ module.exports = function(sql, pool) {
     });
 
     // API endpoint to fetch low stock data
-    router.get('/Employee/Admin/Alerts/Data', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    router.get('/Employee/Admin/Alerts/Data', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             await pool.connect();
 
@@ -1991,7 +2247,7 @@ module.exports = function(sql, pool) {
     });
 
     // API to fetch all employee accounts for AdminManageUsers.js
-    router.get('/Employee/Admin/Users/EmployeesData', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    router.get('/Employee/Admin/Users/EmployeesData', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             await pool.connect();
             const result = await pool.request().query(`
@@ -2009,7 +2265,7 @@ module.exports = function(sql, pool) {
     });
 
     // API to fetch all customer accounts for AdminManageUsers.js
-    router.get('/Employee/Admin/Users/CustomersData', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    router.get('/Employee/Admin/Users/CustomersData', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             await pool.connect();
             const result = await pool.request().query(`
@@ -2054,7 +2310,7 @@ module.exports = function(sql, pool) {
     });
 
     // API endpoint for Activity Logs data
-    router.get('/Employee/Admin/Logs/Data', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    router.get('/Employee/Admin/Logs/Data', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             await pool.connect();
             const result = await pool.request().query(`
@@ -2083,7 +2339,7 @@ module.exports = function(sql, pool) {
 
     // --- About Us API Routes ---
     // GET /api/admin/about - Fetch about us content
-    router.get('/api/admin/about', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    router.get('/api/admin/about', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             await pool.connect();
             
@@ -2178,7 +2434,7 @@ module.exports = function(sql, pool) {
     });
 
     // POST /api/admin/about - Save about us content
-    router.post('/api/admin/about', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    router.post('/api/admin/about', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             console.log('Received about us save request:', req.body);
             
@@ -2365,7 +2621,7 @@ module.exports = function(sql, pool) {
 
     // --- Auto Messages API Routes ---
     // GET /api/admin/auto-messages - Fetch all auto messages
-    router.get('/api/admin/auto-messages', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    router.get('/api/admin/auto-messages', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             await pool.connect();
             
@@ -2390,7 +2646,7 @@ module.exports = function(sql, pool) {
     });
 
     // POST /api/admin/auto-messages - Create new auto message
-    router.post('/api/admin/auto-messages', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    router.post('/api/admin/auto-messages', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             const { question, answer, keywords, isActive } = req.body;
             
@@ -2432,7 +2688,7 @@ module.exports = function(sql, pool) {
     });
 
     // PUT /api/admin/auto-messages/:id - Update auto message
-    router.put('/api/admin/auto-messages/:id', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    router.put('/api/admin/auto-messages/:id', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             const { id } = req.params;
             const { question, answer, keywords, isActive } = req.body;
@@ -2468,7 +2724,7 @@ module.exports = function(sql, pool) {
     });
 
     // DELETE /api/admin/auto-messages/:id - Delete auto message
-    router.delete('/api/admin/auto-messages/:id', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    router.delete('/api/admin/auto-messages/:id', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             const { id } = req.params;
             
@@ -2519,7 +2775,7 @@ module.exports = function(sql, pool) {
 
     // --- Terms and Conditions API Routes ---
     // GET /api/admin/terms - Fetch terms and conditions
-    router.get('/api/admin/terms', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    router.get('/api/admin/terms', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             await pool.connect();
             
@@ -2576,7 +2832,7 @@ module.exports = function(sql, pool) {
     });
 
     // POST /api/admin/terms - Save terms and conditions
-    router.post('/api/admin/terms', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    router.post('/api/admin/terms', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             console.log('Received terms save request:', req.body);
             
@@ -2893,7 +3149,7 @@ module.exports = function(sql, pool) {
     });
 
     // Set User Permissions
-    router.post('/Employee/Admin/Users/SetPermissions', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    router.post('/Employee/Admin/Users/SetPermissions', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             const { userId, permissions } = req.body;
             await pool.connect();
@@ -3172,8 +3428,33 @@ module.exports = function(sql, pool) {
     });
 
     // Inventory Manager routes (duplicated from Admin, but for InventoryManager role)
-    router.get('/Employee/Inventory/InvManagerProducts', isAuthenticated, hasRole('InventoryManager'), requireSectionAccess('inventory'), async (req, res) => {
+    router.get('/Employee/Inventory/Products', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
+            const userRole = req.session.user.role || req.session.user.roleName || req.session.user.RoleName;
+            console.log(`Inventory Products access attempt - UserID: ${req.session.user.id}, Role: ${userRole}`);
+            
+            // Admin has full access, other roles need permission
+            if (userRole !== 'Admin') {
+                console.log(`Non-Admin user ${req.session.user.id} (${userRole}) attempting to access inventory section`);
+                const hasAccess = await checkSectionAccess(pool, req.session.user.id, userRole, 'inventory');
+                console.log(`Access result for user ${req.session.user.id}: ${hasAccess}`);
+                if (!hasAccess) {
+                    console.log(`Access denied for user ${req.session.user.id} (${userRole}) - redirecting to forbidden page`);
+                    if (userRole === 'InventoryManager') {
+                        return res.redirect('/Employee/Inventory/Forbidden');
+                    } else if (userRole === 'TransactionManager') {
+                        return res.redirect('/Employee/Transaction/Forbidden');
+                    } else if (userRole === 'UserManager') {
+                        return res.redirect('/Employee/UserManager/Forbidden');
+                    } else if (userRole === 'OrderSupport') {
+                        return res.redirect('/Employee/Support/Forbidden');
+                    } else {
+                        return res.redirect('/Employee/Support/Forbidden');
+                    }
+                }
+                console.log(`Access granted for user ${req.session.user.id} (${userRole}) to inventory section`);
+            }
+            
             await pool.connect();
             const page = parseInt(req.query.page) || 1;
             const limit = 10;
@@ -3215,44 +3496,64 @@ module.exports = function(sql, pool) {
                 OFFSET ${offset} ROWS FETCH NEXT ${limit} ROWS ONLY
             `);
             const products = result.recordset;
-            res.render('Employee/Inventory/InvManagerProducts', { user: req.session.user, products, page, totalPages });
+            res.render('Employee/Inventory/InventoryProducts', { user: req.session.user, products, page, totalPages });
         } catch (err) {
             console.error('Error fetching products:', err);
             req.flash('error', 'Could not fetch products.');
-            res.render('Employee/Inventory/InvManagerProducts', { user: req.session.user, products: [], page: 1, totalPages: 1 });
+            res.render('Employee/Inventory/InventoryProducts', { user: req.session.user, products: [], page: 1, totalPages: 1 });
         }
     });
 
-    router.get('/Employee/Inventory/InvManagerMaterials', isAuthenticated, hasRole('InventoryManager'), requireSectionAccess('inventory'), async (req, res) => {
+    router.get('/Employee/Inventory/RawMaterials', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
+            const userRole = req.session.user.role || req.session.user.roleName || req.session.user.RoleName;
+            
+            // Admin has full access, other roles need permission
+            if (userRole !== 'Admin') {
+                const hasAccess = await checkSectionAccess(pool, req.session.user.id, userRole, 'inventory');
+                if (!hasAccess) {
+                    if (userRole === 'InventoryManager') {
+                        return res.redirect('/Employee/Inventory/Forbidden');
+                    } else if (userRole === 'TransactionManager') {
+                        return res.redirect('/Employee/Transaction/Forbidden');
+                    } else if (userRole === 'UserManager') {
+                        return res.redirect('/Employee/UserManager/Forbidden');
+                    } else if (userRole === 'OrderSupport') {
+                        return res.redirect('/Employee/Support/Forbidden');
+                    } else {
+                        return res.redirect('/Employee/Support/Forbidden');
+                    }
+                }
+            }
+            
             await pool.connect();
             const result = await pool.request().query('SELECT * FROM RawMaterials WHERE IsActive = 1');
             const materials = result.recordset;
-            res.render('Employee/Inventory/InvManagerMaterials', { user: req.session.user, materials: materials });
+            res.render('Employee/Inventory/InventoryMaterials', { user: req.session.user, materials: materials });
         } catch (err) {
             console.error('Error fetching raw materials:', err);
             req.flash('error', 'Could not fetch raw materials.');
-            res.render('Employee/Inventory/InvManagerMaterials', { user: req.session.user, materials: [] });
+            res.render('Employee/Inventory/InventoryMaterials', { user: req.session.user, materials: [] });
         }
     });
 
-    router.get('/Employee/Inventory/InvManagerAlerts', isAuthenticated, hasRole('InventoryManager'), requireSectionAccess('inventory'), (req, res) => {
-        res.render('Employee/Inventory/InvManagerAlerts', { user: req.session.user });
+    router.get('/Employee/Inventory/Alerts', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), requireSectionAccess('inventory'), (req, res) => {
+        res.render('Employee/Inventory/InventoryAlerts', { user: req.session.user });
     });
 
-    router.get('/Employee/Inventory/InvManagerArchived', isAuthenticated, hasRole('InventoryManager'), requireSectionAccess('inventory'), async (req, res) => {
+    router.get('/Employee/Inventory/Archived', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), requireSectionAccess('inventory'), async (req, res) => {
         try {
             await pool.connect();
             const productsResult = await pool.request().query('SELECT * FROM Products WHERE IsActive = 0');
             const materialsResult = await pool.request().query('SELECT * FROM RawMaterials WHERE IsActive = 0');
-            res.render('Employee/Inventory/InvManagerArchived', {
+            res.render('Employee/Inventory/InventoryArchived', {
                 user: req.session.user,
                 archivedProducts: productsResult.recordset,
                 archivedMaterials: materialsResult.recordset
             });
         } catch (err) {
             console.error('Error fetching archived items:', err);
-            res.render('Employee/Inventory/InvManagerArchived', {
+            res.render('Employee/Inventory/InventoryArchived', {
                 user: req.session.user,
                 archivedProducts: [],
                 archivedMaterials: [],
@@ -3261,7 +3562,7 @@ module.exports = function(sql, pool) {
         }
     });
 
-    router.get('/Employee/Inventory/InvManagerLogs', isAuthenticated, hasRole('InventoryManager'), requireSectionAccess('logs'), async (req, res) => {
+    router.get('/Employee/Inventory/Logs', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), requireSectionAccess('logs'), async (req, res) => {
         try {
             await pool.connect();
             const result = await pool.request().query(`
@@ -3281,16 +3582,36 @@ module.exports = function(sql, pool) {
                 ORDER BY al.Timestamp DESC
             `);
             const logs = result.recordset;
-            res.render('Employee/Inventory/InvManagerLogs', { user: req.session.user, logs: logs });
+            res.render('Employee/Inventory/InventoryLogs', { user: req.session.user, logs: logs });
         } catch (err) {
             console.error('Error fetching activity logs:', err);
             req.flash('error', 'Could not fetch activity logs.');
-            res.render('Employee/Inventory/InvManagerLogs', { user: req.session.user, logs: [] });
+            res.render('Employee/Inventory/InventoryLogs', { user: req.session.user, logs: [] });
         }
     });
 
-    router.get('/Employee/Inventory/InvManagerManUsers', isAuthenticated, hasRole('InventoryManager'), requireSectionAccess('users'), async (req, res) => {
+    router.get('/Employee/Inventory/ManageUsers', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
+            const userRole = req.session.user.role || req.session.user.roleName || req.session.user.RoleName;
+            
+            // Admin has full access, other roles need permission
+            if (userRole !== 'Admin') {
+                const hasAccess = await checkSectionAccess(pool, req.session.user.id, userRole, 'users');
+                if (!hasAccess) {
+                    if (userRole === 'InventoryManager') {
+                        return res.redirect('/Employee/Inventory/Forbidden');
+                    } else if (userRole === 'TransactionManager') {
+                        return res.redirect('/Employee/Transaction/Forbidden');
+                    } else if (userRole === 'UserManager') {
+                        return res.redirect('/Employee/UserManager/Forbidden');
+                    } else if (userRole === 'OrderSupport') {
+                        return res.redirect('/Employee/Support/Forbidden');
+                    } else {
+                        return res.redirect('/Employee/Support/Forbidden');
+                    }
+                }
+            }
+            
             await pool.connect();
             const result = await pool.request().query(`
                 SELECT u.UserID, u.Username, u.FullName, u.Email, r.RoleName, u.IsActive, u.CreatedAt
@@ -3298,16 +3619,16 @@ module.exports = function(sql, pool) {
                 JOIN Roles r ON u.RoleID = r.RoleID
             `);
             const users = result.recordset;
-            res.render('Employee/Inventory/InvManagerManUsers', { user: req.session.user, users: users });
+            res.render('Employee/Inventory/InventoryManageUsers', { user: req.session.user, users: users });
         } catch (err) {
             console.error('Error fetching users:', err);
             req.flash('error', 'Could not fetch user data.');
-            res.render('Employee/Inventory/InvManagerManUsers', { user: req.session.user, users: [] });
+            res.render('Employee/Inventory/InventoryManageUsers', { user: req.session.user, users: [] });
         }
     });
 
     // API endpoints for Inventory Manager (copy of Admin, but for InventoryManager role)
-    router.get('/Employee/Inventory/InvManagerAlerts/Data', isAuthenticated, hasRole('InventoryManager'), async (req, res) => {
+    router.get('/Employee/Inventory/Alerts/Data', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             await pool.connect();
             const productsResult = await pool.request().query(`
@@ -3332,7 +3653,7 @@ module.exports = function(sql, pool) {
     });
 
     // Dashboard API endpoints for Inventory Manager
-    router.get('/api/inventory/dashboard/products-count', isAuthenticated, hasRole('InventoryManager'), async (req, res) => {
+    router.get('/api/inventory/dashboard/products-count', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             await pool.connect();
             const result = await pool.request().query('SELECT COUNT(*) as count FROM Products WHERE IsActive = 1');
@@ -3343,7 +3664,7 @@ module.exports = function(sql, pool) {
         }
     });
 
-    router.get('/api/inventory/dashboard/materials-count', isAuthenticated, hasRole('InventoryManager'), async (req, res) => {
+    router.get('/api/inventory/dashboard/materials-count', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             await pool.connect();
             const result = await pool.request().query('SELECT COUNT(*) as count FROM RawMaterials WHERE IsActive = 1');
@@ -3354,7 +3675,7 @@ module.exports = function(sql, pool) {
         }
     });
 
-    router.get('/api/inventory/dashboard/alerts-count', isAuthenticated, hasRole('InventoryManager'), async (req, res) => {
+    router.get('/api/inventory/dashboard/alerts-count', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             await pool.connect();
             const productsResult = await pool.request().query('SELECT COUNT(*) as count FROM Products WHERE StockQuantity <= 15 AND IsActive = 1');
@@ -3367,7 +3688,7 @@ module.exports = function(sql, pool) {
         }
     });
 
-    router.get('/api/inventory/dashboard/logs-count', isAuthenticated, hasRole('InventoryManager'), async (req, res) => {
+    router.get('/api/inventory/dashboard/logs-count', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             await pool.connect();
             const result = await pool.request().query(`
@@ -3383,7 +3704,7 @@ module.exports = function(sql, pool) {
     });
 
     // API endpoint to get all raw materials for frontend dropdowns (Inventory Manager)
-    router.get('/api/inventory/rawmaterials', isAuthenticated, hasRole('InventoryManager'), async (req, res) => {
+    router.get('/api/inventory/rawmaterials', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             await pool.connect();
             const result = await pool.request().query('SELECT MaterialID, Name FROM RawMaterials WHERE IsActive = 1');
@@ -3394,11 +3715,11 @@ module.exports = function(sql, pool) {
         }
     });
 
-    // Shared API: Products for Walk In Orders (Admin + InventoryManager)
+    // Shared API: Products for Walk In Orders (Admin + InventoryManager + OrderSupport + TransactionManager + UserManager + Employee)
     router.get('/api/walkin/products', isAuthenticated, async (req, res) => {
         try {
             const role = req.session?.user?.role || req.session?.user?.roleName || req.session?.user?.RoleName;
-            if (!['Admin', 'InventoryManager'].includes(role)) {
+            if (!['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee'].includes(role)) {
                 return res.status(403).json({ success: false, message: 'Forbidden' });
             }
             await pool.connect();
@@ -3415,7 +3736,7 @@ module.exports = function(sql, pool) {
         }
     });
 
-    router.get('/Employee/Inventory/InvManagerLogs/Data', isAuthenticated, hasRole('InventoryManager'), async (req, res) => {
+    router.get('/Employee/Inventory/Logs/Data', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             await pool.connect();
             const result = await pool.request().query(`
@@ -3447,7 +3768,7 @@ module.exports = function(sql, pool) {
     // ... (For brevity, you would repeat all Admin POST/PUT/DELETE routes here, changing paths and role to InventoryManager)
 
     // Add Product POST route for Inventory Manager
-    router.post('/Employee/Inventory/InvManagerProducts/Add', isAuthenticated, hasRole('InventoryManager'), upload.fields([
+    router.post('/Employee/Inventory/Products/Add', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), upload.fields([
         { name: 'image', maxCount: 1 },
         { name: 'thumbnails', maxCount: 4 },
         { name: 'model3d', maxCount: 1 }
@@ -3572,7 +3893,7 @@ module.exports = function(sql, pool) {
     });
 
     // Edit Product POST route for Inventory Manager
-    router.post('/Employee/Inventory/InvManagerProducts/Edit', isAuthenticated, hasRole('InventoryManager'), upload.fields([
+    router.post('/Employee/Inventory/Products/Edit', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), upload.fields([
         { name: 'image', maxCount: 1 },
         { name: 'thumbnails', maxCount: 4 },
         { name: 'thumbnail1', maxCount: 1 },
@@ -3726,7 +4047,7 @@ module.exports = function(sql, pool) {
     });
 
     // Delete Product POST route for Inventory Manager
-    router.post('/Employee/Inventory/InvManagerProducts/Delete/:id', isAuthenticated, hasRole('InventoryManager'), async (req, res) => {
+    router.post('/Employee/Inventory/Products/Delete/:id', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         const productId = req.params.id;
         try {
             await pool.connect();
@@ -3748,16 +4069,16 @@ module.exports = function(sql, pool) {
                 .query('INSERT INTO ActivityLogs (UserID, Action, TableAffected, RecordID, Description) VALUES (@userid, @action, @tableaffected, @recordid, @description)');
             
             req.flash('success', 'Product deleted successfully!');
-            res.redirect('/Employee/Inventory/InvManagerProducts');
+            res.redirect('/Employee/Inventory/Products');
         } catch (err) {
             console.error('Error deleting product:', err);
             req.flash('error', 'Failed to delete product.');
-            res.redirect('/Employee/Inventory/InvManagerProducts');
+            res.redirect('/Employee/Inventory/Products');
         }
     });
 
     // Update Stock POST route for Inventory Manager
-    router.post('/Employee/Inventory/InvManagerProducts/UpdateStock', isAuthenticated, hasRole('InventoryManager'), async (req, res) => {
+    router.post('/Employee/Inventory/Products/UpdateStock', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         console.log('Received update stock request');
         console.log('Request body:', req.body);
             const { productId, newStock } = req.body;
@@ -3841,7 +4162,7 @@ module.exports = function(sql, pool) {
     });
 
     // Add Material POST route for Inventory Manager
-    router.post('/Employee/Inventory/InvManagerMaterials/Add', isAuthenticated, hasRole('InventoryManager'), async (req, res) => {
+    router.post('/Employee/Inventory/RawMaterials/Add', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             const { name, description, quantityavailable, unit, supplier, costperunit } = req.body;
             
@@ -3872,16 +4193,16 @@ module.exports = function(sql, pool) {
                 .query('INSERT INTO ActivityLogs (UserID, Action, TableAffected, RecordID, Description) VALUES (@userid, @action, @tableaffected, @recordid, @description)');
 
             req.flash('success', 'Raw material added successfully!');
-            res.redirect('/Employee/Inventory/InvManagerMaterials');
+            res.redirect('/Employee/Inventory/RawMaterials');
         } catch (err) {
             console.error('Error adding raw material:', err);
             req.flash('error', 'Failed to add raw material.');
-            res.redirect('/Employee/Inventory/InvManagerMaterials');
+            res.redirect('/Employee/Inventory/RawMaterials');
         }
     });
 
     // Edit Material POST route for Inventory Manager
-    router.post('/Employee/Inventory/InvManagerMaterials/Edit', isAuthenticated, hasRole('InventoryManager'), async (req, res) => {
+    router.post('/Employee/Inventory/RawMaterials/Edit', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             const { materialid, name, quantityavailable, unit } = req.body;
             
@@ -3908,16 +4229,16 @@ module.exports = function(sql, pool) {
                 .query('INSERT INTO ActivityLogs (UserID, Action, TableAffected, RecordID, Description) VALUES (@userid, @action, @tableaffected, @recordid, @description)');
 
             req.flash('success', 'Raw material updated successfully!');
-            res.redirect('/Employee/Inventory/InvManagerMaterials');
+            res.redirect('/Employee/Inventory/RawMaterials');
         } catch (err) {
             console.error('Error updating raw material:', err);
             req.flash('error', 'Failed to update raw material.');
-            res.redirect('/Employee/Inventory/InvManagerMaterials');
+            res.redirect('/Employee/Inventory/RawMaterials');
         }
     });
 
     // Delete Material POST route for Inventory Manager
-    router.post('/Employee/Inventory/InvManagerMaterials/Delete/:id', isAuthenticated, hasRole('InventoryManager'), async (req, res) => {
+    router.post('/Employee/Inventory/RawMaterials/Delete/:id', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         const materialId = req.params.id;
         try {
             await pool.connect();
@@ -3939,16 +4260,16 @@ module.exports = function(sql, pool) {
                 .query('INSERT INTO ActivityLogs (UserID, Action, TableAffected, RecordID, Description) VALUES (@userid, @action, @tableaffected, @recordid, @description)');
             
             req.flash('success', 'Raw material deleted successfully!');
-            res.redirect('/Employee/Inventory/InvManagerMaterials');
+            res.redirect('/Employee/Inventory/RawMaterials');
         } catch (err) {
             console.error('Error deleting raw material:', err);
             req.flash('error', 'Failed to delete raw material.');
-            res.redirect('/Employee/Inventory/InvManagerMaterials');
+            res.redirect('/Employee/Inventory/RawMaterials');
         }
     });
 
     // API endpoint to get product materials for Inventory Manager
-    router.get('/api/inventory/products/:productId/materials', isAuthenticated, hasRole('InventoryManager'), async (req, res) => {
+    router.get('/api/inventory/products/:productId/materials', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             await pool.connect();
             const result = await pool.request()
@@ -3967,7 +4288,7 @@ module.exports = function(sql, pool) {
     });
 
     // API endpoint to get all distinct product categories (Admin)
-    router.get('/api/categories', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    router.get('/api/categories', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             await pool.connect();
             const result = await pool.request().query("SELECT DISTINCT Category FROM Products WHERE Category IS NOT NULL AND Category <> ''");
@@ -3979,7 +4300,7 @@ module.exports = function(sql, pool) {
     });
 
     // API endpoint to get all distinct product categories (Inventory Manager)
-    router.get('/api/inventory/categories', isAuthenticated, hasRole('InventoryManager'), async (req, res) => {
+    router.get('/api/inventory/categories', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             await pool.connect();
             const result = await pool.request().query("SELECT DISTINCT Category FROM Products WHERE Category IS NOT NULL AND Category <> ''");
@@ -4006,7 +4327,7 @@ module.exports = function(sql, pool) {
     }
 
     // Get current safety stock value (Admin only)
-    router.get('/api/safety-stock-value', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    router.get('/api/safety-stock-value', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             await ensureSafetySettings(pool);
             const result = await pool.request().query('SELECT TOP 1 SafetyStockValue FROM SafetySettings');
@@ -4018,7 +4339,7 @@ module.exports = function(sql, pool) {
     });
 
     // Set new safety stock value (Admin only)
-    router.post('/api/safety-stock-value', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    router.post('/api/safety-stock-value', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         const { value } = req.body;
         if (!value || isNaN(value) || value < 1) {
             return res.status(400).json({ success: false, message: 'Invalid value' });
@@ -4033,7 +4354,7 @@ module.exports = function(sql, pool) {
     });
 
     // Safety Stock Alert API (Admin only, uses adjustable value)
-    router.get('/api/safety-stock-alert', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    router.get('/api/safety-stock-alert', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             await ensureSafetySettings(pool);
             const valueResult = await pool.request().query('SELECT TOP 1 SafetyStockValue FROM SafetySettings');
@@ -4104,6 +4425,43 @@ module.exports = function(sql, pool) {
             res.render('Employee/Admin/AdminOrdersPending', { user: req.session.user, orders: [], error: 'Failed to load pending orders.' });
         }
     });
+
+    // Helper function to check section access for non-Admin users
+    async function checkSectionAccess(pool, userId, userRole, section) {
+        console.log(`checkSectionAccess called - UserID: ${userId}, Role: ${userRole}, Section: ${section}`);
+        
+        // Admin has full access, skip permission check
+        if (userRole === 'Admin') {
+            console.log('Admin user - granting full access');
+            return true;
+        }
+        
+        try {
+            const accessResult = await pool.request()
+                .input('userId', sql.Int, userId)
+                .input('section', sql.NVarChar, section)
+                .query(`
+                    SELECT CanAccess FROM UserPermissions 
+                    WHERE UserID = @userId AND Section = @section
+                `);
+            
+            console.log(`Permission query result for UserID ${userId}, Section ${section}:`, accessResult.recordset);
+            
+            // SECURITY: DENY BY DEFAULT - All roles have NO access unless explicitly granted by Admin
+            // If no permission record exists OR access is explicitly denied, return false
+            if (accessResult.recordset.length === 0 || accessResult.recordset[0].CanAccess !== true) {
+                console.log(`SECURITY: User ${userId} (${userRole}) BLOCKED from ${section} section - NO ACCESS by default`);
+                return false;
+            }
+            
+            // Only return true if Admin has explicitly granted permission (CanAccess = true)
+            console.log(`User ${userId} (${userRole}) has Admin-granted permission to access ${section} section`);
+            return true;
+        } catch (err) {
+            console.error('Error checking section access:', err);
+            return false;
+        }
+    }
 
     // Helper to ensure WalkInOrders table exists
     async function ensureWalkInOrdersTable(pool) {
@@ -4313,7 +4671,7 @@ module.exports = function(sql, pool) {
         }
     });
 
-    router.get('/Employee/Inventory/InvManOrdersPending', isAuthenticated, hasRole('InventoryManager'), requireSectionAccess('transactions'), async (req, res) => {
+    router.get('/Employee/Inventory/OrdersPending', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), requireSectionAccess('transactions'), async (req, res) => {
         try {
             await pool.connect();
             // Fetch all pending orders with customer, address, and items
@@ -4355,28 +4713,28 @@ module.exports = function(sql, pool) {
                     `);
                 order.items = itemsResult.recordset;
             }
-            res.render('Employee/Inventory/InvManOrdersPending', { user: req.session.user, orders });
+            res.render('Employee/Inventory/InventoryOrdersPending', { user: req.session.user, orders });
         } catch (err) {
             console.error('Error fetching pending orders:', err);
-            res.render('Employee/Inventory/InvManOrdersPending', { user: req.session.user, orders: [], error: 'Failed to load pending orders.' });
+            res.render('Employee/Inventory/InventoryOrdersPending', { user: req.session.user, orders: [], error: 'Failed to load pending orders.' });
         }
     });
 
     // Inventory Manager Walk In page (list)
-    router.get('/Employee/Inventory/WalkIn', isAuthenticated, hasRole('InventoryManager'), requireSectionAccess('transactions'), async (req, res) => {
+    router.get('/Employee/Inventory/WalkIn', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), requireSectionAccess('transactions'), async (req, res) => {
         try {
             await pool.connect();
             await ensureWalkInOrdersTable(pool);
             const result = await pool.request().query(`SELECT BulkOrderID, * FROM WalkInOrders ORDER BY CreatedAt DESC`);
-            res.render('Employee/Inventory/InvManagerWalkIn', { user: req.session.user, bulkOrders: result.recordset });
+            res.render('Employee/Inventory/InventoryWalkIn', { user: req.session.user, bulkOrders: result.recordset });
         } catch (err) {
             console.error('Error rendering Inventory Manager Walk In:', err);
-            res.render('Employee/Inventory/InvManagerWalkIn', { user: req.session.user, bulkOrders: [], error: 'Failed to load walk in orders.' });
+            res.render('Employee/Inventory/InventoryWalkIn', { user: req.session.user, bulkOrders: [], error: 'Failed to load walk in orders.' });
         }
     });
 
     // Inventory Manager Walk In: Create
-    router.post('/Employee/Inventory/WalkIn/Add', isAuthenticated, hasRole('InventoryManager'), requireSectionAccess('transactions'), async (req, res) => {
+    router.post('/Employee/Inventory/WalkIn/Add', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), requireSectionAccess('transactions'), async (req, res) => {
         try {
             await pool.connect();
             await ensureWalkInOrdersTable(pool);
@@ -4409,7 +4767,7 @@ module.exports = function(sql, pool) {
     });
 
     // Inventory Manager Bulk Order: Proceed to On delivery
-    router.post('/Employee/Inventory/WalkIn/ProceedToDelivery/:id', isAuthenticated, hasRole('InventoryManager'), requireSectionAccess('transactions'), async (req, res) => {
+    router.post('/Employee/Inventory/WalkIn/ProceedToDelivery/:id', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), requireSectionAccess('transactions'), async (req, res) => {
         try {
             await pool.connect();
             const id = parseInt(req.params.id);
@@ -4422,7 +4780,7 @@ module.exports = function(sql, pool) {
     });
 
     // Inventory Manager Bulk Order: Complete
-    router.post('/Employee/Inventory/WalkIn/Complete/:id', isAuthenticated, hasRole('InventoryManager'), requireSectionAccess('transactions'), async (req, res) => {
+    router.post('/Employee/Inventory/WalkIn/Complete/:id', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), requireSectionAccess('transactions'), async (req, res) => {
         try {
             await pool.connect();
             const id = parseInt(req.params.id);
@@ -4550,7 +4908,7 @@ module.exports = function(sql, pool) {
                 JOIN Customers c ON o.CustomerID = c.CustomerID
                 LEFT JOIN CustomerAddresses a ON o.ShippingAddressID = a.AddressID
                 LEFT JOIN DeliveryRates dr ON o.DeliveryType = 'rate_' + CAST(dr.RateID AS NVARCHAR(10))
-                WHERE o.Status = 'Delivery'
+                WHERE o.Status = 'Delivered'
                 ORDER BY o.OrderDate ASC
             `);
             const orders = ordersResult.recordset;
@@ -4592,7 +4950,7 @@ module.exports = function(sql, pool) {
                 JOIN Customers c ON o.CustomerID = c.CustomerID
                 LEFT JOIN CustomerAddresses a ON o.ShippingAddressID = a.AddressID
                 LEFT JOIN DeliveryRates dr ON o.DeliveryType = 'rate_' + CAST(dr.RateID AS NVARCHAR(10))
-                WHERE o.Status = 'Receive'
+                WHERE o.Status = 'Received'
                 ORDER BY o.OrderDate ASC
             `);
             const orders = ordersResult.recordset;
@@ -4746,13 +5104,1607 @@ module.exports = function(sql, pool) {
         res.render('Employee/Admin/AdminRates', { user: req.session.user });
     });
 
-    // Inventory Manager: Delivery Rates page
-    router.get('/Employee/Inventory/DeliveryRates', isAuthenticated, hasRole('InventoryManager'), requireSectionAccess('inventory'), (req, res) => {
-        res.render('Employee/Inventory/InvManagerRates', { user: req.session.user });
+    // ===== INVENTORY MANAGER ROUTES =====
+    // Inventory Manager: Products route
+    router.get('/Employee/Inventory/Products', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const page = parseInt(req.query.page) || 1;
+            const limit = 10;
+            const offset = (page - 1) * limit;
+            const countResult = await pool.request().query('SELECT COUNT(*) as count FROM Products WHERE IsActive = 1');
+            const total = countResult.recordset[0].count;
+            const totalPages = Math.ceil(total / limit);
+            const result = await pool.request().query(`
+                SELECT 
+                    p.*,
+                    pd.DiscountID,
+                    pd.DiscountType,
+                    pd.DiscountValue,
+                    pd.StartDate as DiscountStartDate,
+                    pd.EndDate as DiscountEndDate,
+                    pd.IsActive as DiscountIsActive,
+                    CASE 
+                        WHEN pd.DiscountType = 'percentage' THEN 
+                            p.Price - (p.Price * pd.DiscountValue / 100)
+                        WHEN pd.DiscountType = 'fixed' THEN 
+                            CASE WHEN p.Price - pd.DiscountValue < 0 THEN 0 ELSE p.Price - pd.DiscountValue END
+                        ELSE p.Price
+                    END as DiscountedPrice
+                FROM Products p
+                LEFT JOIN ProductDiscounts pd ON p.ProductID = pd.ProductID 
+                    AND pd.IsActive = 1 
+                    AND GETDATE() BETWEEN pd.StartDate AND pd.EndDate
+                WHERE p.IsActive = 1
+                ORDER BY p.DateAdded DESC
+                OFFSET ${offset} ROWS
+                FETCH NEXT ${limit} ROWS ONLY
+            `);
+            const products = result.recordset;
+            res.render('Employee/Inventory/InventoryProducts', { user: req.session.user, products, page, totalPages });
+        } catch (err) {
+            console.error('Error fetching products:', err);
+            req.flash('error', 'Could not fetch products.');
+            res.render('Employee/Inventory/InventoryProducts', { user: req.session.user, products: [], page: 1, totalPages: 1 });
+        }
+    });
+
+    // Inventory Manager: Variations route
+    router.get('/Employee/Inventory/Variations', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), (req, res) => {
+        res.render('Employee/Inventory/InventoryVariations', { user: req.session.user });
+    });
+
+    // Inventory Manager: Raw Materials route
+    router.get('/Employee/Inventory/RawMaterials', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const result = await pool.request().query('SELECT * FROM RawMaterials WHERE IsActive = 1');
+            const materials = result.recordset;
+            res.render('Employee/Inventory/InventoryMaterials', { user: req.session.user, materials: materials });
+        } catch (err) {
+            console.error('Error fetching raw materials:', err);
+            req.flash('error', 'Could not fetch raw materials.');
+            res.render('Employee/Inventory/InventoryMaterials', { user: req.session.user, materials: [] });
+        }
+    });
+
+    // Inventory Manager: Alerts route
+    router.get('/Employee/Inventory/Alerts', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        res.render('Employee/Inventory/InventoryAlerts', { user: req.session.user });
+    });
+
+    // Inventory Manager: Manage Users route
+    router.get('/Employee/Inventory/ManageUsers', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const result = await pool.request().query(`
+                SELECT 
+                    u.UserID,
+                    u.Username,
+                    u.FullName,
+                    u.Email,
+                    u.Role,
+                    u.IsActive,
+                    u.LastLogin,
+                    u.DateCreated
+                FROM Users u
+                WHERE u.Role IN ('InventoryManager', 'Admin', 'UserManager', 'OrderSupport', 'TransactionManager')
+                ORDER BY u.DateCreated DESC
+            `);
+            const users = result.recordset;
+            res.render('Employee/Inventory/InventoryManageUsers', { 
+                user: req.session.user, 
+                users: users
+            });
+        } catch (err) {
+            console.error('Error fetching users:', err);
+            req.flash('error', 'Could not fetch user data.');
+            res.render('Employee/Inventory/InventoryManageUsers', { 
+                user: req.session.user, 
+                users: []
+            });
+        }
+    });
+
+    // Inventory Manager: Logs route
+    router.get('/Employee/Inventory/Logs', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const result = await pool.request().query(`
+                SELECT TOP 50
+                    al.LogID,
+                    al.UserID,
+                    al.Action,
+                    al.Details,
+                    al.IPAddress,
+                    al.UserAgent,
+                    al.CreatedAt,
+                    u.Username,
+                    u.FullName
+                FROM ActivityLogs al
+                LEFT JOIN Users u ON al.UserID = u.UserID
+                ORDER BY al.CreatedAt DESC
+            `);
+            const logs = result.recordset;
+            res.render('Employee/Inventory/InventoryLogs', { user: req.session.user, logs: logs });
+        } catch (err) {
+            console.error('Error fetching activity logs:', err);
+            req.flash('error', 'Could not fetch activity logs.');
+            res.render('Employee/Inventory/InventoryLogs', { user: req.session.user, logs: [] });
+        }
+    });
+
+    // Inventory Manager: Archived route
+    router.get('/Employee/Inventory/Archived', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const productsResult = await pool.request().query('SELECT * FROM Products WHERE IsActive = 0');
+            const materialsResult = await pool.request().query('SELECT * FROM RawMaterials WHERE IsActive = 0');
+            res.render('Employee/Inventory/InventoryArchived', {
+                user: req.session.user,
+                archivedProducts: productsResult.recordset,
+                archivedMaterials: materialsResult.recordset
+            });
+        } catch (err) {
+            console.error('Error fetching archived items:', err);
+            res.render('Employee/Inventory/InventoryArchived', {
+                user: req.session.user,
+                archivedProducts: [],
+                archivedMaterials: []
+            });
+        }
+    });
+
+    // Inventory Manager: CMS route
+    router.get('/Employee/Inventory/CMS', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), (req, res) => {
+        res.render('Employee/Inventory/InventoryCMS', { user: req.session.user });
+    });
+
+    // Inventory Manager: Delivery Rates route
+    router.get('/Employee/Inventory/DeliveryRates', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), (req, res) => {
+        res.render('Employee/Inventory/InventoryRates', { user: req.session.user });
+    });
+
+    // ===== USER MANAGER ROUTES =====
+    // User Manager: Products route
+    router.get('/Employee/UserManager/Products', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            const userRole = req.session.user.role || req.session.user.roleName || req.session.user.RoleName;
+            
+            // Admin has full access, other roles need permission
+            if (userRole !== 'Admin') {
+                const hasAccess = await checkSectionAccess(pool, req.session.user.id, userRole, 'inventory');
+                if (!hasAccess) {
+                    if (userRole === 'UserManager') {
+                        return res.redirect('/Employee/UserManager/Forbidden');
+                    } else if (userRole === 'InventoryManager') {
+                        return res.redirect('/Employee/Inventory/Forbidden');
+                    } else if (userRole === 'TransactionManager') {
+                        return res.redirect('/Employee/Transaction/Forbidden');
+                    } else if (userRole === 'OrderSupport') {
+                        return res.redirect('/Employee/Support/Forbidden');
+                    } else {
+                        return res.redirect('/Employee/UserManager/Forbidden');
+                    }
+                }
+            }
+            
+            await pool.connect();
+            const page = parseInt(req.query.page) || 1;
+            const limit = 10;
+            const offset = (page - 1) * limit;
+            const countResult = await pool.request().query('SELECT COUNT(*) as count FROM Products WHERE IsActive = 1');
+            const total = countResult.recordset[0].count;
+            const totalPages = Math.ceil(total / limit);
+            const result = await pool.request().query(`
+                SELECT 
+                    p.*,
+                    pd.DiscountID,
+                    pd.DiscountType,
+                    pd.DiscountValue,
+                    pd.StartDate as DiscountStartDate,
+                    pd.EndDate as DiscountEndDate,
+                    pd.IsActive as DiscountIsActive,
+                    CASE 
+                        WHEN pd.DiscountType = 'percentage' THEN 
+                            p.Price - (p.Price * pd.DiscountValue / 100)
+                        WHEN pd.DiscountType = 'fixed' THEN 
+                            CASE WHEN p.Price - pd.DiscountValue < 0 THEN 0 ELSE p.Price - pd.DiscountValue END
+                        ELSE p.Price
+                    END as DiscountedPrice
+                FROM Products p
+                LEFT JOIN ProductDiscounts pd ON p.ProductID = pd.ProductID 
+                    AND pd.IsActive = 1 
+                    AND GETDATE() BETWEEN pd.StartDate AND pd.EndDate
+                WHERE p.IsActive = 1
+                ORDER BY p.DateAdded DESC
+                OFFSET ${offset} ROWS
+                FETCH NEXT ${limit} ROWS ONLY
+            `);
+            const products = result.recordset;
+            res.render('Employee/UserManager/UserManagerProducts', { user: req.session.user, products, page, totalPages });
+        } catch (err) {
+            console.error('Error fetching products:', err);
+            req.flash('error', 'Could not fetch products.');
+            res.render('Employee/UserManager/UserManagerProducts', { user: req.session.user, products: [], page: 1, totalPages: 1 });
+        }
+    });
+
+    // User Manager: Variations route
+    router.get('/Employee/UserManager/Variations', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), (req, res) => {
+        res.render('Employee/UserManager/UserManagerVariations', { user: req.session.user });
+    });
+
+    // User Manager: Raw Materials route
+    router.get('/Employee/UserManager/RawMaterials', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            const userRole = req.session.user.role || req.session.user.roleName || req.session.user.RoleName;
+            
+            // Admin has full access, other roles need permission
+            if (userRole !== 'Admin') {
+                const hasAccess = await checkSectionAccess(pool, req.session.user.id, userRole, 'inventory');
+                if (!hasAccess) {
+                    if (userRole === 'UserManager') {
+                        return res.redirect('/Employee/UserManager/Forbidden');
+                    } else if (userRole === 'InventoryManager') {
+                        return res.redirect('/Employee/Inventory/Forbidden');
+                    } else if (userRole === 'TransactionManager') {
+                        return res.redirect('/Employee/Transaction/Forbidden');
+                    } else if (userRole === 'OrderSupport') {
+                        return res.redirect('/Employee/Support/Forbidden');
+                    } else {
+                        return res.redirect('/Employee/UserManager/Forbidden');
+                    }
+                }
+            }
+            
+            await pool.connect();
+            const result = await pool.request().query('SELECT * FROM RawMaterials WHERE IsActive = 1');
+            const materials = result.recordset;
+            res.render('Employee/UserManager/UserManagerMaterials', { user: req.session.user, materials: materials });
+        } catch (err) {
+            console.error('Error fetching raw materials:', err);
+            req.flash('error', 'Could not fetch raw materials.');
+            res.render('Employee/UserManager/UserManagerMaterials', { user: req.session.user, materials: [] });
+        }
+    });
+
+    // User Manager: Alerts route
+    router.get('/Employee/UserManager/Alerts', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        res.render('Employee/UserManager/UserManagerAlerts', { user: req.session.user });
+    });
+
+    // User Manager: Manage Users route
+    router.get('/Employee/UserManager/ManageUsers', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            const userRole = req.session.user.role || req.session.user.roleName || req.session.user.RoleName;
+            
+            // Admin has full access, other roles need permission
+            if (userRole !== 'Admin') {
+                const hasAccess = await checkSectionAccess(pool, req.session.user.id, userRole, 'users');
+                if (!hasAccess) {
+                    if (userRole === 'UserManager') {
+                        return res.redirect('/Employee/UserManager/Forbidden');
+                    } else if (userRole === 'InventoryManager') {
+                        return res.redirect('/Employee/Inventory/Forbidden');
+                    } else if (userRole === 'TransactionManager') {
+                        return res.redirect('/Employee/Transaction/Forbidden');
+                    } else if (userRole === 'OrderSupport') {
+                        return res.redirect('/Employee/Support/Forbidden');
+                    } else {
+                        return res.redirect('/Employee/UserManager/Forbidden');
+                    }
+                }
+            }
+            
+            await pool.connect();
+            const result = await pool.request().query(`
+                SELECT 
+                    u.UserID,
+                    u.Username,
+                    u.FullName,
+                    u.Email,
+                    u.Role,
+                    u.IsActive,
+                    u.LastLogin,
+                    u.DateCreated
+                FROM Users u
+                WHERE u.Role IN ('InventoryManager', 'Admin', 'UserManager', 'OrderSupport', 'TransactionManager')
+                ORDER BY u.DateCreated DESC
+            `);
+            const users = result.recordset;
+            res.render('Employee/UserManager/UserManagerManageUsers', { 
+                user: req.session.user, 
+                users: users
+            });
+        } catch (err) {
+            console.error('Error fetching users:', err);
+            req.flash('error', 'Could not fetch user data.');
+            res.render('Employee/UserManager/UserManagerManageUsers', { 
+                user: req.session.user, 
+                users: []
+            });
+        }
+    });
+
+    // User Manager: Logs route
+    router.get('/Employee/UserManager/Logs', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            const userRole = req.session.user.role || req.session.user.roleName || req.session.user.RoleName;
+            
+            // Admin has full access, other roles need permission
+            if (userRole !== 'Admin') {
+                const hasAccess = await checkSectionAccess(pool, req.session.user.id, userRole, 'logs');
+                if (!hasAccess) {
+                    if (userRole === 'UserManager') {
+                        return res.redirect('/Employee/UserManager/Forbidden');
+                    } else if (userRole === 'InventoryManager') {
+                        return res.redirect('/Employee/Inventory/Forbidden');
+                    } else if (userRole === 'TransactionManager') {
+                        return res.redirect('/Employee/Transaction/Forbidden');
+                    } else if (userRole === 'OrderSupport') {
+                        return res.redirect('/Employee/Support/Forbidden');
+                    } else {
+                        return res.redirect('/Employee/UserManager/Forbidden');
+                    }
+                }
+            }
+            
+            await pool.connect();
+            const result = await pool.request().query(`
+                SELECT TOP 50
+                    al.LogID,
+                    al.UserID,
+                    al.Action,
+                    al.Details,
+                    al.IPAddress,
+                    al.UserAgent,
+                    al.CreatedAt,
+                    u.Username,
+                    u.FullName
+                FROM ActivityLogs al
+                LEFT JOIN Users u ON al.UserID = u.UserID
+                ORDER BY al.CreatedAt DESC
+            `);
+            const logs = result.recordset;
+            res.render('Employee/UserManager/UserManagerLogs', { user: req.session.user, logs: logs });
+        } catch (err) {
+            console.error('Error fetching activity logs:', err);
+            req.flash('error', 'Could not fetch activity logs.');
+            res.render('Employee/UserManager/UserManagerLogs', { user: req.session.user, logs: [] });
+        }
+    });
+
+    // User Manager: Archived route
+    router.get('/Employee/UserManager/Archived', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const productsResult = await pool.request().query('SELECT * FROM Products WHERE IsActive = 0');
+            const materialsResult = await pool.request().query('SELECT * FROM RawMaterials WHERE IsActive = 0');
+            res.render('Employee/UserManager/UserManagerArchived', {
+                user: req.session.user,
+                archivedProducts: productsResult.recordset,
+                archivedMaterials: materialsResult.recordset
+            });
+        } catch (err) {
+            console.error('Error fetching archived items:', err);
+            res.render('Employee/UserManager/UserManagerArchived', {
+                user: req.session.user,
+                archivedProducts: [],
+                archivedMaterials: []
+            });
+        }
+    });
+
+    // User Manager: CMS route
+    router.get('/Employee/UserManager/CMS', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            const userRole = req.session.user.role || req.session.user.roleName || req.session.user.RoleName;
+            
+            // Admin has full access, other roles need permission
+            if (userRole !== 'Admin') {
+                const hasAccess = await checkSectionAccess(pool, req.session.user.id, userRole, 'cms');
+                if (!hasAccess) {
+                    if (userRole === 'UserManager') {
+                        return res.redirect('/Employee/UserManager/Forbidden');
+                    } else if (userRole === 'InventoryManager') {
+                        return res.redirect('/Employee/Inventory/Forbidden');
+                    } else if (userRole === 'TransactionManager') {
+                        return res.redirect('/Employee/Transaction/Forbidden');
+                    } else if (userRole === 'OrderSupport') {
+                        return res.redirect('/Employee/Support/Forbidden');
+                    } else {
+                        return res.redirect('/Employee/UserManager/Forbidden');
+                    }
+                }
+            }
+            
+            res.render('Employee/UserManager/UserManagerCMS', { user: req.session.user });
+        } catch (err) {
+            console.error('Error accessing CMS:', err);
+            res.redirect('/Employee/UserManager/Forbidden');
+        }
+    });
+
+    // User Manager: Delivery Rates route
+    router.get('/Employee/UserManager/DeliveryRates', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            const userRole = req.session.user.role || req.session.user.roleName || req.session.user.RoleName;
+            
+            // Admin has full access, other roles need permission
+            if (userRole !== 'Admin') {
+                const hasAccess = await checkSectionAccess(pool, req.session.user.id, userRole, 'transactions');
+                if (!hasAccess) {
+                    if (userRole === 'UserManager') {
+                        return res.redirect('/Employee/UserManager/Forbidden');
+                    } else if (userRole === 'InventoryManager') {
+                        return res.redirect('/Employee/Inventory/Forbidden');
+                    } else if (userRole === 'TransactionManager') {
+                        return res.redirect('/Employee/Transaction/Forbidden');
+                    } else if (userRole === 'OrderSupport') {
+                        return res.redirect('/Employee/Support/Forbidden');
+                    } else {
+                        return res.redirect('/Employee/UserManager/Forbidden');
+                    }
+                }
+            }
+            
+            res.render('Employee/UserManager/UserManagerRates', { user: req.session.user });
+        } catch (err) {
+            console.error('Error accessing delivery rates:', err);
+            res.redirect('/Employee/UserManager/Forbidden');
+        }
+    });
+
+    // ===== SUPPORT ROUTES =====
+    // Support: Products route
+    router.get('/Employee/Support/Products', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            const userRole = req.session.user.role || req.session.user.roleName || req.session.user.RoleName;
+            
+            // Admin has full access, other roles need permission
+            if (userRole !== 'Admin') {
+                const hasAccess = await checkSectionAccess(pool, req.session.user.id, userRole, 'inventory');
+                if (!hasAccess) {
+                    if (userRole === 'InventoryManager') {
+                        return res.redirect('/Employee/Inventory/Forbidden');
+                    } else if (userRole === 'TransactionManager') {
+                        return res.redirect('/Employee/Transaction/Forbidden');
+                    } else if (userRole === 'UserManager') {
+                        return res.redirect('/Employee/UserManager/Forbidden');
+                    } else {
+                        return res.redirect('/Employee/Support/Forbidden');
+                    }
+                }
+            }
+            
+            await pool.connect();
+            const page = parseInt(req.query.page) || 1;
+            const limit = 10;
+            const offset = (page - 1) * limit;
+            const countResult = await pool.request().query('SELECT COUNT(*) as count FROM Products WHERE IsActive = 1');
+            const total = countResult.recordset[0].count;
+            const totalPages = Math.ceil(total / limit);
+            const result = await pool.request().query(`
+                SELECT 
+                    p.*,
+                    pd.DiscountID,
+                    pd.DiscountType,
+                    pd.DiscountValue,
+                    pd.StartDate as DiscountStartDate,
+                    pd.EndDate as DiscountEndDate,
+                    pd.IsActive as DiscountIsActive,
+                    CASE 
+                        WHEN pd.DiscountType = 'percentage' THEN 
+                            p.Price - (p.Price * pd.DiscountValue / 100)
+                        WHEN pd.DiscountType = 'fixed' THEN 
+                            CASE WHEN p.Price - pd.DiscountValue < 0 THEN 0 ELSE p.Price - pd.DiscountValue END
+                        ELSE p.Price
+                    END as DiscountedPrice
+                FROM Products p
+                LEFT JOIN ProductDiscounts pd ON p.ProductID = pd.ProductID 
+                    AND pd.IsActive = 1 
+                    AND GETDATE() BETWEEN pd.StartDate AND pd.EndDate
+                WHERE p.IsActive = 1
+                ORDER BY p.DateAdded DESC
+                OFFSET ${offset} ROWS
+                FETCH NEXT ${limit} ROWS ONLY
+            `);
+            const products = result.recordset;
+            res.render('Employee/Support/SupportProducts', { user: req.session.user, products, page, totalPages });
+        } catch (err) {
+            console.error('Error fetching products:', err);
+            req.flash('error', 'Could not fetch products.');
+            res.render('Employee/Support/SupportProducts', { user: req.session.user, products: [], page: 1, totalPages: 1 });
+        }
+    });
+
+    // Support: Variations route
+    router.get('/Employee/Support/Variations', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), (req, res) => {
+        res.render('Employee/Support/SupportVariations', { user: req.session.user });
+    });
+
+    // Support: Raw Materials route
+    router.get('/Employee/Support/RawMaterials', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            const userRole = req.session.user.role || req.session.user.roleName || req.session.user.RoleName;
+            
+            // Admin has full access, other roles need permission
+            if (userRole !== 'Admin') {
+                const hasAccess = await checkSectionAccess(pool, req.session.user.id, userRole, 'inventory');
+                if (!hasAccess) {
+                    if (userRole === 'InventoryManager') {
+                        return res.redirect('/Employee/Inventory/Forbidden');
+                    } else if (userRole === 'TransactionManager') {
+                        return res.redirect('/Employee/Transaction/Forbidden');
+                    } else if (userRole === 'UserManager') {
+                        return res.redirect('/Employee/UserManager/Forbidden');
+                    } else {
+                        return res.redirect('/Employee/Support/Forbidden');
+                    }
+                }
+            }
+            
+            await pool.connect();
+            const result = await pool.request().query('SELECT * FROM RawMaterials WHERE IsActive = 1');
+            const materials = result.recordset;
+            res.render('Employee/Support/SupportMaterials', { user: req.session.user, materials: materials });
+        } catch (err) {
+            console.error('Error fetching raw materials:', err);
+            req.flash('error', 'Could not fetch raw materials.');
+            res.render('Employee/Support/SupportMaterials', { user: req.session.user, materials: [] });
+        }
+    });
+
+    // Support: Alerts route
+    router.get('/Employee/Support/Alerts', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        res.render('Employee/Support/SupportAlerts', { user: req.session.user });
+    });
+
+    // Support: Manage Users route
+    router.get('/Employee/Support/ManageUsers', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            const userRole = req.session.user.role || req.session.user.roleName || req.session.user.RoleName;
+            
+            // Admin has full access, other roles need permission
+            if (userRole !== 'Admin') {
+                const hasAccess = await checkSectionAccess(pool, req.session.user.id, userRole, 'users');
+                if (!hasAccess) {
+                    if (userRole === 'InventoryManager') {
+                        return res.redirect('/Employee/Inventory/Forbidden');
+                    } else if (userRole === 'TransactionManager') {
+                        return res.redirect('/Employee/Transaction/Forbidden');
+                    } else if (userRole === 'UserManager') {
+                        return res.redirect('/Employee/UserManager/Forbidden');
+                    } else {
+                        return res.redirect('/Employee/Support/Forbidden');
+                    }
+                }
+            }
+            
+            await pool.connect();
+            
+            const result = await pool.request().query(`
+                SELECT 
+                    u.UserID,
+                    u.Username,
+                    u.FullName,
+                    u.Email,
+                    u.Role,
+                    u.IsActive,
+                    u.LastLogin,
+                    u.DateCreated
+                FROM Users u
+                WHERE u.Role IN ('InventoryManager', 'Admin', 'UserManager', 'OrderSupport', 'TransactionManager')
+                ORDER BY u.DateCreated DESC
+            `);
+            const users = result.recordset;
+            res.render('Employee/Support/SupportManageUsers', { 
+                user: req.session.user, 
+                users: users
+            });
+        } catch (err) {
+            console.error('Error fetching users:', err);
+            req.flash('error', 'Could not fetch user data.');
+            res.render('Employee/Support/SupportManageUsers', { 
+                user: req.session.user, 
+                users: []
+            });
+        }
+    });
+
+    // Support: Logs route
+    router.get('/Employee/Support/Logs', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            const userRole = req.session.user.role || req.session.user.roleName || req.session.user.RoleName;
+            
+            // Admin has full access, other roles need permission
+            if (userRole !== 'Admin') {
+                const hasAccess = await checkSectionAccess(pool, req.session.user.id, userRole, 'logs');
+                if (!hasAccess) {
+                    if (userRole === 'InventoryManager') {
+                        return res.redirect('/Employee/Inventory/Forbidden');
+                    } else if (userRole === 'TransactionManager') {
+                        return res.redirect('/Employee/Transaction/Forbidden');
+                    } else if (userRole === 'UserManager') {
+                        return res.redirect('/Employee/UserManager/Forbidden');
+                    } else {
+                        return res.redirect('/Employee/Support/Forbidden');
+                    }
+                }
+            }
+            
+            await pool.connect();
+            const result = await pool.request().query(`
+                SELECT TOP 50
+                    al.LogID,
+                    al.UserID,
+                    al.Action,
+                    al.Details,
+                    al.IPAddress,
+                    al.UserAgent,
+                    al.CreatedAt,
+                    u.Username,
+                    u.FullName
+                FROM ActivityLogs al
+                LEFT JOIN Users u ON al.UserID = u.UserID
+                ORDER BY al.CreatedAt DESC
+            `);
+            const logs = result.recordset;
+            res.render('Employee/Support/SupportLogs', { user: req.session.user, logs: logs });
+        } catch (err) {
+            console.error('Error fetching activity logs:', err);
+            req.flash('error', 'Could not fetch activity logs.');
+            res.render('Employee/Support/SupportLogs', { user: req.session.user, logs: [] });
+        }
+    });
+
+    // Support: Archived route
+    router.get('/Employee/Support/Archived', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const productsResult = await pool.request().query('SELECT * FROM Products WHERE IsActive = 0');
+            const materialsResult = await pool.request().query('SELECT * FROM RawMaterials WHERE IsActive = 0');
+            res.render('Employee/Support/SupportArchived', {
+                user: req.session.user,
+                archivedProducts: productsResult.recordset,
+                archivedMaterials: materialsResult.recordset
+            });
+        } catch (err) {
+            console.error('Error fetching archived items:', err);
+            res.render('Employee/Support/SupportArchived', {
+                user: req.session.user,
+                archivedProducts: [],
+                archivedMaterials: []
+            });
+        }
+    });
+
+    // Support: CMS route
+    router.get('/Employee/Support/CMS', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            const userRole = req.session.user.role || req.session.user.roleName || req.session.user.RoleName;
+            
+            // Admin has full access, other roles need permission
+            if (userRole !== 'Admin') {
+                const hasAccess = await checkSectionAccess(pool, req.session.user.id, userRole, 'cms');
+                if (!hasAccess) {
+                    if (userRole === 'InventoryManager') {
+                        return res.redirect('/Employee/Inventory/Forbidden');
+                    } else if (userRole === 'TransactionManager') {
+                        return res.redirect('/Employee/Transaction/Forbidden');
+                    } else if (userRole === 'UserManager') {
+                        return res.redirect('/Employee/UserManager/Forbidden');
+                    } else {
+                        return res.redirect('/Employee/Support/Forbidden');
+                    }
+                }
+            }
+            
+            res.render('Employee/Support/SupportCMS', { user: req.session.user });
+        } catch (err) {
+            console.error('Error accessing CMS:', err);
+            res.redirect('/Employee/Support/Forbidden');
+        }
+    });
+
+    // Support: Delivery Rates route
+    router.get('/Employee/Support/DeliveryRates', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            const userRole = req.session.user.role || req.session.user.roleName || req.session.user.RoleName;
+            
+            // Admin has full access, other roles need permission
+            if (userRole !== 'Admin') {
+                const hasAccess = await checkSectionAccess(pool, req.session.user.id, userRole, 'transactions');
+                if (!hasAccess) {
+                    if (userRole === 'InventoryManager') {
+                        return res.redirect('/Employee/Inventory/Forbidden');
+                    } else if (userRole === 'TransactionManager') {
+                        return res.redirect('/Employee/Transaction/Forbidden');
+                    } else if (userRole === 'UserManager') {
+                        return res.redirect('/Employee/UserManager/Forbidden');
+                    } else {
+                        return res.redirect('/Employee/Support/Forbidden');
+                    }
+                }
+            }
+            
+            res.render('Employee/Support/SupportRates', { user: req.session.user });
+        } catch (err) {
+            console.error('Error accessing delivery rates:', err);
+            res.redirect('/Employee/Support/Forbidden');
+        }
+    });
+
+    // Support: Support Delivery Rates - EJS Template Route
+    router.get('/Employee/Support/SupportDeliveryRates', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            const userRole = req.session.user.role || req.session.user.roleName || req.session.user.RoleName;
+            
+            // Admin has full access, other roles need permission
+            if (userRole !== 'Admin') {
+                const hasAccess = await checkSectionAccess(pool, req.session.user.id, userRole, 'transactions');
+                if (!hasAccess) {
+                    if (userRole === 'InventoryManager') {
+                        return res.redirect('/Employee/Inventory/Forbidden');
+                    } else if (userRole === 'TransactionManager') {
+                        return res.redirect('/Employee/Transaction/Forbidden');
+                    } else if (userRole === 'UserManager') {
+                        return res.redirect('/Employee/UserManager/Forbidden');
+                    } else {
+                        return res.redirect('/Employee/Support/Forbidden');
+                    }
+                }
+            }
+            
+            await pool.connect();
+            const result = await pool.request().query('SELECT * FROM DeliveryRates ORDER BY CreatedDate DESC');
+            res.render('Employee/Support/SupportRates', { user: req.session.user, deliveryRates: result.recordset });
+        } catch (err) {
+            console.error('Error fetching delivery rates:', err);
+            res.render('Employee/Support/SupportRates', { user: req.session.user, deliveryRates: [], error: 'Failed to load delivery rates.' });
+        }
+    });
+
+    // ===== TRANSACTION MANAGER ROUTES =====
+    // Transaction Manager: Products route
+    router.get('/Employee/Transaction/Products', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            const userRole = req.session.user.role || req.session.user.roleName || req.session.user.RoleName;
+            
+            // Admin has full access, other roles need permission
+            if (userRole !== 'Admin') {
+                const hasAccess = await checkSectionAccess(pool, req.session.user.id, userRole, 'inventory');
+                if (!hasAccess) {
+                    if (userRole === 'TransactionManager') {
+                        return res.redirect('/Employee/Transaction/Forbidden');
+                    } else if (userRole === 'InventoryManager') {
+                        return res.redirect('/Employee/Inventory/Forbidden');
+                    } else if (userRole === 'UserManager') {
+                        return res.redirect('/Employee/UserManager/Forbidden');
+                    } else if (userRole === 'OrderSupport') {
+                        return res.redirect('/Employee/Support/Forbidden');
+                    } else {
+                        return res.redirect('/Employee/Support/Forbidden');
+                    }
+                }
+            }
+            
+            await pool.connect();
+            const page = parseInt(req.query.page) || 1;
+            const limit = 10;
+            const offset = (page - 1) * limit;
+            const countResult = await pool.request().query('SELECT COUNT(*) as count FROM Products WHERE IsActive = 1');
+            const total = countResult.recordset[0].count;
+            const totalPages = Math.ceil(total / limit);
+            const result = await pool.request().query(`
+                SELECT 
+                    p.*,
+                    pd.DiscountID,
+                    pd.DiscountType,
+                    pd.DiscountValue,
+                    pd.StartDate as DiscountStartDate,
+                    pd.EndDate as DiscountEndDate,
+                    pd.IsActive as DiscountIsActive,
+                    CASE 
+                        WHEN pd.DiscountType = 'percentage' THEN 
+                            p.Price - (p.Price * pd.DiscountValue / 100)
+                        WHEN pd.DiscountType = 'fixed' THEN 
+                            CASE WHEN p.Price - pd.DiscountValue < 0 THEN 0 ELSE p.Price - pd.DiscountValue END
+                        ELSE p.Price
+                    END as DiscountedPrice
+                FROM Products p
+                LEFT JOIN ProductDiscounts pd ON p.ProductID = pd.ProductID 
+                    AND pd.IsActive = 1 
+                    AND GETDATE() BETWEEN pd.StartDate AND pd.EndDate
+                WHERE p.IsActive = 1
+                ORDER BY p.DateAdded DESC
+                OFFSET ${offset} ROWS
+                FETCH NEXT ${limit} ROWS ONLY
+            `);
+            const products = result.recordset;
+            res.render('Employee/Transaction/TransactionProducts', { user: req.session.user, products, page, totalPages });
+        } catch (err) {
+            console.error('Error fetching products:', err);
+            req.flash('error', 'Could not fetch products.');
+            res.render('Employee/Transaction/TransactionProducts', { user: req.session.user, products: [], page: 1, totalPages: 1 });
+        }
+    });
+
+    // Transaction Manager: Variations route
+    router.get('/Employee/Transaction/Variations', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), (req, res) => {
+        res.render('Employee/Transaction/TransactionVariations', { user: req.session.user });
+    });
+
+    // Transaction Manager: Raw Materials route
+    router.get('/Employee/Transaction/RawMaterials', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            const userRole = req.session.user.role || req.session.user.roleName || req.session.user.RoleName;
+            
+            // Admin has full access, other roles need permission
+            if (userRole !== 'Admin') {
+                const hasAccess = await checkSectionAccess(pool, req.session.user.id, userRole, 'inventory');
+                if (!hasAccess) {
+                    if (userRole === 'TransactionManager') {
+                        return res.redirect('/Employee/Transaction/Forbidden');
+                    } else if (userRole === 'InventoryManager') {
+                        return res.redirect('/Employee/Inventory/Forbidden');
+                    } else if (userRole === 'UserManager') {
+                        return res.redirect('/Employee/UserManager/Forbidden');
+                    } else if (userRole === 'OrderSupport') {
+                        return res.redirect('/Employee/Support/Forbidden');
+                    } else {
+                        return res.redirect('/Employee/Support/Forbidden');
+                    }
+                }
+            }
+            
+            await pool.connect();
+            const result = await pool.request().query('SELECT * FROM RawMaterials WHERE IsActive = 1');
+            const materials = result.recordset;
+            res.render('Employee/Transaction/TransactionMaterials', { user: req.session.user, materials: materials });
+        } catch (err) {
+            console.error('Error fetching raw materials:', err);
+            req.flash('error', 'Could not fetch raw materials.');
+            res.render('Employee/Transaction/TransactionMaterials', { user: req.session.user, materials: [] });
+        }
+    });
+
+    // Transaction Manager: Alerts route
+    router.get('/Employee/Transaction/Alerts', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        res.render('Employee/Transaction/TransactionAlerts', { user: req.session.user });
+    });
+
+    // Transaction Manager: Manage Users route
+    router.get('/Employee/Transaction/ManageUsers', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            const userRole = req.session.user.role || req.session.user.roleName || req.session.user.RoleName;
+            
+            // Admin has full access, other roles need permission
+            if (userRole !== 'Admin') {
+                const hasAccess = await checkSectionAccess(pool, req.session.user.id, userRole, 'users');
+                if (!hasAccess) {
+                    if (userRole === 'TransactionManager') {
+                        return res.redirect('/Employee/Transaction/Forbidden');
+                    } else if (userRole === 'InventoryManager') {
+                        return res.redirect('/Employee/Inventory/Forbidden');
+                    } else if (userRole === 'UserManager') {
+                        return res.redirect('/Employee/UserManager/Forbidden');
+                    } else if (userRole === 'OrderSupport') {
+                        return res.redirect('/Employee/Support/Forbidden');
+                    } else {
+                        return res.redirect('/Employee/Support/Forbidden');
+                    }
+                }
+            }
+            
+            await pool.connect();
+            const result = await pool.request().query(`
+                SELECT 
+                    u.UserID,
+                    u.Username,
+                    u.FullName,
+                    u.Email,
+                    u.Role,
+                    u.IsActive,
+                    u.LastLogin,
+                    u.DateCreated
+                FROM Users u
+                WHERE u.Role IN ('InventoryManager', 'Admin', 'UserManager', 'OrderSupport', 'TransactionManager')
+                ORDER BY u.DateCreated DESC
+            `);
+            const users = result.recordset;
+            res.render('Employee/Transaction/TransactionManageUsers', { 
+                user: req.session.user, 
+                users: users
+            });
+        } catch (err) {
+            console.error('Error fetching users:', err);
+            req.flash('error', 'Could not fetch user data.');
+            res.render('Employee/Transaction/TransactionManageUsers', { 
+                user: req.session.user, 
+                users: []
+            });
+        }
+    });
+
+    // Transaction Manager: Logs route
+    router.get('/Employee/Transaction/Logs', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            const userRole = req.session.user.role || req.session.user.roleName || req.session.user.RoleName;
+            
+            // Admin has full access, other roles need permission
+            if (userRole !== 'Admin') {
+                const hasAccess = await checkSectionAccess(pool, req.session.user.id, userRole, 'logs');
+                if (!hasAccess) {
+                    if (userRole === 'TransactionManager') {
+                        return res.redirect('/Employee/Transaction/Forbidden');
+                    } else if (userRole === 'InventoryManager') {
+                        return res.redirect('/Employee/Inventory/Forbidden');
+                    } else if (userRole === 'UserManager') {
+                        return res.redirect('/Employee/UserManager/Forbidden');
+                    } else if (userRole === 'OrderSupport') {
+                        return res.redirect('/Employee/Support/Forbidden');
+                    } else {
+                        return res.redirect('/Employee/Support/Forbidden');
+                    }
+                }
+            }
+            
+            await pool.connect();
+            const result = await pool.request().query(`
+                SELECT TOP 50
+                    al.LogID,
+                    al.UserID,
+                    al.Action,
+                    al.Details,
+                    al.IPAddress,
+                    al.UserAgent,
+                    al.CreatedAt,
+                    u.Username,
+                    u.FullName
+                FROM ActivityLogs al
+                LEFT JOIN Users u ON al.UserID = u.UserID
+                ORDER BY al.CreatedAt DESC
+            `);
+            const logs = result.recordset;
+            res.render('Employee/Transaction/TransactionLogs', { user: req.session.user, logs: logs });
+        } catch (err) {
+            console.error('Error fetching activity logs:', err);
+            req.flash('error', 'Could not fetch activity logs.');
+            res.render('Employee/Transaction/TransactionLogs', { user: req.session.user, logs: [] });
+        }
+    });
+
+    // Transaction Manager: Archived route
+    router.get('/Employee/Transaction/Archived', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const productsResult = await pool.request().query('SELECT * FROM Products WHERE IsActive = 0');
+            const materialsResult = await pool.request().query('SELECT * FROM RawMaterials WHERE IsActive = 0');
+            res.render('Employee/Transaction/TransactionArchived', {
+                user: req.session.user,
+                archivedProducts: productsResult.recordset,
+                archivedMaterials: materialsResult.recordset
+            });
+        } catch (err) {
+            console.error('Error fetching archived items:', err);
+            res.render('Employee/Transaction/TransactionArchived', {
+                user: req.session.user,
+                archivedProducts: [],
+                archivedMaterials: []
+            });
+        }
+    });
+
+    // Transaction Manager: CMS route
+    router.get('/Employee/Transaction/CMS', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            const userRole = req.session.user.role || req.session.user.roleName || req.session.user.RoleName;
+            
+            // Admin has full access, other roles need permission
+            if (userRole !== 'Admin') {
+                const hasAccess = await checkSectionAccess(pool, req.session.user.id, userRole, 'cms');
+                if (!hasAccess) {
+                    if (userRole === 'TransactionManager') {
+                        return res.redirect('/Employee/Transaction/Forbidden');
+                    } else if (userRole === 'InventoryManager') {
+                        return res.redirect('/Employee/Inventory/Forbidden');
+                    } else if (userRole === 'UserManager') {
+                        return res.redirect('/Employee/UserManager/Forbidden');
+                    } else if (userRole === 'OrderSupport') {
+                        return res.redirect('/Employee/Support/Forbidden');
+                    } else {
+                        return res.redirect('/Employee/Support/Forbidden');
+                    }
+                }
+            }
+            
+            res.render('Employee/Transaction/TransactionCMS', { user: req.session.user });
+        } catch (err) {
+            console.error('Error accessing CMS:', err);
+            res.redirect('/Employee/Transaction/Forbidden');
+        }
+    });
+
+    // Transaction Manager: Delivery Rates route
+    router.get('/Employee/Transaction/DeliveryRates', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            const userRole = req.session.user.role || req.session.user.roleName || req.session.user.RoleName;
+            
+            // Admin has full access, other roles need permission
+            if (userRole !== 'Admin') {
+                const hasAccess = await checkSectionAccess(pool, req.session.user.id, userRole, 'transactions');
+                if (!hasAccess) {
+                    if (userRole === 'TransactionManager') {
+                        return res.redirect('/Employee/Transaction/Forbidden');
+                    } else if (userRole === 'InventoryManager') {
+                        return res.redirect('/Employee/Inventory/Forbidden');
+                    } else if (userRole === 'UserManager') {
+                        return res.redirect('/Employee/UserManager/Forbidden');
+                    } else if (userRole === 'OrderSupport') {
+                        return res.redirect('/Employee/Support/Forbidden');
+                    } else {
+                        return res.redirect('/Employee/Support/Forbidden');
+                    }
+                }
+            }
+            
+            res.render('Employee/Transaction/TransactionRates', { user: req.session.user });
+        } catch (err) {
+            console.error('Error accessing delivery rates:', err);
+            res.redirect('/Employee/Transaction/Forbidden');
+        }
+    });
+
+    // ===== ORDER ROUTES FOR ALL ROLES =====
+    // Inventory Manager: Orders Pending
+    router.get('/Employee/Inventory/OrdersPending', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const result = await pool.request().query(`
+                SELECT TOP 50
+                    o.OrderID,
+                    o.OrderNumber,
+                    o.CustomerName,
+                    o.CustomerEmail,
+                    o.CustomerPhone,
+                    o.TotalAmount,
+                    o.Status,
+                    o.OrderDate,
+                    o.ShippingAddress,
+                    o.PaymentMethod,
+                    o.Notes
+                FROM Orders o
+                WHERE o.Status = 'pending'
+                ORDER BY o.OrderDate DESC
+            `);
+            const orders = result.recordset;
+            res.render('Employee/Inventory/InventoryOrdersPending', { user: req.session.user, orders });
+        } catch (err) {
+            console.error('Error fetching pending orders:', err);
+            res.render('Employee/Inventory/InventoryOrdersPending', { user: req.session.user, orders: [], error: 'Failed to load pending orders.' });
+        }
+    });
+
+    // User Manager: Orders Pending
+    router.get('/Employee/UserManager/OrdersPending', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            const userRole = req.session.user.role || req.session.user.roleName || req.session.user.RoleName;
+            
+            // Admin has full access, other roles need permission
+            if (userRole !== 'Admin') {
+                const hasAccess = await checkSectionAccess(pool, req.session.user.id, userRole, 'transactions');
+                if (!hasAccess) {
+                    if (userRole === 'InventoryManager') {
+                        return res.redirect('/Employee/Inventory/Forbidden');
+                    } else if (userRole === 'TransactionManager') {
+                        return res.redirect('/Employee/Transaction/Forbidden');
+                    } else if (userRole === 'OrderSupport') {
+                        return res.redirect('/Employee/Support/Forbidden');
+                    } else {
+                        return res.redirect('/Employee/UserManager/Forbidden');
+                    }
+                }
+            }
+            
+            await pool.connect();
+            const result = await pool.request().query(`
+                SELECT TOP 50
+                    o.OrderID,
+                    o.OrderNumber,
+                    o.CustomerName,
+                    o.CustomerEmail,
+                    o.CustomerPhone,
+                    o.TotalAmount,
+                    o.Status,
+                    o.OrderDate,
+                    o.ShippingAddress,
+                    o.PaymentMethod,
+                    o.Notes
+                FROM Orders o
+                WHERE o.Status = 'pending'
+                ORDER BY o.OrderDate DESC
+            `);
+            const orders = result.recordset;
+            res.render('Employee/UserManager/UserManagerOrdersPending', { user: req.session.user, orders });
+        } catch (err) {
+            console.error('Error fetching pending orders:', err);
+            res.render('Employee/UserManager/UserManagerOrdersPending', { user: req.session.user, orders: [], error: 'Failed to load pending orders.' });
+        }
+    });
+
+    // Support: Walk In
+    router.get('/Employee/Support/WalkIn', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            const userRole = req.session.user.role || req.session.user.roleName || req.session.user.RoleName;
+            
+            // Admin has full access, other roles need permission
+            if (userRole !== 'Admin') {
+                const hasAccess = await checkSectionAccess(pool, req.session.user.id, userRole, 'transactions');
+                if (!hasAccess) {
+                    if (userRole === 'InventoryManager') {
+                        return res.redirect('/Employee/Inventory/Forbidden');
+                    } else if (userRole === 'TransactionManager') {
+                        return res.redirect('/Employee/Transaction/Forbidden');
+                    } else if (userRole === 'UserManager') {
+                        return res.redirect('/Employee/UserManager/Forbidden');
+                    } else {
+                        return res.redirect('/Employee/Support/Forbidden');
+                    }
+                }
+            }
+            
+            await pool.connect();
+            await ensureWalkInOrdersTable(pool);
+            const result = await pool.request().query('SELECT * FROM WalkInOrders ORDER BY CreatedAt DESC');
+            res.render('Employee/Support/SupportWalkIn', { user: req.session.user, bulkOrders: result.recordset });
+        } catch (err) {
+            console.error('Error fetching walk-in orders:', err);
+            res.render('Employee/Support/SupportWalkIn', { user: req.session.user, bulkOrders: [], error: 'Failed to load walk-in orders.' });
+        }
+    });
+
+    // Support: Orders Pending
+    router.get('/Employee/Support/OrdersPending', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const result = await pool.request().query(`
+                SELECT TOP 50
+                    o.OrderID,
+                    o.OrderNumber,
+                    o.CustomerName,
+                    o.CustomerEmail,
+                    o.CustomerPhone,
+                    o.TotalAmount,
+                    o.Status,
+                    o.OrderDate,
+                    o.ShippingAddress,
+                    o.PaymentMethod,
+                    o.Notes
+                FROM Orders o
+                WHERE o.Status = 'pending'
+                ORDER BY o.OrderDate DESC
+            `);
+            const orders = result.recordset;
+            res.render('Employee/Support/SupportOrdersPending', { user: req.session.user, orders });
+        } catch (err) {
+            console.error('Error fetching pending orders:', err);
+            res.render('Employee/Support/SupportOrdersPending', { user: req.session.user, orders: [], error: 'Failed to load pending orders.' });
+        }
+    });
+
+    // Support: Orders Processing
+    router.get('/Employee/Support/OrdersProcessing', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const result = await pool.request().query(`
+                SELECT TOP 50
+                    o.OrderID,
+                    o.OrderNumber,
+                    o.CustomerName,
+                    o.CustomerEmail,
+                    o.CustomerPhone,
+                    o.TotalAmount,
+                    o.Status,
+                    o.OrderDate,
+                    o.ShippingAddress,
+                    o.PaymentMethod,
+                    o.Notes
+                FROM Orders o
+                WHERE o.Status = 'processing'
+                ORDER BY o.OrderDate DESC
+            `);
+            const orders = result.recordset;
+            res.render('Employee/Support/SupportOrdersProcessing', { user: req.session.user, orders });
+        } catch (err) {
+            console.error('Error fetching processing orders:', err);
+            res.render('Employee/Support/SupportOrdersProcessing', { user: req.session.user, orders: [], error: 'Failed to load processing orders.' });
+        }
+    });
+
+    // Support: Orders Shipping
+    router.get('/Employee/Support/OrdersShipping', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const result = await pool.request().query(`
+                SELECT TOP 50
+                    o.OrderID,
+                    o.OrderNumber,
+                    o.CustomerName,
+                    o.CustomerEmail,
+                    o.CustomerPhone,
+                    o.TotalAmount,
+                    o.Status,
+                    o.OrderDate,
+                    o.ShippingAddress,
+                    o.PaymentMethod,
+                    o.Notes
+                FROM Orders o
+                WHERE o.Status = 'shipping'
+                ORDER BY o.OrderDate DESC
+            `);
+            const orders = result.recordset;
+            res.render('Employee/Support/SupportOrdersShipping', { user: req.session.user, orders });
+        } catch (err) {
+            console.error('Error fetching shipping orders:', err);
+            res.render('Employee/Support/SupportOrdersShipping', { user: req.session.user, orders: [], error: 'Failed to load shipping orders.' });
+        }
+    });
+
+    // Support: Orders Delivery
+    router.get('/Employee/Support/OrdersDelivery', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const result = await pool.request().query(`
+                SELECT TOP 50
+                    o.OrderID,
+                    o.OrderNumber,
+                    o.CustomerName,
+                    o.CustomerEmail,
+                    o.CustomerPhone,
+                    o.TotalAmount,
+                    o.Status,
+                    o.OrderDate,
+                    o.ShippingAddress,
+                    o.PaymentMethod,
+                    o.Notes
+                FROM Orders o
+                WHERE o.Status = 'delivery'
+                ORDER BY o.OrderDate DESC
+            `);
+            const orders = result.recordset;
+            res.render('Employee/Support/SupportOrdersDelivery', { user: req.session.user, orders });
+        } catch (err) {
+            console.error('Error fetching delivery orders:', err);
+            res.render('Employee/Support/SupportOrdersDelivery', { user: req.session.user, orders: [], error: 'Failed to load delivery orders.' });
+        }
+    });
+
+    // Support: Orders Receive
+    router.get('/Employee/Support/OrdersReceive', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const result = await pool.request().query(`
+                SELECT TOP 50
+                    o.OrderID,
+                    o.OrderNumber,
+                    o.CustomerName,
+                    o.CustomerEmail,
+                    o.CustomerPhone,
+                    o.TotalAmount,
+                    o.Status,
+                    o.OrderDate,
+                    o.ShippingAddress,
+                    o.PaymentMethod,
+                    o.Notes
+                FROM Orders o
+                WHERE o.Status = 'received'
+                ORDER BY o.OrderDate DESC
+            `);
+            const orders = result.recordset;
+            res.render('Employee/Support/SupportOrdersReceive', { user: req.session.user, orders });
+        } catch (err) {
+            console.error('Error fetching receive orders:', err);
+            res.render('Employee/Support/SupportOrdersReceive', { user: req.session.user, orders: [], error: 'Failed to load receive orders.' });
+        }
+    });
+
+    // Support: Cancelled Orders
+    router.get('/Employee/Support/CancelledOrders', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const result = await pool.request().query(`
+                SELECT TOP 50
+                    o.OrderID,
+                    o.OrderNumber,
+                    o.CustomerName,
+                    o.CustomerEmail,
+                    o.CustomerPhone,
+                    o.TotalAmount,
+                    o.Status,
+                    o.OrderDate,
+                    o.ShippingAddress,
+                    o.PaymentMethod,
+                    o.Notes
+                FROM Orders o
+                WHERE o.Status = 'cancelled'
+                ORDER BY o.OrderDate DESC
+            `);
+            const orders = result.recordset;
+            res.render('Employee/Support/SupportCancelledOrders', { user: req.session.user, orders });
+        } catch (err) {
+            console.error('Error fetching cancelled orders:', err);
+            res.render('Employee/Support/SupportCancelledOrders', { user: req.session.user, orders: [], error: 'Failed to load cancelled orders.' });
+        }
+    });
+
+    // Support: Completed Orders
+    router.get('/Employee/Support/CompletedOrders', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const result = await pool.request().query(`
+                SELECT TOP 50
+                    o.OrderID,
+                    o.OrderNumber,
+                    o.CustomerName,
+                    o.CustomerEmail,
+                    o.CustomerPhone,
+                    o.TotalAmount,
+                    o.Status,
+                    o.OrderDate,
+                    o.ShippingAddress,
+                    o.PaymentMethod,
+                    o.Notes
+                FROM Orders o
+                WHERE o.Status = 'completed'
+                ORDER BY o.OrderDate DESC
+            `);
+            const orders = result.recordset;
+            res.render('Employee/Support/SupportCompletedOrders', { user: req.session.user, orders });
+        } catch (err) {
+            console.error('Error fetching completed orders:', err);
+            res.render('Employee/Support/SupportCompletedOrders', { user: req.session.user, orders: [], error: 'Failed to load completed orders.' });
+        }
+    });
+
+
+    // Support: Chat Support
+    router.get('/Employee/Support/ChatSupport', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            const userRole = req.session.user.role || req.session.user.roleName || req.session.user.RoleName;
+            
+            // Admin has full access, other roles need permission
+            if (userRole !== 'Admin') {
+                const hasAccess = await checkSectionAccess(pool, req.session.user.id, userRole, 'chat');
+                if (!hasAccess) {
+                    if (userRole === 'InventoryManager') {
+                        return res.redirect('/Employee/Inventory/Forbidden');
+                    } else if (userRole === 'TransactionManager') {
+                        return res.redirect('/Employee/Transaction/Forbidden');
+                    } else if (userRole === 'UserManager') {
+                        return res.redirect('/Employee/UserManager/Forbidden');
+                    } else {
+                        return res.redirect('/Employee/Support/Forbidden');
+                    }
+                }
+            }
+            
+            await pool.connect();
+            // Fetch all threads from real chat data (like Inventory ChatSupport)
+            const threadsResult = await pool.request().query(`
+                SELECT c.CustomerID, c.FullName, c.Email,
+                    MAX(m.SentAt) AS LastMessageAt,
+                    (SELECT TOP 1 MessageText FROM ChatMessages WHERE CustomerID = c.CustomerID ORDER BY SentAt DESC) AS LastMessageText,
+                    SUM(CASE WHEN m.SenderType = 'customer' AND m.IsRead = 0 THEN 1 ELSE 0 END) AS UnreadCount
+                FROM Customers c
+                LEFT JOIN ChatMessages m ON c.CustomerID = m.CustomerID
+                WHERE EXISTS (SELECT 1 FROM ChatMessages WHERE CustomerID = c.CustomerID)
+                GROUP BY c.CustomerID, c.FullName, c.Email
+                ORDER BY LastMessageAt DESC
+            `);
+            const threads = threadsResult.recordset;
+            // Select first thread by default
+            const selectedThread = threads.length > 0 ? threads[0] : null;
+            let messages = [];
+            if (selectedThread) {
+                const messagesResult = await pool.request()
+                    .input('customerId', sql.Int, selectedThread.CustomerID)
+                    .query(`
+                        SELECT MessageText, SenderType, SentAt, IsRead
+                        FROM ChatMessages 
+                        WHERE CustomerID = @customerId 
+                        ORDER BY SentAt ASC
+                    `);
+                messages = messagesResult.recordset;
+            }
+            res.render('Employee/Support/SupportChatSupport', { 
+                user: req.session.user, 
+                threads,
+                selectedThread,
+                messages
+            });
+        } catch (err) {
+            console.error('Error fetching chat threads:', err);
+            res.render('Employee/Support/SupportChatSupport', { 
+                user: req.session.user, 
+                threads: [], 
+                selectedThread: null,
+                messages: [],
+                error: 'Failed to load chat threads.' 
+            });
+        }
+    });
+
+    // Transaction Manager: Orders Pending
+    router.get('/Employee/Transaction/OrdersPending', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            const userRole = req.session.user.role || req.session.user.roleName || req.session.user.RoleName;
+            
+            // Admin has full access, other roles need permission
+            if (userRole !== 'Admin') {
+                const hasAccess = await checkSectionAccess(pool, req.session.user.id, userRole, 'transactions');
+                if (!hasAccess) {
+                    if (userRole === 'InventoryManager') {
+                        return res.redirect('/Employee/Inventory/Forbidden');
+                    } else if (userRole === 'UserManager') {
+                        return res.redirect('/Employee/UserManager/Forbidden');
+                    } else if (userRole === 'OrderSupport') {
+                        return res.redirect('/Employee/Support/Forbidden');
+                    } else {
+                        return res.redirect('/Employee/Support/Forbidden');
+                    }
+                }
+            }
+            
+            await pool.connect();
+            const result = await pool.request().query(`
+                SELECT TOP 50
+                    o.OrderID,
+                    o.OrderNumber,
+                    o.CustomerName,
+                    o.CustomerEmail,
+                    o.CustomerPhone,
+                    o.TotalAmount,
+                    o.Status,
+                    o.OrderDate,
+                    o.ShippingAddress,
+                    o.PaymentMethod,
+                    o.Notes
+                FROM Orders o
+                WHERE o.Status = 'pending'
+                ORDER BY o.OrderDate DESC
+            `);
+            const orders = result.recordset;
+            res.render('Employee/Transaction/TransactionOrdersPending', { user: req.session.user, orders });
+        } catch (err) {
+            console.error('Error fetching pending orders:', err);
+            res.render('Employee/Transaction/TransactionOrdersPending', { user: req.session.user, orders: [], error: 'Failed to load pending orders.' });
+        }
+    });
+
+    // ===== USER PERMISSION MANAGEMENT ROUTES =====
+    // Get user permissions
+    router.get('/Employee/Admin/ManageUsers/GetPermissions/:userId', isAuthenticated, async (req, res) => {
+        try {
+            const userId = req.params.userId;
+            console.log('Fetching permissions for user:', userId);
+            
+            await pool.connect();
+            const result = await pool.request()
+                .input('userId', sql.Int, userId)
+                .query(`
+                    SELECT Section, CanAccess 
+                    FROM UserPermissions 
+                    WHERE UserID = @userId
+                `);
+            
+            const permissions = {};
+            result.recordset.forEach(perm => {
+                console.log(`Permission found: Section=${perm.Section}, CanAccess=${perm.CanAccess} (${typeof perm.CanAccess})`);
+                permissions[perm.Section] = perm.CanAccess;
+            });
+            
+            console.log('Permissions found for user', userId, ':', permissions);
+            res.json({ success: true, permissions: permissions });
+        } catch (err) {
+            console.error('Error fetching permissions:', err);
+            res.json({ success: false, message: 'Failed to fetch permissions' });
+        }
+    });
+
+    // Test route to check if user is authenticated
+    router.post('/Employee/Admin/ManageUsers/TestAuth', isAuthenticated, async (req, res) => {
+        try {
+            console.log('TestAuth route accessed');
+            console.log('User session:', req.session.user);
+            console.log('User role:', req.session.user?.role || req.session.user?.roleName || req.session.user?.RoleName);
+            res.json({ 
+                success: true, 
+                message: 'Authentication test successful',
+                user: req.session.user,
+                role: req.session.user?.role || req.session.user?.roleName || req.session.user?.RoleName
+            });
+        } catch (err) {
+            console.error('Error in TestAuth:', err);
+            res.json({ success: false, message: 'Authentication test failed' });
+        }
+    });
+
+    // Admin: Update User Permissions
+    router.post('/Employee/Admin/ManageUsers/UpdatePermissions', isAuthenticated, hasRole('Admin'), async (req, res) => {
+        try {
+            console.log('UpdatePermissions route accessed');
+            console.log('User session:', req.session.user);
+            console.log('User role:', req.session.user?.role || req.session.user?.roleName || req.session.user?.RoleName);
+            
+            const { userId, permissions } = req.body;
+            console.log('Request body:', { userId, permissions });
+            
+            if (!userId || !permissions) {
+                return res.json({ success: false, message: 'Missing required parameters' });
+            }
+            
+            await pool.connect();
+            
+            // Update permissions for each section
+            for (const [section, canAccess] of Object.entries(permissions)) {
+                console.log(`Updating permission for user ${userId}, section ${section}, canAccess: ${canAccess} (${typeof canAccess})`);
+                const canAccessValue = canAccess === true ? 1 : 0;
+                console.log(`Setting CanAccess to ${canAccessValue} for section ${section}`);
+                
+                await pool.request()
+                    .input('userId', sql.Int, userId)
+                    .input('section', sql.NVarChar, section)
+                    .input('canAccess', sql.Bit, canAccessValue)
+                    .query(`
+                        IF EXISTS (SELECT 1 FROM UserPermissions WHERE UserID = @userId AND Section = @section)
+                            UPDATE UserPermissions SET CanAccess = @canAccess WHERE UserID = @userId AND Section = @section
+                        ELSE
+                            INSERT INTO UserPermissions (UserID, Section, CanAccess) VALUES (@userId, @section, @canAccess)
+                    `);
+            }
+            
+            // Log the updated permissions for debugging
+            console.log('Permissions updated successfully. Checking stored permissions...');
+            const checkResult = await pool.request()
+                .input('userId', sql.Int, userId)
+                .query(`
+                    SELECT Section, CanAccess FROM UserPermissions 
+                    WHERE UserID = @userId
+                `);
+            console.log('Stored permissions for user', userId, ':', checkResult.recordset);
+            
+            res.json({ success: true, message: 'Permissions updated successfully' });
+        } catch (err) {
+            console.error('Error updating permissions:', err);
+            res.json({ success: false, message: 'Failed to update permissions' });
+        }
+    });
+
+    // ===== FORBIDDEN ROUTES FOR ALL ROLES =====
+    // Inventory Manager: Forbidden
+    router.get('/Employee/Inventory/Forbidden', isAuthenticated, (req, res) => {
+        res.render('Employee/Inventory/Forbidden', { user: req.session.user });
+    });
+
+    // User Manager: Forbidden
+    router.get('/Employee/UserManager/Forbidden', isAuthenticated, (req, res) => {
+        res.render('Employee/UserManager/Forbidden', { user: req.session.user });
+    });
+
+    // Support: Forbidden
+    router.get('/Employee/Support/Forbidden', isAuthenticated, (req, res) => {
+        res.render('Employee/Support/Forbidden', { user: req.session.user });
+    });
+
+    // Transaction Manager: Forbidden
+    router.get('/Employee/Transaction/Forbidden', isAuthenticated, (req, res) => {
+        res.render('Employee/Transaction/Forbidden', { user: req.session.user });
     });
 
     // Inventory Manager: New Transaction and Utility Pages
-    router.get('/Employee/Inventory/InvManOrdersProcessing', isAuthenticated, hasRole('InventoryManager'), requireSectionAccess('transactions'), async (req, res) => {
+    router.get('/Employee/Inventory/OrdersProcessing', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), requireSectionAccess('transactions'), async (req, res) => {
         try {
             await pool.connect();
             // Fetch all processing orders with customer, address, and items
@@ -4788,13 +6740,13 @@ module.exports = function(sql, pool) {
                     `);
                 order.items = itemsResult.recordset;
             }
-            res.render('Employee/Inventory/InvManOrdersProcessing', { user: req.session.user, orders });
+            res.render('Employee/Inventory/InventoryOrdersProcessing', { user: req.session.user, orders });
         } catch (err) {
             console.error('Error fetching processing orders:', err);
-            res.render('Employee/Inventory/InvManOrdersProcessing', { user: req.session.user, orders: [], error: 'Failed to load processing orders.' });
+            res.render('Employee/Inventory/InventoryOrdersProcessing', { user: req.session.user, orders: [], error: 'Failed to load processing orders.' });
         }
     });
-    router.get('/Employee/Inventory/InvManOrdersShipping', isAuthenticated, hasRole('InventoryManager'), requireSectionAccess('transactions'), async (req, res) => {
+    router.get('/Employee/Inventory/OrdersShipping', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), requireSectionAccess('transactions'), async (req, res) => {
         try {
             await pool.connect();
             // Fetch all shipping orders with customer, address, and items
@@ -4830,13 +6782,13 @@ module.exports = function(sql, pool) {
                     `);
                 order.items = itemsResult.recordset;
             }
-            res.render('Employee/Inventory/InvManOrdersShipping', { user: req.session.user, orders });
+            res.render('Employee/Inventory/InventoryOrdersShipping', { user: req.session.user, orders });
         } catch (err) {
             console.error('Error fetching shipping orders:', err);
-            res.render('Employee/Inventory/InvManOrdersShipping', { user: req.session.user, orders: [], error: 'Failed to load shipping orders.' });
+            res.render('Employee/Inventory/InventoryOrdersShipping', { user: req.session.user, orders: [], error: 'Failed to load shipping orders.' });
         }
     });
-    router.get('/Employee/Inventory/InvManOrdersDelivery', isAuthenticated, hasRole('InventoryManager'), requireSectionAccess('transactions'), async (req, res) => {
+    router.get('/Employee/Inventory/OrdersDelivery', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), requireSectionAccess('transactions'), async (req, res) => {
         try {
             await pool.connect();
             // Fetch all delivery orders with customer, address, and items
@@ -4856,7 +6808,7 @@ module.exports = function(sql, pool) {
                 JOIN Customers c ON o.CustomerID = c.CustomerID
                 LEFT JOIN CustomerAddresses a ON o.ShippingAddressID = a.AddressID
                 LEFT JOIN DeliveryRates dr ON o.DeliveryType = 'rate_' + CAST(dr.RateID AS NVARCHAR(10))
-                WHERE o.Status = 'Delivery'
+                WHERE o.Status = 'Delivered'
                 ORDER BY o.OrderDate ASC
             `);
             const orders = ordersResult.recordset;
@@ -4872,13 +6824,13 @@ module.exports = function(sql, pool) {
                     `);
                 order.items = itemsResult.recordset;
             }
-            res.render('Employee/Inventory/InvManOrdersDelivery', { user: req.session.user, orders });
+            res.render('Employee/Inventory/InventoryOrdersDelivery', { user: req.session.user, orders });
         } catch (err) {
             console.error('Error fetching delivery orders:', err);
-            res.render('Employee/Inventory/InvManOrdersDelivery', { user: req.session.user, orders: [], error: 'Failed to load delivery orders.' });
+            res.render('Employee/Inventory/InventoryOrdersDelivery', { user: req.session.user, orders: [], error: 'Failed to load delivery orders.' });
         }
     });
-    router.get('/Employee/Inventory/InvManOrdersReceive', isAuthenticated, hasRole('InventoryManager'), requireSectionAccess('transactions'), async (req, res) => {
+    router.get('/Employee/Inventory/OrdersReceive', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), requireSectionAccess('transactions'), async (req, res) => {
         try {
             await pool.connect();
             // Fetch all receive orders with customer, address, and items
@@ -4898,7 +6850,7 @@ module.exports = function(sql, pool) {
                 JOIN Customers c ON o.CustomerID = c.CustomerID
                 LEFT JOIN CustomerAddresses a ON o.ShippingAddressID = a.AddressID
                 LEFT JOIN DeliveryRates dr ON o.DeliveryType = 'rate_' + CAST(dr.RateID AS NVARCHAR(10))
-                WHERE o.Status = 'Receive'
+                WHERE o.Status = 'Received'
                 ORDER BY o.OrderDate ASC
             `);
             const orders = ordersResult.recordset;
@@ -4914,13 +6866,13 @@ module.exports = function(sql, pool) {
                     `);
                 order.items = itemsResult.recordset;
             }
-            res.render('Employee/Inventory/InvManOrdersReceive', { user: req.session.user, orders });
+            res.render('Employee/Inventory/InventoryOrdersReceive', { user: req.session.user, orders });
         } catch (err) {
             console.error('Error fetching receive orders:', err);
-            res.render('Employee/Inventory/InvManOrdersReceive', { user: req.session.user, orders: [], error: 'Failed to load receive orders.' });
+            res.render('Employee/Inventory/InventoryOrdersReceive', { user: req.session.user, orders: [], error: 'Failed to load receive orders.' });
         }
     });
-    router.get('/Employee/Inventory/InvManCancelledOrders', isAuthenticated, hasRole('InventoryManager'), requireSectionAccess('transactions'), async (req, res) => {
+    router.get('/Employee/Inventory/CancelledOrders', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), requireSectionAccess('transactions'), async (req, res) => {
         try {
             await pool.connect();
             // Fetch all cancelled orders with customer, address, and items
@@ -4956,13 +6908,13 @@ module.exports = function(sql, pool) {
                     `);
                 order.items = itemsResult.recordset;
             }
-            res.render('Employee/Inventory/InvManCancelledOrders', { user: req.session.user, orders });
+            res.render('Employee/Inventory/InventoryCancelledOrders', { user: req.session.user, orders });
         } catch (err) {
             console.error('Error fetching cancelled orders:', err);
-            res.render('Employee/Inventory/InvManCancelledOrders', { user: req.session.user, orders: [], error: 'Failed to load cancelled orders.' });
+            res.render('Employee/Inventory/InventoryCancelledOrders', { user: req.session.user, orders: [], error: 'Failed to load cancelled orders.' });
         }
     });
-    router.get('/Employee/Inventory/InvManCompletedOrders', isAuthenticated, hasRole('InventoryManager'), requireSectionAccess('transactions'), async (req, res) => {
+    router.get('/Employee/Inventory/CompletedOrders', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), requireSectionAccess('transactions'), async (req, res) => {
         try {
             await pool.connect();
             // Fetch all completed orders with customer, address, and items
@@ -5004,15 +6956,15 @@ module.exports = function(sql, pool) {
             res.render('Employee/Inventory/InvManCompletedOrders', { user: req.session.user, orders: [], error: 'Failed to load completed orders.' });
         }
     });
-    router.get('/Employee/Inventory/InvManChatSupport', isAuthenticated, hasRole('InventoryManager'), requireSectionAccess('chat'), (req, res) => {
+    router.get('/Employee/Inventory/InvManChatSupport', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), requireSectionAccess('chat'), (req, res) => {
         res.render('Employee/Inventory/InvManChatSupport', { user: req.session.user });
     });
-    router.get('/Employee/Inventory/InvManagerCMS', isAuthenticated, hasRole('InventoryManager'), requireSectionAccess('content'), (req, res) => {
+    router.get('/Employee/Inventory/InvManagerCMS', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), requireSectionAccess('content'), (req, res) => {
         res.render('Employee/Inventory/InvManagerCMS', { user: req.session.user });
     });
 
     // --- USER PERMISSIONS ENDPOINTS ---
-    router.post('/Employee/Admin/Users/SetPermissions', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    router.post('/Employee/Admin/Users/SetPermissions', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         const { userId, permissions } = req.body; // permissions: { inventory: true/false, ... }
         try {
             await pool.connect();
@@ -5071,19 +7023,30 @@ module.exports = function(sql, pool) {
             if (!userId) return res.redirect('/login');
             const allowed = await hasSectionAccess(userId, section);
             if (!allowed) {
-                // Render forbidden page for InventoryManager
-                if (req.session.user && req.session.user.role === 'InventoryManager') {
+                // Render role-specific forbidden page
+                const userRole = req.session.user.role || req.session.user.roleName || req.session.user.RoleName;
+                
+                switch(userRole) {
+                    case 'Admin':
+                        return res.status(403).render('Employee/Admin/Forbidden');
+                    case 'InventoryManager':
                     return res.status(403).render('Employee/Inventory/Forbidden');
-                }
-                // Default: plain 403
+                    case 'TransactionManager':
+                        return res.status(403).render('Employee/Transaction/Forbidden');
+                    case 'UserManager':
+                        return res.status(403).render('Employee/UserManager/Forbidden');
+                    case 'OrderSupport':
+                        return res.status(403).render('Employee/Support/Forbidden');
+                    default:
                 return res.status(403).send('Forbidden: No access to this section');
+                }
             }
             next();
         };
     }
 
     // Reactivate archived product for InventoryManager
-    router.post('/Employee/Inventory/InvManagerArchived/ReactivateProduct/:id', isAuthenticated, hasRole('InventoryManager'), requireSectionAccess('inventory'), async (req, res) => {
+    router.post('/Employee/Inventory/InvManagerArchived/ReactivateProduct/:id', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), requireSectionAccess('inventory'), async (req, res) => {
         const productId = req.params.id;
         try {
             await pool.connect();
@@ -5108,7 +7071,7 @@ module.exports = function(sql, pool) {
         }
     });
     // Reactivate archived material for InventoryManager
-    router.post('/Employee/Inventory/InvManagerArchived/ReactivateMaterial/:id', isAuthenticated, hasRole('InventoryManager'), requireSectionAccess('inventory'), async (req, res) => {
+    router.post('/Employee/Inventory/InvManagerArchived/ReactivateMaterial/:id', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), requireSectionAccess('inventory'), async (req, res) => {
         const materialId = req.params.id;
         try {
             await pool.connect();
@@ -5361,7 +7324,7 @@ module.exports = function(sql, pool) {
         }
     });
     // Inventory Manager: Proceed to next process
-    router.post('/Employee/Inventory/InvManOrdersPending/Proceed/:orderId', isAuthenticated, hasRole('InventoryManager'), requireSectionAccess('transactions'), async (req, res) => {
+    router.post('/Employee/Inventory/InvManOrdersPending/Proceed/:orderId', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), requireSectionAccess('transactions'), async (req, res) => {
         try {
             await pool.connect();
             const orderId = parseInt(req.params.orderId);
@@ -5374,7 +7337,7 @@ module.exports = function(sql, pool) {
         }
     });
     // Inventory Manager: Cancel order
-    router.post('/Employee/Inventory/InvManOrdersPending/Cancel/:orderId', isAuthenticated, hasRole('InventoryManager'), requireSectionAccess('transactions'), async (req, res) => {
+    router.post('/Employee/Inventory/InvManOrdersPending/Cancel/:orderId', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), requireSectionAccess('transactions'), async (req, res) => {
         try {
             await pool.connect();
             const orderId = parseInt(req.params.orderId);
@@ -5415,7 +7378,7 @@ module.exports = function(sql, pool) {
     });
 
     // Inventory Manager: Proceed to Shipping from Processing
-    router.post('/Employee/Inventory/InvManOrdersProcessing/Proceed/:orderId', isAuthenticated, hasRole('InventoryManager'), requireSectionAccess('transactions'), async (req, res) => {
+    router.post('/Employee/Inventory/InvManOrdersProcessing/Proceed/:orderId', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), requireSectionAccess('transactions'), async (req, res) => {
         try {
             await pool.connect();
             const orderId = parseInt(req.params.orderId);
@@ -5428,7 +7391,7 @@ module.exports = function(sql, pool) {
         }
     });
     // Inventory Manager: Cancel order from Processing
-    router.post('/Employee/Inventory/InvManOrdersProcessing/Cancel/:orderId', isAuthenticated, hasRole('InventoryManager'), requireSectionAccess('transactions'), async (req, res) => {
+    router.post('/Employee/Inventory/InvManOrdersProcessing/Cancel/:orderId', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), requireSectionAccess('transactions'), async (req, res) => {
         try {
             await pool.connect();
             const orderId = parseInt(req.params.orderId);
@@ -5468,7 +7431,7 @@ module.exports = function(sql, pool) {
         }
     });
     // Inventory Manager: Proceed to Delivery from Shipping
-    router.post('/Employee/Inventory/InvManOrdersShipping/Proceed/:orderId', isAuthenticated, hasRole('InventoryManager'), requireSectionAccess('transactions'), async (req, res) => {
+    router.post('/Employee/Inventory/InvManOrdersShipping/Proceed/:orderId', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), requireSectionAccess('transactions'), async (req, res) => {
         try {
             await pool.connect();
             const orderId = parseInt(req.params.orderId);
@@ -5481,7 +7444,7 @@ module.exports = function(sql, pool) {
         }
     });
     // Inventory Manager: Cancel order from Shipping
-    router.post('/Employee/Inventory/InvManOrdersShipping/Cancel/:orderId', isAuthenticated, hasRole('InventoryManager'), requireSectionAccess('transactions'), async (req, res) => {
+    router.post('/Employee/Inventory/InvManOrdersShipping/Cancel/:orderId', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), requireSectionAccess('transactions'), async (req, res) => {
         try {
             await pool.connect();
             const orderId = parseInt(req.params.orderId);
@@ -5521,7 +7484,7 @@ module.exports = function(sql, pool) {
         }
     });
     // Inventory Manager: Proceed to Receive from Delivery
-    router.post('/Employee/Inventory/InvManOrdersDelivery/Proceed/:orderId', isAuthenticated, hasRole('InventoryManager'), requireSectionAccess('transactions'), async (req, res) => {
+    router.post('/Employee/Inventory/InvManOrdersDelivery/Proceed/:orderId', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), requireSectionAccess('transactions'), async (req, res) => {
         try {
             await pool.connect();
             const orderId = parseInt(req.params.orderId);
@@ -5534,7 +7497,7 @@ module.exports = function(sql, pool) {
         }
     });
     // Inventory Manager: Cancel order from Delivery
-    router.post('/Employee/Inventory/InvManOrdersDelivery/Cancel/:orderId', isAuthenticated, hasRole('InventoryManager'), requireSectionAccess('transactions'), async (req, res) => {
+    router.post('/Employee/Inventory/InvManOrdersDelivery/Cancel/:orderId', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), requireSectionAccess('transactions'), async (req, res) => {
         try {
             await pool.connect();
             const orderId = parseInt(req.params.orderId);
@@ -5561,7 +7524,7 @@ module.exports = function(sql, pool) {
         }
     });
     // Inventory Manager: Cancel order from Receive
-    router.post('/Employee/Inventory/InvManOrdersReceive/Cancel/:orderId', isAuthenticated, hasRole('InventoryManager'), requireSectionAccess('transactions'), async (req, res) => {
+    router.post('/Employee/Inventory/InvManOrdersReceive/Cancel/:orderId', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), requireSectionAccess('transactions'), async (req, res) => {
         try {
             await pool.connect();
             const orderId = parseInt(req.params.orderId);
@@ -5592,7 +7555,7 @@ module.exports = function(sql, pool) {
                 return res.status(404).json({ success: false, message: 'Order not found.' });
             }
             const status = result.recordset[0].Status;
-            if (status !== 'Receive') {
+            if (status !== 'Receive' && status !== 'Received') {
                 return res.status(400).json({ success: false, message: 'Order is not in a receivable state.' });
             }
             // Update status to Completed
@@ -5609,7 +7572,7 @@ module.exports = function(sql, pool) {
     // --- Header Offer Bar API Endpoints ---
     
     // GET: Fetch header offer bar settings
-    router.get('/api/admin/header-offer-bar', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    router.get('/api/admin/header-offer-bar', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             await pool.connect();
             const result = await pool.request().query(`
@@ -5652,7 +7615,7 @@ module.exports = function(sql, pool) {
     });
 
     // POST: Save header offer bar settings
-    router.post('/api/admin/header-offer-bar', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    router.post('/api/admin/header-offer-bar', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             await pool.connect();
             const { offerText, buttonText, startDate, endDate, status, backgroundColor, textColor } = req.body;
@@ -5714,7 +7677,7 @@ module.exports = function(sql, pool) {
     // --- Projects Management API Endpoints ---
     
     // GET: Fetch single project item by ID
-    router.get('/api/admin/projects/:id', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    router.get('/api/admin/projects/:id', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             await pool.connect();
             const projectId = req.params.id;
@@ -5749,7 +7712,7 @@ module.exports = function(sql, pool) {
     });
     
     // GET: Fetch all project items with thumbnails
-    router.get('/api/admin/projects', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    router.get('/api/admin/projects', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             await pool.connect();
             
@@ -5807,7 +7770,7 @@ module.exports = function(sql, pool) {
     });
     
     // POST: Add new project item
-    router.post('/api/admin/projects', isAuthenticated, hasRole('Admin'), upload.fields([
+    router.post('/api/admin/projects', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), upload.fields([
         { name: 'mainImage', maxCount: 1 },
         { name: 'thumbnails', maxCount: 8 }
     ]), async (req, res) => {
@@ -5870,7 +7833,7 @@ module.exports = function(sql, pool) {
     });
     
     // PUT: Update project item
-    router.put('/api/admin/projects/:id', isAuthenticated, hasRole('Admin'), upload.fields([
+    router.put('/api/admin/projects/:id', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), upload.fields([
         { name: 'mainImage', maxCount: 1 },
         { name: 'thumbnails', maxCount: 8 }
     ]), async (req, res) => {
@@ -5960,7 +7923,7 @@ module.exports = function(sql, pool) {
     });
     
     // DELETE: Delete project item
-    router.delete('/api/admin/projects/:id', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    router.delete('/api/admin/projects/:id', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             await pool.connect();
             
@@ -6391,17 +8354,23 @@ router.post('/api/admin/hero-banner', upload.array('heroBannerImages', 3), async
 
 // DELETE: Remove hero banner images (admin only)
 router.delete('/api/admin/hero-banner', async (req, res) => {
+    console.log('DELETE /api/admin/hero-banner - Route reached!');
     try {
-        const pool = req.app.locals.db;
-        await pool.request().query(`
+        console.log('DELETE /api/admin/hero-banner - Starting...');
+        await pool.connect();
+        console.log('Database connected successfully');
+        
+        const result = await pool.request().query(`
             UPDATE HeroBanner
             SET HeroBannerImages = NULL, UpdatedAt = GETDATE()
             WHERE ID = (SELECT TOP 1 ID FROM HeroBanner)
         `);
         
+        console.log('Delete query executed successfully, rows affected:', result.rowsAffected[0]);
         res.json({ success: true, message: 'Hero banner images removed successfully' });
     } catch (err) {
         console.error('Error removing hero banner images:', err);
+        console.error('Error details:', err.message);
         res.status(500).json({ error: 'Failed to remove hero banner images' });
     }
 });
@@ -6505,7 +8474,7 @@ router.get('/api/hero-banner', async (req, res) => {
     // --- Header Banner API Endpoints ---
     
     // GET: Fetch header banner settings (admin only)
-    router.get('/api/admin/header-banner', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    router.get('/api/admin/header-banner', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             await pool.connect();
             // Ensure table exists
@@ -6575,7 +8544,7 @@ router.get('/api/hero-banner', async (req, res) => {
     });
 
     // POST: Save header banner settings (admin only)
-    router.post('/api/admin/header-banner', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    router.post('/api/admin/header-banner', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             console.log('Header banner save request received:', req.body);
             await pool.connect();
@@ -6725,7 +8694,7 @@ router.get('/api/hero-banner', async (req, res) => {
     });
 
     // GET: Fetch header banner settings for admin (admin only)
-    router.get('/api/admin/header-banner', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    router.get('/api/admin/header-banner', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             await pool.connect();
             // Ensure table exists
@@ -6939,7 +8908,7 @@ router.get('/api/hero-banner', async (req, res) => {
     });
 
     // Admin: Delivery Rates API - list active
-    router.get('/api/admin/delivery-rates', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    router.get('/api/admin/delivery-rates', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             await pool.connect();
             const result = await pool.request().query(`
@@ -7050,7 +9019,7 @@ router.get('/api/hero-banner', async (req, res) => {
     });
 
     // Inventory: Delivery Rates API - list active
-    router.get('/api/inventory/delivery-rates', isAuthenticated, hasRole('InventoryManager'), requireSectionAccess('transactions'), async (req, res) => {
+    router.get('/api/inventory/delivery-rates', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), requireSectionAccess('transactions'), async (req, res) => {
         try {
             await pool.connect();
             const result = await pool.request().query(`
@@ -7076,7 +9045,7 @@ router.get('/api/hero-banner', async (req, res) => {
     });
 
     // Inventory: Add Delivery Rate
-    router.post('/Employee/Inventory/DeliveryRates/Add', isAuthenticated, hasRole('InventoryManager'), requireSectionAccess('transactions'), async (req, res) => {
+    router.post('/Employee/Inventory/DeliveryRates/Add', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), requireSectionAccess('transactions'), async (req, res) => {
         try {
             await pool.connect();
             const { serviceType, price } = req.body || {};
@@ -7122,7 +9091,7 @@ router.get('/api/hero-banner', async (req, res) => {
     });
 
     // Inventory: Update Delivery Rate
-    router.post('/Employee/Inventory/DeliveryRates/Update/:rateId', isAuthenticated, hasRole('InventoryManager'), requireSectionAccess('transactions'), async (req, res) => {
+    router.post('/Employee/Inventory/DeliveryRates/Update/:rateId', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), requireSectionAccess('transactions'), async (req, res) => {
         try {
             await pool.connect();
             const rateId = parseInt(req.params.rateId);
@@ -7162,7 +9131,7 @@ router.get('/api/hero-banner', async (req, res) => {
 
     // API endpoints for AdminManageUsers.js
     // GET /Employee/Admin/Users/EmployeesData - Fetch employee accounts data
-    router.get('/Employee/Admin/Users/EmployeesData', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    router.get('/Employee/Admin/Users/EmployeesData', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             await pool.connect();
             const result = await pool.request().query(`
@@ -7179,7 +9148,7 @@ router.get('/api/hero-banner', async (req, res) => {
     });
 
     // GET /Employee/Admin/Users/CustomersData - Fetch customer accounts data
-    router.get('/Employee/Admin/Users/CustomersData', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    router.get('/Employee/Admin/Users/CustomersData', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             await pool.connect();
             const result = await pool.request().query(`
@@ -7858,7 +9827,7 @@ router.get('/api/hero-banner', async (req, res) => {
     }
 
     // POST /api/admin/auto-messages/test - Test auto-reply matching
-    router.post('/api/admin/auto-messages/test', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    router.post('/api/admin/auto-messages/test', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             const { message } = req.body;
             
@@ -7888,7 +9857,7 @@ router.get('/api/hero-banner', async (req, res) => {
     });
 
     // GET /api/admin/auto-messages/stats - Get auto-messages statistics
-    router.get('/api/admin/auto-messages/stats', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    router.get('/api/admin/auto-messages/stats', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             await pool.connect();
             
@@ -7924,7 +9893,7 @@ router.get('/api/hero-banner', async (req, res) => {
 
     // --- Testimonials Design API Routes ---
     // GET /api/admin/testimonials-design - Fetch testimonials design settings
-    router.get('/api/admin/testimonials-design', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    router.get('/api/admin/testimonials-design', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             await pool.connect();
             
@@ -8011,7 +9980,7 @@ router.get('/api/hero-banner', async (req, res) => {
     });
 
     // POST /api/admin/testimonials-design - Save testimonials design settings
-    router.post('/api/admin/testimonials-design', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    router.post('/api/admin/testimonials-design', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             const {
                 theme, layout, perRow, animation, bgColor, textColor, accentColor,
@@ -8205,7 +10174,7 @@ router.get('/api/hero-banner', async (req, res) => {
 
     // --- Testimonials CRUD API Routes ---
     // GET /api/admin/testimonials - Fetch all testimonials
-    router.get('/api/admin/testimonials', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    router.get('/api/admin/testimonials', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             await pool.connect();
             
@@ -8240,7 +10209,7 @@ router.get('/api/hero-banner', async (req, res) => {
     });
 
     // POST /api/admin/testimonials - Add new testimonial
-    router.post('/api/admin/testimonials', isAuthenticated, hasRole('Admin'), upload.single('image'), async (req, res) => {
+    router.post('/api/admin/testimonials', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), upload.single('image'), async (req, res) => {
         try {
             console.log('=== TESTIMONIAL ADD REQUEST ===');
             console.log('Request body:', req.body);
@@ -8312,7 +10281,7 @@ router.get('/api/hero-banner', async (req, res) => {
     });
 
     // PUT /api/admin/testimonials/:id - Update testimonial
-    router.put('/api/admin/testimonials/:id', isAuthenticated, hasRole('Admin'), upload.single('image'), async (req, res) => {
+    router.put('/api/admin/testimonials/:id', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), upload.single('image'), async (req, res) => {
         try {
             const { id } = req.params;
             const { name, profession, rating, text, displayOrder, isActive } = req.body;
@@ -8372,7 +10341,7 @@ router.get('/api/hero-banner', async (req, res) => {
     });
 
     // DELETE /api/admin/testimonials/:id - Delete testimonial
-    router.delete('/api/admin/testimonials/:id', isAuthenticated, hasRole('Admin'), async (req, res) => {
+    router.delete('/api/admin/testimonials/:id', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
         try {
             const { id } = req.params;
 
@@ -8438,15 +10407,6 @@ router.get('/api/hero-banner', async (req, res) => {
         }
     });
 
-    // Log all registered routes for debugging
-    console.log('=== REGISTERED ROUTES ===');
-    router.stack.forEach((layer) => {
-        if (layer.route) {
-            const methods = Object.keys(layer.route.methods).join(', ').toUpperCase();
-            console.log(`${methods} ${layer.route.path}`);
-        }
-    });
-    console.log('=== END REGISTERED ROUTES ===');
 
     // ===== TERMS AND CONDITIONS API ROUTES =====
     
@@ -9625,5 +11585,6212 @@ router.get('/api/hero-banner', async (req, res) => {
         }
     );
 
-    return router; 
-} 
+    // =============================================================================
+    // EJS TEMPLATE ROUTES - Added for navigation compatibility
+    // =============================================================================
+
+    // Inventory Products - EJS Template Route
+    router.get('/Employee/Inventory/InventoryProducts', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const page = parseInt(req.query.page) || 1;
+            const limit = 10;
+            const offset = (page - 1) * limit;
+            
+            // Get total count
+            const countResult = await pool.request().query('SELECT COUNT(*) as count FROM Products WHERE IsActive = 1');
+            const total = countResult.recordset[0].count;
+            const totalPages = Math.ceil(total / limit);
+            
+            // Get paginated products with discount information
+            const result = await pool.request().query(`
+                SELECT 
+                    p.*,
+                    pd.DiscountID,
+                    pd.DiscountType,
+                    pd.DiscountValue,
+                    pd.StartDate as DiscountStartDate,
+                    pd.EndDate as DiscountEndDate,
+                    pd.IsActive as DiscountIsActive,
+                    CASE 
+                        WHEN pd.DiscountType = 'percentage' THEN 
+                            p.Price - (p.Price * pd.DiscountValue / 100)
+                        WHEN pd.DiscountType = 'fixed' THEN 
+                            p.Price - pd.DiscountValue
+                        ELSE p.Price
+                    END as DiscountedPrice
+                FROM Products p
+                LEFT JOIN ProductDiscounts pd ON p.ProductID = pd.ProductID AND pd.IsActive = 1
+                WHERE p.IsActive = 1
+                ORDER BY p.ProductID DESC
+                OFFSET ${offset} ROWS
+                FETCH NEXT ${limit} ROWS ONLY
+            `);
+            
+            const products = result.recordset;
+            
+            res.render('Employee/Inventory/InventoryProducts', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: products,
+                users: [],
+                totalPages: totalPages,
+                currentPage: page,
+                page: page,
+                total: total
+            });
+        } catch (error) {
+            console.error('Error rendering InventoryProducts:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // Inventory Variations - EJS Template Route
+    router.get('/Employee/Inventory/InventoryVariations', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Inventory/InventoryVariations', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering InventoryVariations:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // Inventory Materials - EJS Template Route
+    router.get('/Employee/Inventory/InventoryMaterials', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const result = await pool.request().query('SELECT * FROM RawMaterials WHERE IsActive = 1');
+            const materials = result.recordset;
+            
+            res.render('Employee/Inventory/InventoryMaterials', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: [],
+                materials: materials
+            });
+        } catch (error) {
+            console.error('Error rendering InventoryMaterials:', error);
+            res.render('Employee/Inventory/InventoryMaterials', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: [],
+                materials: []
+            });
+        }
+    });
+
+    // Add Material POST route for InventoryMaterials
+    router.post('/Employee/Inventory/InventoryMaterials/Add', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            const { name, quantity, unit } = req.body;
+            
+            await pool.connect();
+            const request = new sql.Request(pool);
+            request.input('name', sql.NVarChar, name);
+            request.input('quantityavailable', sql.Int, parseInt(quantity));
+            request.input('unit', sql.NVarChar, unit || null);
+
+            await request.query(`
+                INSERT INTO RawMaterials (Name, QuantityAvailable, Unit, IsActive, LastUpdated)
+                VALUES (@name, @quantityavailable, @unit, 1, GETDATE())
+            `);
+
+            // Log the activity
+            await pool.request()
+                .input('userid', sql.Int, req.session.user.id)
+                .input('action', sql.NVarChar, 'INSERT')
+                .input('tableaffected', sql.NVarChar, 'RawMaterials')
+                .input('description', sql.NVarChar, `Added new raw material: "${name}"`)
+                .query(`
+                    INSERT INTO ActivityLogs (UserID, Action, TableAffected, Description)
+                    VALUES (@userid, @action, @tableaffected, @description)
+                `);
+
+            req.flash('success', 'Raw material added successfully!');
+            res.redirect('/Employee/Inventory/InventoryMaterials');
+        } catch (err) {
+            console.error('Error adding raw material:', err);
+            req.flash('error', 'Failed to add raw material.');
+            res.redirect('/Employee/Inventory/InventoryMaterials');
+        }
+    });
+
+    // Edit Material POST route for InventoryMaterials
+    router.post('/Employee/Inventory/InventoryMaterials/Edit', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            const { materialid, name, quantity, unit } = req.body;
+            
+            await pool.connect();
+            const request = new sql.Request(pool);
+            request.input('materialid', sql.Int, materialid);
+            request.input('name', sql.NVarChar, name);
+            request.input('quantityavailable', sql.Int, parseInt(quantity));
+            request.input('unit', sql.NVarChar, unit || null);
+
+            await request.query(`
+                UPDATE RawMaterials 
+                SET Name = @name, QuantityAvailable = @quantityavailable, Unit = @unit, LastUpdated = GETDATE()
+                WHERE MaterialID = @materialid
+            `);
+
+            // Log the activity
+            await pool.request()
+                .input('userid', sql.Int, req.session.user.id)
+                .input('action', sql.NVarChar, 'UPDATE')
+                .input('tableaffected', sql.NVarChar, 'RawMaterials')
+                .input('description', sql.NVarChar, `Updated raw material: "${name}" (ID: ${materialid})`)
+                .query(`
+                    INSERT INTO ActivityLogs (UserID, Action, TableAffected, Description)
+                    VALUES (@userid, @action, @tableaffected, @description)
+                `);
+
+            req.flash('success', 'Raw material updated successfully!');
+            res.redirect('/Employee/Inventory/InventoryMaterials');
+        } catch (err) {
+            console.error('Error updating raw material:', err);
+            req.flash('error', 'Failed to update raw material.');
+            res.redirect('/Employee/Inventory/InventoryMaterials');
+        }
+    });
+
+    // Delete Material POST route for InventoryMaterials
+    router.post('/Employee/Inventory/InventoryMaterials/Delete/:id', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        const materialId = req.params.id;
+        try {
+            await pool.connect();
+            // Fetch material name for logging
+            const materialResult = await pool.request().input('materialId', sql.Int, materialId).query('SELECT Name FROM RawMaterials WHERE MaterialID = @materialId');
+            const materialName = materialResult.recordset[0]?.Name || '';
+            
+            await pool.request()
+                .input('materialId', sql.Int, materialId)
+                .query('UPDATE RawMaterials SET IsActive = 0 WHERE MaterialID = @materialId');
+
+            // Log the activity
+            await pool.request()
+                .input('userid', sql.Int, req.session.user.id)
+                .input('action', sql.NVarChar, 'DELETE')
+                .input('tableaffected', sql.NVarChar, 'RawMaterials')
+                .input('description', sql.NVarChar, `Deleted raw material: "${materialName}" (ID: ${materialId})`)
+                .query(`
+                    INSERT INTO ActivityLogs (UserID, Action, TableAffected, Description)
+                    VALUES (@userid, @action, @tableaffected, @description)
+                `);
+
+            req.flash('success', 'Raw material deleted successfully!');
+            res.redirect('/Employee/Inventory/InventoryMaterials');
+        } catch (err) {
+            console.error('Error deleting raw material:', err);
+            req.flash('error', 'Failed to delete raw material.');
+            res.redirect('/Employee/Inventory/InventoryMaterials');
+        }
+    });
+
+    // Inventory Alerts - EJS Template Route
+    router.get('/Employee/Inventory/InventoryAlerts', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Inventory/InventoryAlerts', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering InventoryAlerts:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // Inventory Archived - EJS Template Route
+    router.get('/Employee/Inventory/InventoryArchived', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const productsResult = await pool.request().query('SELECT * FROM Products WHERE IsActive = 0');
+            const materialsResult = await pool.request().query('SELECT * FROM RawMaterials WHERE IsActive = 0');
+            
+            res.render('Employee/Inventory/InventoryArchived', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: [],
+                archivedProducts: productsResult.recordset,
+                archivedMaterials: materialsResult.recordset
+            });
+        } catch (error) {
+            console.error('Error rendering InventoryArchived:', error);
+            res.render('Employee/Inventory/InventoryArchived', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: [],
+                archivedProducts: [],
+                archivedMaterials: []
+            });
+        }
+    });
+    // Inventory Rates - EJS Template Route
+    router.get('/Employee/Inventory/InventoryRates', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Inventory/InventoryRates', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering InventoryRates:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // Add Delivery Rate POST route for InventoryRates
+    router.post('/Employee/Inventory/InventoryRates/Add', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            const { serviceType, price } = req.body;
+            
+            await pool.connect();
+            const request = new sql.Request(pool);
+            request.input('serviceType', sql.NVarChar, serviceType);
+            request.input('price', sql.Decimal(10, 2), parseFloat(price));
+            request.input('createdByUserID', sql.Int, req.session.user.id);
+            request.input('createdByUsername', sql.NVarChar, req.session.user.username || req.session.user.fullName);
+
+            await request.query(`
+                INSERT INTO DeliveryRates (ServiceType, Price, IsActive, CreatedAt, CreatedByUserID, CreatedByUsername)
+                VALUES (@serviceType, @price, 1, GETDATE(), @createdByUserID, @createdByUsername)
+            `);
+
+            // Log the activity
+            await pool.request()
+                .input('userid', sql.Int, req.session.user.id)
+                .input('action', sql.NVarChar, 'INSERT')
+                .input('tableaffected', sql.NVarChar, 'DeliveryRates')
+                .input('description', sql.NVarChar, `Added new delivery rate: "${serviceType}" - ₱${price}`)
+                .query(`
+                    INSERT INTO ActivityLogs (UserID, Action, TableAffected, Description)
+                    VALUES (@userid, @action, @tableaffected, @description)
+                `);
+
+            res.json({ success: true, message: 'Delivery rate added successfully!' });
+        } catch (err) {
+            console.error('Error adding delivery rate:', err);
+            res.status(500).json({ success: false, message: 'Failed to add delivery rate.' });
+        }
+    });
+
+    // Edit Delivery Rate POST route for InventoryRates
+    router.post('/Employee/Inventory/InventoryRates/Edit', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            const { rateId, serviceType, price } = req.body;
+            
+            await pool.connect();
+            const request = new sql.Request(pool);
+            request.input('rateId', sql.Int, rateId);
+            request.input('serviceType', sql.NVarChar, serviceType);
+            request.input('price', sql.Decimal(10, 2), parseFloat(price));
+            request.input('updatedByUserID', sql.Int, req.session.user.id);
+            request.input('updatedByUsername', sql.NVarChar, req.session.user.username || req.session.user.fullName);
+
+            await request.query(`
+                UPDATE DeliveryRates 
+                SET ServiceType = @serviceType, Price = @price, UpdatedAt = GETDATE(), 
+                    UpdatedByUserID = @updatedByUserID, UpdatedByUsername = @updatedByUsername
+                WHERE RateID = @rateId
+            `);
+
+            // Log the activity
+            await pool.request()
+                .input('userid', sql.Int, req.session.user.id)
+                .input('action', sql.NVarChar, 'UPDATE')
+                .input('tableaffected', sql.NVarChar, 'DeliveryRates')
+                .input('description', sql.NVarChar, `Updated delivery rate: "${serviceType}" - ₱${price} (ID: ${rateId})`)
+                .query(`
+                    INSERT INTO ActivityLogs (UserID, Action, TableAffected, Description)
+                    VALUES (@userid, @action, @tableaffected, @description)
+                `);
+
+            res.json({ success: true, message: 'Delivery rate updated successfully!' });
+        } catch (err) {
+            console.error('Error updating delivery rate:', err);
+            res.status(500).json({ success: false, message: 'Failed to update delivery rate.' });
+        }
+    });
+
+    // Delete Delivery Rate POST route for InventoryRates
+    router.post('/Employee/Inventory/InventoryRates/Delete/:id', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        const rateId = req.params.id;
+        try {
+            await pool.connect();
+            // Fetch rate details for logging
+            const rateResult = await pool.request().input('rateId', sql.Int, rateId).query('SELECT ServiceType, Price FROM DeliveryRates WHERE RateID = @rateId');
+            const rate = rateResult.recordset[0];
+            
+            await pool.request()
+                .input('rateId', sql.Int, rateId)
+                .query('UPDATE DeliveryRates SET IsActive = 0 WHERE RateID = @rateId');
+
+            // Log the activity
+            await pool.request()
+                .input('userid', sql.Int, req.session.user.id)
+                .input('action', sql.NVarChar, 'DELETE')
+                .input('tableaffected', sql.NVarChar, 'DeliveryRates')
+                .input('description', sql.NVarChar, `Deleted delivery rate: "${rate?.ServiceType}" - ₱${rate?.Price} (ID: ${rateId})`)
+                .query(`
+                    INSERT INTO ActivityLogs (UserID, Action, TableAffected, Description)
+                    VALUES (@userid, @action, @tableaffected, @description)
+                `);
+
+            res.json({ success: true, message: 'Delivery rate deleted successfully!' });
+        } catch (err) {
+            console.error('Error deleting delivery rate:', err);
+            res.status(500).json({ success: false, message: 'Failed to delete delivery rate.' });
+        }
+    });
+
+    // Get Delivery Rates API route for InventoryRates
+    router.get('/api/inventory/rates', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const result = await pool.request().query(`
+                SELECT RateID, ServiceType, Price, CreatedAt, UpdatedAt, 
+                       CreatedByUserID, CreatedByUsername, UpdatedByUserID, UpdatedByUsername
+                FROM DeliveryRates 
+                WHERE IsActive = 1 
+                ORDER BY CreatedAt DESC
+            `);
+            res.json({ success: true, rates: result.recordset });
+        } catch (err) {
+            console.error('Error fetching delivery rates:', err);
+            res.status(500).json({ success: false, message: 'Failed to fetch delivery rates.' });
+        }
+    });
+
+    // Inventory WalkIn - EJS Template Route
+    router.get('/Employee/Inventory/InventoryWalkIn', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            await ensureWalkInOrdersTable(pool);
+            const result = await pool.request().query(`SELECT * FROM WalkInOrders ORDER BY CreatedAt DESC`);
+            const bulkOrders = result.recordset;
+            
+            res.render('Employee/Inventory/InventoryWalkIn', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: [],
+                bulkOrders: bulkOrders
+            });
+        } catch (error) {
+            console.error('Error rendering InventoryWalkIn:', error);
+            res.render('Employee/Inventory/InventoryWalkIn', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: [],
+                bulkOrders: []
+            });
+        }
+    });
+
+    // Proceed Order POST route for InventoryOrdersPending
+    router.post('/Employee/Inventory/InventoryOrdersPending/Proceed/:orderId', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        const orderId = req.params.orderId;
+        try {
+            await pool.connect();
+            
+            // Update order status to 'Processing'
+            await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query('UPDATE Orders SET Status = \'Processing\' WHERE OrderID = @orderId');
+            
+            // Log the activity
+            await pool.request()
+                .input('userid', sql.Int, req.session.user.id)
+                .input('action', sql.NVarChar, 'UPDATE')
+                .input('tableaffected', sql.NVarChar, 'Orders')
+                .input('description', sql.NVarChar, `Order ${orderId} proceeded to Processing status`)
+                .query(`
+                    INSERT INTO ActivityLogs (UserID, Action, TableAffected, Description)
+                    VALUES (@userid, @action, @tableaffected, @description)
+                `);
+
+            res.json({ success: true, message: 'Order proceeded to Processing successfully!' });
+        } catch (err) {
+            console.error('Error proceeding order:', err);
+            res.json({ success: false, message: 'Failed to proceed order.' });
+        }
+    });
+
+    // Cancel Order POST route for InventoryOrdersPending
+    router.post('/Employee/Inventory/InventoryOrdersPending/Cancel/:orderId', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        const orderId = req.params.orderId;
+        try {
+            await pool.connect();
+            
+            // Update order status to 'Cancelled'
+            await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query('UPDATE Orders SET Status = \'Cancelled\' WHERE OrderID = @orderId');
+            
+            // Log the activity
+            await pool.request()
+                .input('userid', sql.Int, req.session.user.id)
+                .input('action', sql.NVarChar, 'UPDATE')
+                .input('tableaffected', sql.NVarChar, 'Orders')
+                .input('description', sql.NVarChar, `Order ${orderId} cancelled`)
+                .query(`
+                    INSERT INTO ActivityLogs (UserID, Action, TableAffected, Description)
+                    VALUES (@userid, @action, @tableaffected, @description)
+                `);
+
+            res.json({ success: true, message: 'Order cancelled successfully!' });
+        } catch (err) {
+            console.error('Error cancelling order:', err);
+            res.json({ success: false, message: 'Failed to cancel order.' });
+        }
+    });
+
+    // Proceed Order POST route for InventoryOrdersProcessing
+    router.post('/Employee/Inventory/InventoryOrdersProcessing/Proceed/:orderId', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        const orderId = req.params.orderId;
+        try {
+            await pool.connect();
+            
+            // Update order status from 'Processing' to 'Shipping'
+            await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query('UPDATE Orders SET Status = \'Shipping\' WHERE OrderID = @orderId');
+            
+            // Log the activity
+            await pool.request()
+                .input('userid', sql.Int, req.session.user.id)
+                .input('action', sql.NVarChar, 'UPDATE')
+                .input('tableaffected', sql.NVarChar, 'Orders')
+                .input('description', sql.NVarChar, `Order ${orderId} proceeded to Shipping status`)
+                .query(`
+                    INSERT INTO ActivityLogs (UserID, Action, TableAffected, Description)
+                    VALUES (@userid, @action, @tableaffected, @description)
+                `);
+
+            res.json({ success: true, message: 'Order proceeded to Shipping successfully!' });
+        } catch (err) {
+            console.error('Error proceeding order:', err);
+            res.json({ success: false, message: 'Failed to proceed order.' });
+        }
+    });
+
+    // Cancel Order POST route for InventoryOrdersProcessing
+    router.post('/Employee/Inventory/InventoryOrdersProcessing/Cancel/:orderId', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        const orderId = req.params.orderId;
+        try {
+            await pool.connect();
+            
+            // Update order status to 'Cancelled'
+            await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query('UPDATE Orders SET Status = \'Cancelled\' WHERE OrderID = @orderId');
+            
+            // Log the activity
+            await pool.request()
+                .input('userid', sql.Int, req.session.user.id)
+                .input('action', sql.NVarChar, 'UPDATE')
+                .input('tableaffected', sql.NVarChar, 'Orders')
+                .input('description', sql.NVarChar, `Order ${orderId} cancelled`)
+                .query(`
+                    INSERT INTO ActivityLogs (UserID, Action, TableAffected, Description)
+                    VALUES (@userid, @action, @tableaffected, @description)
+                `);
+
+            res.json({ success: true, message: 'Order cancelled successfully!' });
+        } catch (err) {
+            console.error('Error cancelling order:', err);
+            res.json({ success: false, message: 'Failed to cancel order.' });
+        }
+    });
+
+    // Proceed Order POST route for InventoryOrdersShipping
+    router.post('/Employee/Inventory/InventoryOrdersShipping/Proceed/:orderId', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        const orderId = req.params.orderId;
+        try {
+            await pool.connect();
+            
+            // Update order status from 'Shipping' to 'Delivered'
+            await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query('UPDATE Orders SET Status = \'Delivered\' WHERE OrderID = @orderId');
+            
+            // Log the activity
+            await pool.request()
+                .input('userid', sql.Int, req.session.user.id)
+                .input('action', sql.NVarChar, 'UPDATE')
+                .input('tableaffected', sql.NVarChar, 'Orders')
+                .input('description', sql.NVarChar, `Order ${orderId} proceeded to Delivered status`)
+                .query(`
+                    INSERT INTO ActivityLogs (UserID, Action, TableAffected, Description)
+                    VALUES (@userid, @action, @tableaffected, @description)
+                `);
+
+            res.json({ success: true, message: 'Order proceeded to Delivered successfully!' });
+        } catch (err) {
+            console.error('Error proceeding order:', err);
+            res.json({ success: false, message: 'Failed to proceed order.' });
+        }
+    });
+
+    // Cancel Order POST route for InventoryOrdersShipping
+    router.post('/Employee/Inventory/InventoryOrdersShipping/Cancel/:orderId', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        const orderId = req.params.orderId;
+        try {
+            await pool.connect();
+            
+            // Update order status to 'Cancelled'
+            await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query('UPDATE Orders SET Status = \'Cancelled\' WHERE OrderID = @orderId');
+            
+            // Log the activity
+            await pool.request()
+                .input('userid', sql.Int, req.session.user.id)
+                .input('action', sql.NVarChar, 'UPDATE')
+                .input('tableaffected', sql.NVarChar, 'Orders')
+                .input('description', sql.NVarChar, `Order ${orderId} cancelled`)
+                .query(`
+                    INSERT INTO ActivityLogs (UserID, Action, TableAffected, Description)
+                    VALUES (@userid, @action, @tableaffected, @description)
+                `);
+
+            res.json({ success: true, message: 'Order cancelled successfully!' });
+        } catch (err) {
+            console.error('Error cancelling order:', err);
+            res.json({ success: false, message: 'Failed to cancel order.' });
+        }
+    });
+
+    // Proceed Order POST route for InventoryOrdersDelivery
+    router.post('/Employee/Inventory/InventoryOrdersDelivery/Proceed/:orderId', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        const orderId = req.params.orderId;
+        try {
+            await pool.connect();
+            
+            // Update order status from 'Delivered' to 'Received'
+            await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query('UPDATE Orders SET Status = \'Received\' WHERE OrderID = @orderId');
+            
+            // Log the activity
+            await pool.request()
+                .input('userid', sql.Int, req.session.user.id)
+                .input('action', sql.NVarChar, 'UPDATE')
+                .input('tableaffected', sql.NVarChar, 'Orders')
+                .input('description', sql.NVarChar, `Order ${orderId} proceeded to Received status`)
+                .query(`
+                    INSERT INTO ActivityLogs (UserID, Action, TableAffected, Description)
+                    VALUES (@userid, @action, @tableaffected, @description)
+                `);
+
+            res.json({ success: true, message: 'Order proceeded to Received successfully!' });
+        } catch (err) {
+            console.error('Error proceeding order:', err);
+            res.json({ success: false, message: 'Failed to proceed order.' });
+        }
+    });
+
+    // Cancel Order POST route for InventoryOrdersDelivery
+    router.post('/Employee/Inventory/InventoryOrdersDelivery/Cancel/:orderId', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        const orderId = req.params.orderId;
+        try {
+            await pool.connect();
+            
+            // Update order status to 'Cancelled'
+            await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query('UPDATE Orders SET Status = \'Cancelled\' WHERE OrderID = @orderId');
+            
+            // Log the activity
+            await pool.request()
+                .input('userid', sql.Int, req.session.user.id)
+                .input('action', sql.NVarChar, 'UPDATE')
+                .input('tableaffected', sql.NVarChar, 'Orders')
+                .input('description', sql.NVarChar, `Order ${orderId} cancelled`)
+                .query(`
+                    INSERT INTO ActivityLogs (UserID, Action, TableAffected, Description)
+                    VALUES (@userid, @action, @tableaffected, @description)
+                `);
+
+            res.json({ success: true, message: 'Order cancelled successfully!' });
+        } catch (err) {
+            console.error('Error cancelling order:', err);
+            res.json({ success: false, message: 'Failed to cancel order.' });
+        }
+    });
+
+    // Add Walk In Order POST route for InventoryWalkIn
+    router.post('/Employee/Inventory/InventoryWalkIn/Add', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            console.log('=== WALK-IN ADD ROUTE HIT ===');
+            console.log('Request body:', req.body);
+            console.log('User:', req.session.user);
+            
+            await pool.connect();
+            await ensureWalkInOrdersTable(pool);
+            
+            const { customerName, address, contactNumber, contactEmail, orderedProducts, discount, totalAmount, expectedArrival, deliveryType } = req.body;
+            console.log('Parsed form data:', { customerName, address, contactNumber, contactEmail, orderedProducts, discount, totalAmount, expectedArrival, deliveryType });
+            
+            const ordered = JSON.parse(orderedProducts || '[]');
+            console.log('Parsed ordered products:', ordered);
+            
+            // Insert bulk order with ETA
+            await pool.request()
+                .input('CustomerName', customerName || '')
+                .input('Address', address || '')
+                .input('ContactNumber', contactNumber || '')
+                .input('ContactEmail', contactEmail || '')
+                .input('OrderedProducts', JSON.stringify(ordered))
+                .input('Discount', parseFloat(discount) || 0)
+                .input('TotalAmount', parseFloat(totalAmount) || 0)
+                .input('ExpectedArrival', expectedArrival || null)
+                .input('DeliveryType', deliveryType || '')
+                .query(`
+                    INSERT INTO WalkInOrders (CustomerName, Address, ContactNumber, ContactEmail, OrderedProducts, Discount, TotalAmount, ExpectedArrival, DeliveryType, Status, CreatedAt)
+                    VALUES (@CustomerName, @Address, @ContactNumber, @ContactEmail, @OrderedProducts, @Discount, @TotalAmount, @ExpectedArrival, @DeliveryType, 'Processing', GETDATE())
+                `);
+
+            // Log the activity
+            await pool.request()
+                .input('userid', sql.Int, req.session.user.id)
+                .input('action', sql.NVarChar, 'INSERT')
+                .input('tableaffected', sql.NVarChar, 'WalkInOrders')
+                .input('description', sql.NVarChar, `Added new walk-in order for customer: "${customerName}" - Total: ₱${totalAmount}`)
+                .query(`
+                    INSERT INTO ActivityLogs (UserID, Action, TableAffected, Description)
+                    VALUES (@userid, @action, @tableaffected, @description)
+                `);
+
+            req.flash('success', 'Walk-in order added successfully!');
+            res.redirect('/Employee/Inventory/InventoryWalkIn');
+        } catch (err) {
+            console.error('=== WALK-IN ADD ERROR ===');
+            console.error('Error adding walk-in order:', err);
+            console.error('Error message:', err.message);
+            console.error('Error stack:', err.stack);
+            req.flash('error', `Failed to add walk-in order: ${err.message}`);
+            res.redirect('/Employee/Inventory/InventoryWalkIn');
+        }
+    });
+
+    // Edit Walk In Order POST route for InventoryWalkIn
+    router.post('/Employee/Inventory/InventoryWalkIn/Edit', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const { bulkOrderId, customerName, address, contactNumber, contactEmail, orderedProducts, discount, totalAmount, expectedArrival, deliveryType } = req.body;
+            const ordered = JSON.parse(orderedProducts || '[]');
+            
+            await pool.request()
+                .input('BulkOrderID', bulkOrderId)
+                .input('CustomerName', customerName || '')
+                .input('Address', address || '')
+                .input('ContactNumber', contactNumber || '')
+                .input('ContactEmail', contactEmail || '')
+                .input('OrderedProducts', JSON.stringify(ordered))
+                .input('Discount', parseFloat(discount) || 0)
+                .input('TotalAmount', parseFloat(totalAmount) || 0)
+                .input('ExpectedArrival', expectedArrival || null)
+                .input('DeliveryType', deliveryType || '')
+                .query(`
+                    UPDATE WalkInOrders 
+                    SET CustomerName = @CustomerName, Address = @Address, ContactNumber = @ContactNumber, 
+                        ContactEmail = @ContactEmail, OrderedProducts = @OrderedProducts, Discount = @Discount, 
+                        TotalAmount = @TotalAmount, ExpectedArrival = @ExpectedArrival, DeliveryType = @DeliveryType
+                    WHERE BulkOrderID = @BulkOrderID
+                `);
+
+            // Log the activity
+            await pool.request()
+                .input('userid', sql.Int, req.session.user.id)
+                .input('action', sql.NVarChar, 'UPDATE')
+                .input('tableaffected', sql.NVarChar, 'WalkInOrders')
+                .input('description', sql.NVarChar, `Updated walk-in order for customer: "${customerName}" (ID: ${bulkOrderId})`)
+                .query(`
+                    INSERT INTO ActivityLogs (UserID, Action, TableAffected, Description)
+                    VALUES (@userid, @action, @tableaffected, @description)
+                `);
+
+            req.flash('success', 'Walk-in order updated successfully!');
+            res.redirect('/Employee/Inventory/InventoryWalkIn');
+        } catch (err) {
+            console.error('Error updating walk-in order:', err);
+            req.flash('error', 'Failed to update walk-in order.');
+            res.redirect('/Employee/Inventory/InventoryWalkIn');
+        }
+    });
+
+    // Delete Walk In Order POST route for InventoryWalkIn
+    router.post('/Employee/Inventory/InventoryWalkIn/Delete/:id', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        const bulkOrderId = req.params.id;
+        try {
+            await pool.connect();
+            // Fetch order details for logging
+            const orderResult = await pool.request().input('bulkOrderId', sql.Int, bulkOrderId).query('SELECT CustomerName, TotalAmount FROM WalkInOrders WHERE BulkOrderID = @bulkOrderId');
+            const order = orderResult.recordset[0];
+            
+            await pool.request()
+                .input('bulkOrderId', sql.Int, bulkOrderId)
+                .query('UPDATE WalkInOrders SET Status = \'Completed\' WHERE BulkOrderID = @bulkOrderId');
+
+            // Log the activity
+            await pool.request()
+                .input('userid', sql.Int, req.session.user.id)
+                .input('action', sql.NVarChar, 'DELETE')
+                .input('tableaffected', sql.NVarChar, 'WalkInOrders')
+                .input('description', sql.NVarChar, `Deleted walk-in order for customer: "${order?.CustomerName}" - Total: ₱${order?.TotalAmount} (ID: ${bulkOrderId})`)
+                .query(`
+                    INSERT INTO ActivityLogs (UserID, Action, TableAffected, Description)
+                    VALUES (@userid, @action, @tableaffected, @description)
+                `);
+
+            req.flash('success', 'Walk-in order deleted successfully!');
+            res.redirect('/Employee/Inventory/InventoryWalkIn');
+        } catch (err) {
+            console.error('Error deleting walk-in order:', err);
+            req.flash('error', 'Failed to delete walk-in order.');
+            res.redirect('/Employee/Inventory/InventoryWalkIn');
+        }
+    });
+
+    // Inventory OrdersPending - EJS Template Route
+    router.get('/Employee/Inventory/InventoryOrdersPending', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            // Fetch all pending orders with customer, address, and items including payment details
+            const ordersResult = await pool.request().query(`
+                SELECT o.OrderID, o.OrderDate, 
+                       FORMAT(o.OrderDate, 'MMM dd, yyyy hh:mm tt') AS FormattedOrderDate,
+                       o.Status, o.TotalAmount, o.PaymentMethod, o.Currency, o.PaymentDate,
+                       o.DeliveryType, o.DeliveryCost, o.StripeSessionID, o.PaymentStatus,
+                       CASE 
+                           WHEN o.DeliveryType = 'pickup' THEN 'Pick up'
+                           WHEN o.DeliveryType LIKE 'rate_%' THEN dr.ServiceType
+                           ELSE o.DeliveryType
+                       END as DeliveryTypeName,
+                       c.FullName AS CustomerName, c.Email AS CustomerEmail, c.PhoneNumber AS CustomerPhone,
+                       a.Label AS AddressLabel, a.HouseNumber, a.Street, a.Barangay, a.City, a.Province, a.Region, a.PostalCode, a.Country
+                FROM Orders o
+                JOIN Customers c ON o.CustomerID = c.CustomerID
+                OUTER APPLY (
+                    SELECT TOP 1 ca.*
+                    FROM CustomerAddresses ca
+                    WHERE ca.CustomerID = c.CustomerID
+                      AND (ca.AddressID = o.ShippingAddressID OR (o.ShippingAddressID IS NULL AND ca.IsDefault = 1))
+                    ORDER BY CASE WHEN ca.AddressID = o.ShippingAddressID THEN 0 WHEN ca.IsDefault = 1 THEN 1 ELSE 2 END, ca.AddressID DESC
+                ) a
+                LEFT JOIN DeliveryRates dr ON o.DeliveryType = 'rate_' + CAST(dr.RateID AS NVARCHAR(10))
+                WHERE o.Status = 'Pending'
+                ORDER BY o.OrderDate ASC
+            `);
+            const orders = ordersResult.recordset;
+            // Fetch items for each order
+            for (let order of orders) {
+                const itemsResult = await pool.request()
+                    .input('orderId', sql.Int, order.OrderID)
+                    .query(`
+                        SELECT oi.OrderItemID, oi.Quantity, oi.PriceAtPurchase, p.Name, p.ImageURL
+                        FROM OrderItems oi
+                        JOIN Products p ON oi.ProductID = p.ProductID
+                        WHERE oi.OrderID = @orderId
+                    `);
+                order.items = itemsResult.recordset;
+            }
+            
+            res.render('Employee/Inventory/InventoryOrdersPending', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: orders,
+                totalPages: 1,
+                currentPage: 1,
+                total: orders.length,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering InventoryOrdersPending:', error);
+            res.render('Employee/Inventory/InventoryOrdersPending', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        }
+    });
+    // Inventory OrdersProcessing - EJS Template Route
+    router.get('/Employee/Inventory/InventoryOrdersProcessing', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            // Fetch all processing orders with customer, address, and items
+            const ordersResult = await pool.request().query(`
+                SELECT o.OrderID, o.OrderDate, 
+                       FORMAT(o.OrderDate, 'MMM dd, yyyy hh:mm tt') AS FormattedOrderDate,
+                       o.Status, o.TotalAmount, o.PaymentMethod, o.Currency, o.PaymentDate,
+                       o.DeliveryType, o.DeliveryCost,
+                       CASE 
+                           WHEN o.DeliveryType = 'pickup' THEN 'Pick up'
+                           WHEN o.DeliveryType LIKE 'rate_%' THEN dr.ServiceType
+                           ELSE o.DeliveryType
+                       END as DeliveryTypeName,
+                       c.FullName AS CustomerName, c.Email AS CustomerEmail, c.PhoneNumber AS CustomerPhone,
+                       a.Label AS AddressLabel, a.HouseNumber, a.Street, a.Barangay, a.City, a.Province, a.Region, a.PostalCode, a.Country
+                FROM Orders o
+                JOIN Customers c ON o.CustomerID = c.CustomerID
+                OUTER APPLY (
+                    SELECT TOP 1 ca.*
+                    FROM CustomerAddresses ca
+                    WHERE ca.CustomerID = c.CustomerID
+                      AND (ca.AddressID = o.ShippingAddressID OR (o.ShippingAddressID IS NULL AND ca.IsDefault = 1))
+                    ORDER BY CASE WHEN ca.AddressID = o.ShippingAddressID THEN 0 WHEN ca.IsDefault = 1 THEN 1 ELSE 2 END, ca.AddressID DESC
+                ) a
+                LEFT JOIN DeliveryRates dr ON o.DeliveryType = 'rate_' + CAST(dr.RateID AS NVARCHAR(10))
+                WHERE o.Status = 'Processing'
+                ORDER BY o.OrderDate ASC
+            `);
+            const orders = ordersResult.recordset;
+            // Fetch items for each order
+            for (let order of orders) {
+                const itemsResult = await pool.request()
+                    .input('orderId', sql.Int, order.OrderID)
+                    .query(`
+                        SELECT oi.OrderItemID, oi.Quantity, oi.PriceAtPurchase, p.Name, p.ImageURL
+                        FROM OrderItems oi
+                        JOIN Products p ON oi.ProductID = p.ProductID
+                        WHERE oi.OrderID = @orderId
+                    `);
+                order.items = itemsResult.recordset;
+            }
+            
+            res.render('Employee/Inventory/InventoryOrdersProcessing', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: orders,
+                totalPages: 1,
+                currentPage: 1,
+                total: orders.length,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering InventoryOrdersProcessing:', error);
+            res.render('Employee/Inventory/InventoryOrdersProcessing', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        }
+    });
+    // Inventory OrdersShipping - EJS Template Route
+    router.get('/Employee/Inventory/InventoryOrdersShipping', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            // Fetch all shipping orders with customer, address, and items
+            const ordersResult = await pool.request().query(`
+                SELECT o.OrderID, o.OrderDate, 
+                       FORMAT(o.OrderDate, 'MMM dd, yyyy hh:mm tt') AS FormattedOrderDate,
+                       o.Status, o.TotalAmount, o.PaymentMethod, o.Currency, o.PaymentDate,
+                       o.DeliveryType, o.DeliveryCost,
+                       CASE 
+                           WHEN o.DeliveryType = 'pickup' THEN 'Pick up'
+                           WHEN o.DeliveryType LIKE 'rate_%' THEN dr.ServiceType
+                           ELSE o.DeliveryType
+                       END as DeliveryTypeName,
+                       c.FullName AS CustomerName, c.Email AS CustomerEmail, c.PhoneNumber AS CustomerPhone,
+                       a.Label AS AddressLabel, a.HouseNumber, a.Street, a.Barangay, a.City, a.Province, a.Region, a.PostalCode, a.Country
+                FROM Orders o
+                JOIN Customers c ON o.CustomerID = c.CustomerID
+                OUTER APPLY (
+                    SELECT TOP 1 ca.*
+                    FROM CustomerAddresses ca
+                    WHERE ca.CustomerID = c.CustomerID
+                      AND (ca.AddressID = o.ShippingAddressID OR (o.ShippingAddressID IS NULL AND ca.IsDefault = 1))
+                    ORDER BY CASE WHEN ca.AddressID = o.ShippingAddressID THEN 0 WHEN ca.IsDefault = 1 THEN 1 ELSE 2 END, ca.AddressID DESC
+                ) a
+                LEFT JOIN DeliveryRates dr ON o.DeliveryType = 'rate_' + CAST(dr.RateID AS NVARCHAR(10))
+                WHERE o.Status = 'Shipping'
+                ORDER BY o.OrderDate ASC
+            `);
+            const orders = ordersResult.recordset;
+            // Fetch items for each order
+            for (let order of orders) {
+                const itemsResult = await pool.request()
+                    .input('orderId', sql.Int, order.OrderID)
+                    .query(`
+                        SELECT oi.OrderItemID, oi.Quantity, oi.PriceAtPurchase, p.Name, p.ImageURL
+                        FROM OrderItems oi
+                        JOIN Products p ON oi.ProductID = p.ProductID
+                        WHERE oi.OrderID = @orderId
+                    `);
+                order.items = itemsResult.recordset;
+            }
+            
+            res.render('Employee/Inventory/InventoryOrdersShipping', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: orders,
+                totalPages: 1,
+                currentPage: 1,
+                total: orders.length,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering InventoryOrdersShipping:', error);
+            res.render('Employee/Inventory/InventoryOrdersShipping', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        }
+    });
+    // Inventory OrdersDelivery - EJS Template Route
+    router.get('/Employee/Inventory/InventoryOrdersDelivery', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            // Fetch all delivery orders with customer, address, and items
+            const ordersResult = await pool.request().query(`
+                SELECT o.OrderID, o.OrderDate, 
+                       FORMAT(o.OrderDate, 'MMM dd, yyyy hh:mm tt') AS FormattedOrderDate,
+                       o.Status, o.TotalAmount, o.PaymentMethod, o.Currency, o.PaymentDate,
+                       o.DeliveryType, o.DeliveryCost,
+                       CASE 
+                           WHEN o.DeliveryType = 'pickup' THEN 'Pick up'
+                           WHEN o.DeliveryType LIKE 'rate_%' THEN dr.ServiceType
+                           ELSE o.DeliveryType
+                       END as DeliveryTypeName,
+                       c.FullName AS CustomerName, c.Email AS CustomerEmail, c.PhoneNumber AS CustomerPhone,
+                       a.Label AS AddressLabel, a.HouseNumber, a.Street, a.Barangay, a.City, a.Province, a.Region, a.PostalCode, a.Country
+                FROM Orders o
+                JOIN Customers c ON o.CustomerID = c.CustomerID
+                LEFT JOIN CustomerAddresses a ON o.ShippingAddressID = a.AddressID
+                LEFT JOIN DeliveryRates dr ON o.DeliveryType = 'rate_' + CAST(dr.RateID AS NVARCHAR(10))
+                WHERE o.Status = 'Delivered'
+                ORDER BY o.OrderDate ASC
+            `);
+            const orders = ordersResult.recordset;
+            // Fetch items for each order
+            for (let order of orders) {
+                const itemsResult = await pool.request()
+                    .input('orderId', sql.Int, order.OrderID)
+                    .query(`
+                        SELECT oi.OrderItemID, oi.Quantity, oi.PriceAtPurchase, p.Name, p.ImageURL
+                        FROM OrderItems oi
+                        JOIN Products p ON oi.ProductID = p.ProductID
+                        WHERE oi.OrderID = @orderId
+                    `);
+                order.items = itemsResult.recordset;
+            }
+            
+            res.render('Employee/Inventory/InventoryOrdersDelivery', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: orders,
+                totalPages: 1,
+                currentPage: 1,
+                total: orders.length,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering InventoryOrdersDelivery:', error);
+            res.render('Employee/Inventory/InventoryOrdersDelivery', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        }
+    });
+    // Inventory OrdersReceive - EJS Template Route
+    router.get('/Employee/Inventory/InventoryOrdersReceive', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            // Fetch all receive orders with customer, address, and items
+            const ordersResult = await pool.request().query(`
+                SELECT o.OrderID, o.OrderDate, 
+                       FORMAT(o.OrderDate, 'MMM dd, yyyy hh:mm tt') AS FormattedOrderDate,
+                       o.Status, o.TotalAmount, o.PaymentMethod, o.Currency, o.PaymentDate,
+                       o.DeliveryType, o.DeliveryCost,
+                       CASE 
+                           WHEN o.DeliveryType = 'pickup' THEN 'Pick up'
+                           WHEN o.DeliveryType LIKE 'rate_%' THEN dr.ServiceType
+                           ELSE o.DeliveryType
+                       END as DeliveryTypeName,
+                       c.FullName AS CustomerName, c.Email AS CustomerEmail, c.PhoneNumber AS CustomerPhone,
+                       a.Label AS AddressLabel, a.HouseNumber, a.Street, a.Barangay, a.City, a.Province, a.Region, a.PostalCode, a.Country
+                FROM Orders o
+                JOIN Customers c ON o.CustomerID = c.CustomerID
+                LEFT JOIN CustomerAddresses a ON o.ShippingAddressID = a.AddressID
+                LEFT JOIN DeliveryRates dr ON o.DeliveryType = 'rate_' + CAST(dr.RateID AS NVARCHAR(10))
+                WHERE o.Status = 'Received'
+                ORDER BY o.OrderDate ASC
+            `);
+            const orders = ordersResult.recordset;
+            // Fetch items for each order
+            for (let order of orders) {
+                const itemsResult = await pool.request()
+                    .input('orderId', sql.Int, order.OrderID)
+                    .query(`
+                        SELECT oi.OrderItemID, oi.Quantity, oi.PriceAtPurchase, p.Name, p.ImageURL
+                        FROM OrderItems oi
+                        JOIN Products p ON oi.ProductID = p.ProductID
+                        WHERE oi.OrderID = @orderId
+                    `);
+                order.items = itemsResult.recordset;
+            }
+            
+            res.render('Employee/Inventory/InventoryOrdersReceive', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: orders,
+                totalPages: 1,
+                currentPage: 1,
+                total: orders.length,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering InventoryOrdersReceive:', error);
+            res.render('Employee/Inventory/InventoryOrdersReceive', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        }
+    });
+    // Inventory CancelledOrders - EJS Template Route
+    router.get('/Employee/Inventory/InventoryCancelledOrders', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            // Fetch all cancelled orders with customer, address, and items
+            const ordersResult = await pool.request().query(`
+                SELECT o.OrderID, o.OrderDate, 
+                       FORMAT(o.OrderDate, 'MMM dd, yyyy hh:mm tt') AS FormattedOrderDate,
+                       o.Status, o.TotalAmount, o.PaymentMethod, o.Currency, o.PaymentDate,
+                       o.DeliveryType, o.DeliveryCost,
+                       CASE 
+                           WHEN o.DeliveryType = 'pickup' THEN 'Pick up'
+                           WHEN o.DeliveryType LIKE 'rate_%' THEN dr.ServiceType
+                           ELSE o.DeliveryType
+                       END as DeliveryTypeName,
+                       c.FullName AS CustomerName, c.Email AS CustomerEmail, c.PhoneNumber AS CustomerPhone,
+                       a.Label AS AddressLabel, a.HouseNumber, a.Street, a.Barangay, a.City, a.Province, a.Region, a.PostalCode, a.Country
+                FROM Orders o
+                JOIN Customers c ON o.CustomerID = c.CustomerID
+                LEFT JOIN CustomerAddresses a ON o.ShippingAddressID = a.AddressID
+                LEFT JOIN DeliveryRates dr ON o.DeliveryType = 'rate_' + CAST(dr.RateID AS NVARCHAR(10))
+                WHERE o.Status = 'Cancelled'
+                ORDER BY o.OrderDate ASC
+            `);
+            const orders = ordersResult.recordset;
+            // Fetch items for each order
+            for (let order of orders) {
+                const itemsResult = await pool.request()
+                    .input('orderId', sql.Int, order.OrderID)
+                    .query(`
+                        SELECT oi.OrderItemID, oi.Quantity, oi.PriceAtPurchase, p.Name, p.ImageURL
+                        FROM OrderItems oi
+                        JOIN Products p ON oi.ProductID = p.ProductID
+                        WHERE oi.OrderID = @orderId
+                    `);
+                order.items = itemsResult.recordset;
+            }
+            
+            res.render('Employee/Inventory/InventoryCancelledOrders', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: orders,
+                totalPages: 1,
+                currentPage: 1,
+                total: orders.length,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering InventoryCancelledOrders:', error);
+            res.render('Employee/Inventory/InventoryCancelledOrders', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        }
+    });
+    // Inventory CompletedOrders - EJS Template Route
+    router.get('/Employee/Inventory/InventoryCompletedOrders', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            // Fetch all completed orders with customer, address, and items
+            const ordersResult = await pool.request().query(`
+                SELECT o.OrderID, o.OrderDate, 
+                       FORMAT(o.OrderDate, 'MMM dd, yyyy hh:mm tt') AS FormattedOrderDate,
+                       o.Status, o.TotalAmount, o.PaymentMethod, o.Currency, o.PaymentDate,
+                       o.DeliveryType, o.DeliveryCost,
+                       CASE 
+                           WHEN o.DeliveryType = 'pickup' THEN 'Pick up'
+                           WHEN o.DeliveryType LIKE 'rate_%' THEN dr.ServiceType
+                           ELSE o.DeliveryType
+                       END as DeliveryTypeName,
+                       c.FullName AS CustomerName, c.Email AS CustomerEmail, c.PhoneNumber AS CustomerPhone,
+                       a.Label AS AddressLabel, a.HouseNumber, a.Street, a.Barangay, a.City, a.Province, a.Region, a.PostalCode, a.Country
+                FROM Orders o
+                JOIN Customers c ON o.CustomerID = c.CustomerID
+                LEFT JOIN CustomerAddresses a ON o.ShippingAddressID = a.AddressID
+                LEFT JOIN DeliveryRates dr ON o.DeliveryType = 'rate_' + CAST(dr.RateID AS NVARCHAR(10))
+                WHERE o.Status = 'Completed'
+                ORDER BY o.OrderDate ASC
+            `);
+            const orders = ordersResult.recordset;
+            // Fetch items for each order
+            for (let order of orders) {
+                const itemsResult = await pool.request()
+                    .input('orderId', sql.Int, order.OrderID)
+                    .query(`
+                        SELECT oi.OrderItemID, oi.Quantity, oi.PriceAtPurchase, p.Name, p.ImageURL
+                        FROM OrderItems oi
+                        JOIN Products p ON oi.ProductID = p.ProductID
+                        WHERE oi.OrderID = @orderId
+                    `);
+                order.items = itemsResult.recordset;
+            }
+            
+            res.render('Employee/Inventory/InventoryCompletedOrders', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: orders,
+                totalPages: 1,
+                currentPage: 1,
+                total: orders.length,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering InventoryCompletedOrders:', error);
+            res.render('Employee/Inventory/InventoryCompletedOrders', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        }
+    });
+
+    // Inventory API Routes
+    // Inventory: Get Variations
+    router.get('/Employee/Inventory/InventoryVariations/Get/:productId', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const productId = parseInt(req.params.productId);
+            
+            const result = await pool.request()
+                .input('productID', sql.Int, productId)
+                .query(`
+                    SELECT 
+                        pv.VariationID,
+                        pv.ProductID,
+                        p.Name as ProductName,
+                        pv.VariationName,
+                        pv.Color,
+                        pv.Quantity,
+                        pv.VariationImageURL,
+                        pv.CreatedAt,
+                        pv.UpdatedAt,
+                        pv.IsActive,
+                        u.FullName as CreatedByUser
+                    FROM ProductVariations pv
+                    INNER JOIN Products p ON pv.ProductID = p.ProductID
+                    LEFT JOIN Users u ON pv.CreatedBy = u.UserID
+                    WHERE pv.ProductID = @productID 
+                    AND pv.IsActive = 1 
+                    AND p.IsActive = 1
+                    ORDER BY pv.CreatedAt DESC
+                `);
+            
+            res.json({ 
+                success: true, 
+                variations: result.recordset 
+            });
+        } catch (error) {
+            console.error('Error fetching variations:', error);
+            res.json({ 
+                success: false, 
+                message: 'Failed to fetch variations: ' + error.message,
+                variations: []
+            });
+        }
+    });
+
+    // Inventory: Edit Product
+    router.get('/Employee/Inventory/InventoryProducts/Edit/:productId', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const productId = parseInt(req.params.productId);
+            
+            const result = await pool.request()
+                .input('productID', sql.Int, productId)
+                .query(`
+                    SELECT 
+                        p.ProductID,
+                        p.Name,
+                        p.Description,
+                        p.Price,
+                        p.Category,
+                        p.ImageURL,
+                        p.StockQuantity,
+                        p.IsActive,
+                        p.CreatedAt,
+                        p.UpdatedAt,
+                        u.FullName as CreatedByUser
+                    FROM Products p
+                    LEFT JOIN Users u ON p.CreatedBy = u.UserID
+                    WHERE p.ProductID = @productID 
+                    AND p.IsActive = 1
+                `);
+            
+            if (result.recordset.length === 0) {
+                return res.json({ 
+                    success: false, 
+                    message: 'Product not found',
+                    product: null
+                });
+            }
+            
+            res.json({ 
+                success: true, 
+                product: result.recordset[0]
+            });
+        } catch (error) {
+            console.error('Error fetching product:', error);
+            res.json({ 
+                success: false, 
+                message: 'Failed to fetch product: ' + error.message,
+                product: null
+            });
+        }
+    });
+
+    // Inventory: Update Stock
+    router.post('/Employee/Inventory/InventoryProducts/UpdateStock', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        console.log('Received update stock request');
+        console.log('Request body:', req.body);
+        const { productId, newStock } = req.body;
+
+        if (!productId || newStock === undefined || newStock < 0) {
+            return res.json({ success: false, message: 'Invalid product ID or stock quantity.' });
+        }
+
+        try {
+            await pool.connect();
+
+            // Get current stock and product name to calculate quantity to add
+            const currentProductResult = await pool.request()
+                .input('productid', sql.Int, productId)
+                .query('SELECT StockQuantity, Name FROM Products WHERE ProductID = @productid');
+
+            if (currentProductResult.recordset.length === 0) {
+                return res.json({ success: false, message: 'Product not found.' });
+            }
+            const oldStockQuantity = currentProductResult.recordset[0].StockQuantity;
+            const productName = currentProductResult.recordset[0].Name;
+            const quantityToAdd = newStock - oldStockQuantity;
+
+            // Only call stored procedure if stock is increasing
+            if (quantityToAdd > 0) {
+                const request = pool.request();
+                request.input('ProductID', sql.Int, productId);
+                request.input('QuantityToAdd', sql.Int, quantityToAdd);
+                request.input('PerformedBy', sql.Int, req.session.user.id); // Assuming user ID is in session
+
+                await request.execute('AddProductStock'); // Execute the stored procedure
+
+                // Log the activity for stock increase
+                const activityRequest = pool.request();
+                activityRequest.input('userid', sql.Int, req.session.user.id);
+                activityRequest.input('action', sql.NVarChar, 'UPDATE');
+                activityRequest.input('tableaffected', sql.NVarChar, 'Products');
+                activityRequest.input('description', sql.NVarChar,
+                    `Updated Product: Changed stock for "${productName}" (ID: ${productId}) from ${oldStockQuantity} to ${newStock}`
+                );
+                await activityRequest.query(`
+                    INSERT INTO ActivityLogs (UserID, Action, TableAffected, Description)
+                    VALUES (@userid, @action, @tableaffected, @description)
+                `);
+
+                res.json({ success: true, message: 'Stock updated and materials deducted successfully!' });
+            } else if (quantityToAdd < 0) {
+                 // Handle stock reduction separately (not via AddProductStock procedure)
+                 // For now, directly update if stock is reduced (e.g., manual correction or removal)
+                 const updateStockRequest = pool.request();
+                 updateStockRequest.input('newStock', sql.Int, newStock);
+                 updateStockRequest.input('productid', sql.Int, productId);
+                 await updateStockRequest.query('UPDATE Products SET StockQuantity = @newStock WHERE ProductID = @productid');
+
+                 // Log the activity for manual stock reduction
+                 const activityRequest = pool.request();
+                 activityRequest.input('userid', sql.Int, req.session.user.id);
+                 activityRequest.input('action', sql.NVarChar, 'UPDATE');
+                 activityRequest.input('tableaffected', sql.NVarChar, 'Products');
+                 activityRequest.input('description', sql.NVarChar,
+                     `Updated Product: Changed stock for "${productName}" (ID: ${productId}) from ${oldStockQuantity} to ${newStock}`
+                 );
+                 await activityRequest.query(`
+                     INSERT INTO ActivityLogs (UserID, Action, TableAffected, Description)
+                     VALUES (@userid, @action, @tableaffected, @description)
+                 `);
+                 res.json({ success: true, message: 'Stock reduced successfully.' });
+            } else {
+                // No change in stock
+                res.json({ success: true, message: 'No change in stock quantity.' });
+            }
+        } catch (err) {
+            console.error('Error updating product stock:', err);
+            // Check if the error is from the stored procedure (e.g., not enough materials)
+            if (err.message.includes('Not enough raw materials available')) {
+                res.status(400).json({ success: false, message: err.message, error: err.message });
+            } else {
+                res.status(500).json({ success: false, message: 'Failed to update stock.', error: err.message });
+            }
+        }
+    });
+
+    // Inventory: Add Variation
+    router.post('/Employee/Inventory/InventoryVariations/Add', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), upload.single('variationImage'), async (req, res) => {
+        try {
+            await pool.connect();
+            const { productID, variationName, color, quantity } = req.body;
+            const parsedProductId = parseInt(productID);
+            const parsedQuantity = parseInt(quantity);
+
+            if (!parsedProductId || !variationName || isNaN(parsedQuantity) || parsedQuantity <= 0) {
+                return res.json({ success: false, message: 'Invalid input for creating variation.' });
+            }
+
+            // Check if product exists
+            const productCheck = await pool.request()
+                .input('productID', sql.Int, parsedProductId)
+                .query('SELECT ProductID, Name FROM Products WHERE ProductID = @productID AND IsActive = 1');
+
+            if (productCheck.recordset.length === 0) {
+                return res.json({ success: false, message: 'Product not found or inactive.' });
+            }
+
+            // Check if variation with same name and color already exists for this product
+            const existingVariation = await pool.request()
+                .input('productID', sql.Int, parsedProductId)
+                .input('variationName', sql.NVarChar, variationName)
+                .input('color', sql.NVarChar, color)
+                .query('SELECT VariationID FROM ProductVariations WHERE ProductID = @productID AND VariationName = @variationName AND Color = @color AND IsActive = 1');
+
+            if (existingVariation.recordset.length > 0) {
+                return res.json({ success: false, message: 'A variation with this name and color already exists for this product.' });
+            }
+
+            // Handle image upload
+            let imageURL = null;
+            if (req.file) {
+                imageURL = `/uploads/variations/${req.file.filename}`;
+            }
+
+            // Insert the new variation
+            const insertResult = await pool.request()
+                .input('productID', sql.Int, parsedProductId)
+                .input('variationName', sql.NVarChar, variationName)
+                .input('color', sql.NVarChar, color)
+                .input('quantity', sql.Int, parsedQuantity)
+                .input('imageURL', sql.NVarChar, imageURL)
+                .input('createdBy', sql.Int, req.session.user.id)
+                .query(`
+                    INSERT INTO ProductVariations (ProductID, VariationName, Color, Quantity, VariationImageURL, CreatedBy, CreatedAt, UpdatedAt, IsActive)
+                    VALUES (@productID, @variationName, @color, @quantity, @imageURL, @createdBy, GETDATE(), GETDATE(), 1)
+                `);
+
+            // Log the activity
+            const activityRequest = pool.request();
+            activityRequest.input('userid', sql.Int, req.session.user.id);
+            activityRequest.input('action', sql.NVarChar, 'INSERT');
+            activityRequest.input('tableaffected', sql.NVarChar, 'ProductVariations');
+            activityRequest.input('description', sql.NVarChar,
+                `Added Variation: "${variationName}" (${color}) for product "${productCheck.recordset[0].Name}" (ID: ${parsedProductId})`
+            );
+            await activityRequest.query(`
+                INSERT INTO ActivityLogs (UserID, Action, TableAffected, Description)
+                VALUES (@userid, @action, @tableaffected, @description)
+            `);
+
+            res.json({ success: true, message: 'Variation added successfully!' });
+        } catch (error) {
+            console.error('Error adding variation:', error);
+            res.json({ success: false, message: 'Failed to add variation: ' + error.message });
+        }
+    });
+
+    // Inventory: Delete Variation
+    router.delete('/Employee/Inventory/InventoryVariations/Delete/:variationId', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const variationId = parseInt(req.params.variationId);
+
+            if (!variationId) {
+                return res.json({ success: false, message: 'Invalid variation ID.' });
+            }
+
+            // Get variation details for logging
+            const variationResult = await pool.request()
+                .input('variationID', sql.Int, variationId)
+                .query(`
+                    SELECT pv.VariationName, pv.Color, p.Name as ProductName, pv.ProductID
+                    FROM ProductVariations pv
+                    INNER JOIN Products p ON pv.ProductID = p.ProductID
+                    WHERE pv.VariationID = @variationID
+                `);
+
+            if (variationResult.recordset.length === 0) {
+                return res.json({ success: false, message: 'Variation not found.' });
+            }
+
+            const variation = variationResult.recordset[0];
+
+            // Soft delete the variation
+            await pool.request()
+                .input('variationID', sql.Int, variationId)
+                .query('UPDATE ProductVariations SET IsActive = 0, UpdatedAt = GETDATE() WHERE VariationID = @variationID');
+
+            // Log the activity
+            const activityRequest = pool.request();
+            activityRequest.input('userid', sql.Int, req.session.user.id);
+            activityRequest.input('action', sql.NVarChar, 'DELETE');
+            activityRequest.input('tableaffected', sql.NVarChar, 'ProductVariations');
+            activityRequest.input('description', sql.NVarChar,
+                `Deleted Variation: "${variation.VariationName}" (${variation.Color}) from product "${variation.ProductName}" (ID: ${variation.ProductID})`
+            );
+            await activityRequest.query(`
+                INSERT INTO ActivityLogs (UserID, Action, TableAffected, Description)
+                VALUES (@userid, @action, @tableaffected, @description)
+            `);
+
+            res.json({ success: true, message: 'Variation deleted successfully!' });
+        } catch (error) {
+            console.error('Error deleting variation:', error);
+            res.json({ success: false, message: 'Failed to delete variation: ' + error.message });
+        }
+    });
+
+    // Inventory: Edit Variation
+    router.post('/Employee/Inventory/InventoryVariations/Edit', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), upload.single('variationImage'), async (req, res) => {
+        try {
+            await pool.connect();
+            const { variationID, variationName, color, quantity, isActive } = req.body;
+            const parsedVariationId = parseInt(variationID);
+            const newQuantity = Math.max(0, parseInt(quantity) || 0);
+
+            if (!parsedVariationId || !variationName || isNaN(newQuantity)) {
+                return res.json({ success: false, message: 'Invalid input for updating variation.' });
+            }
+
+            // Check if variation exists
+            const existingVariation = await pool.request()
+                .input('variationID', sql.Int, parsedVariationId)
+                .query(`
+                    SELECT pv.*, p.Name as ProductName
+                    FROM ProductVariations pv
+                    INNER JOIN Products p ON pv.ProductID = p.ProductID
+                    WHERE pv.VariationID = @variationID
+                `);
+
+            if (existingVariation.recordset.length === 0) {
+                return res.json({ success: false, message: 'Variation not found.' });
+            }
+
+            const variation = existingVariation.recordset[0];
+
+            // Handle image upload
+            let imageURL = variation.VariationImageURL; // Keep existing image if no new one uploaded
+            if (req.file) {
+                imageURL = `/uploads/variations/${req.file.filename}`;
+            }
+
+            // Update the variation
+            await pool.request()
+                .input('variationID', sql.Int, parsedVariationId)
+                .input('variationName', sql.NVarChar, variationName)
+                .input('color', sql.NVarChar, color)
+                .input('quantity', sql.Int, newQuantity)
+                .input('imageURL', sql.NVarChar, imageURL)
+                .input('isActive', sql.Bit, isActive === 'true' || isActive === true)
+                .query(`
+                    UPDATE ProductVariations 
+                    SET VariationName = @variationName, 
+                        Color = @color, 
+                        Quantity = @quantity, 
+                        VariationImageURL = @imageURL, 
+                        IsActive = @isActive, 
+                        UpdatedAt = GETDATE()
+                    WHERE VariationID = @variationID
+                `);
+
+            // Log the activity
+            const activityRequest = pool.request();
+            activityRequest.input('userid', sql.Int, req.session.user.id);
+            activityRequest.input('action', sql.NVarChar, 'UPDATE');
+            activityRequest.input('tableaffected', sql.NVarChar, 'ProductVariations');
+            activityRequest.input('description', sql.NVarChar,
+                `Updated Variation: "${variationName}" (${color}) for product "${variation.ProductName}" (ID: ${variation.ProductID})`
+            );
+            await activityRequest.query(`
+                INSERT INTO ActivityLogs (UserID, Action, TableAffected, Description)
+                VALUES (@userid, @action, @tableaffected, @description)
+            `);
+
+            res.json({ success: true, message: 'Variation updated successfully!' });
+        } catch (error) {
+            console.error('Error updating variation:', error);
+            res.json({ success: false, message: 'Failed to update variation: ' + error.message });
+        }
+    });
+
+    // Inventory: Add Product (POST)
+    router.post('/Employee/Inventory/InventoryProducts/Add', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), upload.fields([
+        { name: 'image', maxCount: 1 },
+        { name: 'thumbnails', maxCount: 4 },
+        { name: 'thumbnail1', maxCount: 1 },
+        { name: 'thumbnail2', maxCount: 1 },
+        { name: 'thumbnail3', maxCount: 1 },
+        { name: 'thumbnail4', maxCount: 1 },
+        { name: 'model3d', maxCount: 1 }
+    ]), async (req, res) => {
+        console.log('Received add product request');
+        console.log('Request body:', req.body);
+        console.log('Files:', req.files);
+        
+        try {
+            const { name, description, price, stockquantity, category, dimensions, requiredMaterials, has3dModel } = req.body;
+            let imageUrl = null;
+            let thumbnailUrls = [];
+            let model3dUrl = null;
+
+            // Basic validation
+            if (!name || !price || !stockquantity) {
+                return res.json({ success: false, message: 'Name, Price, and Stock Quantity are required.' });
+            }
+
+            await pool.connect();
+            
+            // Add ThumbnailURLs column if it doesn't exist
+            await pool.request().query(`
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Products') AND name = 'ThumbnailURLs')
+                ALTER TABLE Products ADD ThumbnailURLs NVARCHAR(MAX) NULL;
+            `);
+            
+            // Add Model3D column if it doesn't exist
+            await pool.request().query(`
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Products') AND name = 'Model3D')
+                ALTER TABLE Products ADD Model3D NVARCHAR(500) NULL;
+            `);
+            
+            // Add Has3DModel column if it doesn't exist
+            await pool.request().query(`
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Products') AND name = 'Has3DModel')
+                ALTER TABLE Products ADD Has3DModel BIT NOT NULL DEFAULT 0;
+            `);
+            
+            // Add UpdatedAt column if it doesn't exist
+            await pool.request().query(`
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Products') AND name = 'UpdatedAt')
+                ALTER TABLE Products ADD UpdatedAt DATETIME2 NULL;
+            `);
+            
+            // Add CreatedAt column if it doesn't exist
+            await pool.request().query(`
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Products') AND name = 'CreatedAt')
+                ALTER TABLE Products ADD CreatedAt DATETIME2 NULL;
+            `);
+
+            // Handle main product image
+            if (req.files && req.files.image && req.files.image[0]) {
+                imageUrl = getPublicUrl(req.files.image[0]);
+            }
+            
+            // Handle thumbnail images
+            if (req.files && req.files.thumbnails && req.files.thumbnails.length > 0) {
+                thumbnailUrls = req.files.thumbnails.map(file => getPublicUrl(file));
+            } else {
+                // Handle individual thumbnail uploads
+                for (let i = 1; i <= 4; i++) {
+                    const thumbnailKey = `thumbnail${i}`;
+                    if (req.files && req.files[thumbnailKey] && req.files[thumbnailKey][0]) {
+                        thumbnailUrls[i - 1] = getPublicUrl(req.files[thumbnailKey][0]);
+                    }
+                }
+            }
+            
+            // Handle 3D model file
+            if (req.files && req.files.model3d && req.files.model3d[0]) {
+                model3dUrl = getPublicUrl(req.files.model3d[0]);
+            }
+
+            // Insert the product
+            const result = await pool.request()
+                .input('name', sql.NVarChar, name)
+                .input('description', sql.NVarChar, description || null)
+                .input('price', sql.Decimal(10, 2), parseFloat(price))
+                .input('stockquantity', sql.Int, parseInt(stockquantity))
+                .input('category', sql.NVarChar, category || null)
+                .input('dimensions', sql.NVarChar, dimensions || null)
+                .input('imageurl', sql.NVarChar, imageUrl)
+                .input('thumbnailurls', sql.NVarChar, JSON.stringify(thumbnailUrls))
+                .input('model3d', sql.NVarChar, model3dUrl)
+                .input('has3dmodel', sql.Bit, has3dModel === '1' ? 1 : 0)
+                .query(`
+                    INSERT INTO Products (Name, Description, Price, StockQuantity, Category, Dimensions, ImageURL, ThumbnailURLs, Model3D, Has3DModel, IsActive, CreatedAt, UpdatedAt)
+                    VALUES (@name, @description, @price, @stockquantity, @category, @dimensions, @imageurl, @thumbnailurls, @model3d, @has3dmodel, 1, GETDATE(), GETDATE())
+                `);
+
+            // Log the activity
+            const activityRequest = pool.request();
+            activityRequest.input('userid', sql.Int, req.session.user.id);
+            activityRequest.input('action', sql.NVarChar, 'INSERT');
+            activityRequest.input('tableaffected', sql.NVarChar, 'Products');
+            activityRequest.input('description', sql.NVarChar, `Added Product: "${name}"`);
+            await activityRequest.query(`
+                INSERT INTO ActivityLogs (UserID, Action, TableAffected, Description)
+                VALUES (@userid, @action, @tableaffected, @description)
+            `);
+
+            res.json({ success: true, message: 'Product added successfully!' });
+        } catch (error) {
+            console.error('Error adding product:', error);
+            res.json({ success: false, message: 'Failed to add product: ' + error.message });
+        }
+    });
+
+    // Inventory: Edit Product (POST)
+    router.post('/Employee/Inventory/InventoryProducts/Edit', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), upload.fields([
+        { name: 'image', maxCount: 1 },
+        { name: 'thumbnails', maxCount: 4 },
+        { name: 'thumbnail1', maxCount: 1 },
+        { name: 'thumbnail2', maxCount: 1 },
+        { name: 'thumbnail3', maxCount: 1 },
+        { name: 'thumbnail4', maxCount: 1 },
+        { name: 'model3d', maxCount: 1 }
+    ]), async (req, res) => {
+        console.log('Received edit product request');
+        console.log('Request body:', req.body);
+        console.log('Files:', req.files);
+        
+        try {
+            const { productid, name, description, price, stockquantity, category, dimensions, requiredMaterials, has3dModel } = req.body;
+            let imageUrl = req.body.currentImageURL;
+            let thumbnailUrls = [];
+            let model3dUrl = req.body.currentModel3dURL;
+
+            // Basic validation
+            if (!productid || !name || !price || !stockquantity) {
+                return res.json({ success: false, message: 'Product ID, Name, Price, and Stock Quantity are required.' });
+            }
+
+            await pool.connect();
+            
+            // Add ThumbnailURLs column if it doesn't exist
+            await pool.request().query(`
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Products') AND name = 'ThumbnailURLs')
+                ALTER TABLE Products ADD ThumbnailURLs NVARCHAR(MAX) NULL;
+            `);
+            
+            // Add Model3D column if it doesn't exist
+            await pool.request().query(`
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Products') AND name = 'Model3D')
+                ALTER TABLE Products ADD Model3D NVARCHAR(500) NULL;
+            `);
+            
+            // Add Has3DModel column if it doesn't exist
+            await pool.request().query(`
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Products') AND name = 'Has3DModel')
+                ALTER TABLE Products ADD Has3DModel BIT NOT NULL DEFAULT 0;
+            `);
+            
+            // Add UpdatedAt column if it doesn't exist
+            await pool.request().query(`
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Products') AND name = 'UpdatedAt')
+                ALTER TABLE Products ADD UpdatedAt DATETIME2 NULL;
+            `);
+            
+            // Add CreatedAt column if it doesn't exist
+            await pool.request().query(`
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Products') AND name = 'CreatedAt')
+                ALTER TABLE Products ADD CreatedAt DATETIME2 NULL;
+            `);
+            
+            const oldProductResult = await pool.request()
+                .input('productid', sql.Int, productid)
+                .query('SELECT * FROM Products WHERE ProductID = @productid');
+            const oldProduct = oldProductResult.recordset[0];
+
+            // Handle main product image
+            if (req.files && req.files.image && req.files.image[0]) {
+                imageUrl = getPublicUrl(req.files.image[0]);
+            }
+            
+            // Handle thumbnail images
+            if (req.files && req.files.thumbnails && req.files.thumbnails.length > 0) {
+                thumbnailUrls = req.files.thumbnails.map(file => getPublicUrl(file));
+            } else {
+                // Handle individual thumbnail uploads
+                for (let i = 1; i <= 4; i++) {
+                    const thumbnailKey = `thumbnail${i}`;
+                    if (req.files && req.files[thumbnailKey] && req.files[thumbnailKey][0]) {
+                        thumbnailUrls[i - 1] = getPublicUrl(req.files[thumbnailKey][0]);
+                    }
+                }
+            }
+            
+            // Handle 3D model file
+            if (req.files && req.files.model3d && req.files.model3d[0]) {
+                model3dUrl = getPublicUrl(req.files.model3d[0]);
+            } else if (oldProduct && oldProduct.Model3D) {
+                model3dUrl = oldProduct.Model3D;
+            }
+
+            // Update the product
+            await pool.request()
+                .input('productid', sql.Int, productid)
+                .input('name', sql.NVarChar, name)
+                .input('description', sql.NVarChar, description || null)
+                .input('price', sql.Decimal(10, 2), parseFloat(price))
+                .input('stockquantity', sql.Int, parseInt(stockquantity))
+                .input('category', sql.NVarChar, category || null)
+                .input('dimensions', sql.NVarChar, dimensions || null)
+                .input('imageurl', sql.NVarChar, imageUrl)
+                .input('thumbnailurls', sql.NVarChar, JSON.stringify(thumbnailUrls))
+                .input('model3d', sql.NVarChar, model3dUrl)
+                .input('has3dmodel', sql.Bit, has3dModel === '1' ? 1 : 0)
+                .query(`
+                    UPDATE Products
+                    SET Name = @name,
+                        Description = @description,
+                        Price = @price,
+                        StockQuantity = @stockquantity,
+                        Category = @category,
+                        Dimensions = @dimensions,
+                        ImageURL = @imageurl,
+                        ThumbnailURLs = @thumbnailurls,
+                        Model3D = @model3d,
+                        Has3DModel = @has3dmodel,
+                        UpdatedAt = GETDATE()
+                    WHERE ProductID = @productid
+                `);
+
+            // Log the activity
+            const activityRequest = pool.request();
+            activityRequest.input('userid', sql.Int, req.session.user.id);
+            activityRequest.input('action', sql.NVarChar, 'UPDATE');
+            activityRequest.input('tableaffected', sql.NVarChar, 'Products');
+            activityRequest.input('description', sql.NVarChar, `Updated Product: "${name}" (ID: ${productid})`);
+            await activityRequest.query(`
+                INSERT INTO ActivityLogs (UserID, Action, TableAffected, Description)
+                VALUES (@userid, @action, @tableaffected, @description)
+            `);
+
+            res.json({ success: true, message: 'Product updated successfully!' });
+        } catch (error) {
+            console.error('Error updating product:', error);
+            res.json({ success: false, message: 'Failed to update product: ' + error.message });
+        }
+    });
+    // Inventory ManageUsers - EJS Template Route
+    router.get('/Employee/Inventory/InventoryManageUsers', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const result = await pool.request().query(`
+                SELECT u.UserID, u.Username, u.FullName, u.Email, u.RoleID, r.RoleName, u.IsActive, u.CreatedAt
+                FROM Users u
+                JOIN Roles r ON u.RoleID = r.RoleID
+                ORDER BY u.CreatedAt DESC
+            `);
+            const users = result.recordset;
+            
+            res.render('Employee/Inventory/InventoryManageUsers', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: users,
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: [],
+                threads: [],
+                selectedThread: null,
+                messages: []
+            });
+        } catch (error) {
+            console.error('Error rendering InventoryManageUsers:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // Inventory ChatSupport - EJS Template Route
+    router.get('/Employee/Inventory/InventoryChatSupport', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            // Fetch all threads
+            const threadsResult = await pool.request().query(`
+                SELECT c.CustomerID, c.FullName, c.Email,
+                    MAX(m.SentAt) AS LastMessageAt,
+                    (SELECT TOP 1 MessageText FROM ChatMessages WHERE CustomerID = c.CustomerID ORDER BY SentAt DESC) AS LastMessageText,
+                    SUM(CASE WHEN m.SenderType = 'customer' AND m.IsRead = 0 THEN 1 ELSE 0 END) AS UnreadCount
+                FROM Customers c
+                LEFT JOIN ChatMessages m ON c.CustomerID = m.CustomerID
+                WHERE EXISTS (SELECT 1 FROM ChatMessages WHERE CustomerID = c.CustomerID)
+                GROUP BY c.CustomerID, c.FullName, c.Email
+                ORDER BY LastMessageAt DESC
+            `);
+            const threads = threadsResult.recordset;
+            // Select first thread by default
+            const selectedThread = threads.length > 0 ? threads[0] : null;
+            let messages = [];
+            if (selectedThread) {
+                const messagesResult = await pool.request()
+                    .input('customerId', sql.Int, selectedThread.CustomerID)
+                    .query('SELECT * FROM ChatMessages WHERE CustomerID = @customerId ORDER BY SentAt ASC');
+                messages = messagesResult.recordset;
+            }
+            
+            res.render('Employee/Inventory/InventoryChatSupport', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: [],
+                threads: threads,
+                selectedThread: selectedThread,
+                messages: messages
+            });
+        } catch (error) {
+            console.error('Error rendering InventoryChatSupport:', error);
+            res.render('Employee/Inventory/InventoryChatSupport', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: [],
+                threads: [],
+                selectedThread: null,
+                messages: []
+            });
+        }
+    });
+    // Inventory CMS - EJS Template Route
+    router.get('/Employee/Inventory/InventoryCMS', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Inventory/InventoryCMS', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering InventoryCMS:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // Inventory Logs - EJS Template Route
+    router.get('/Employee/Inventory/InventoryLogs', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Inventory/InventoryLogs', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering InventoryLogs:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // Support Products - EJS Template Route
+    router.get('/Employee/Support/SupportProducts', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Support/SupportProducts', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering SupportProducts:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // Support Variations - EJS Template Route
+    router.get('/Employee/Support/SupportVariations', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Support/SupportVariations', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering SupportVariations:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // Support Materials - EJS Template Route
+    router.get('/Employee/Support/SupportMaterials', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Support/SupportMaterials', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering SupportMaterials:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // Support Alerts - EJS Template Route
+    router.get('/Employee/Support/SupportAlerts', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Support/SupportAlerts', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering SupportAlerts:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // Support Archived - EJS Template Route
+    router.get('/Employee/Support/SupportArchived', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Support/SupportArchived', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering SupportArchived:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // Support Rates - EJS Template Route
+    router.get('/Employee/Support/SupportRates', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Support/SupportRates', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering SupportRates:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // Support WalkIn - EJS Template Route
+    router.get('/Employee/Support/SupportWalkIn', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Support/SupportWalkIn', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering SupportWalkIn:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // Support OrdersPending - EJS Template Route
+    router.get('/Employee/Support/SupportOrdersPending', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Support/SupportOrdersPending', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering SupportOrdersPending:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // Support OrdersProcessing - EJS Template Route
+    router.get('/Employee/Support/SupportOrdersProcessing', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Support/SupportOrdersProcessing', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering SupportOrdersProcessing:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // Support OrdersShipping - EJS Template Route
+    router.get('/Employee/Support/SupportOrdersShipping', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Support/SupportOrdersShipping', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering SupportOrdersShipping:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // Support OrdersDelivery - EJS Template Route
+    router.get('/Employee/Support/SupportOrdersDelivery', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Support/SupportOrdersDelivery', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering SupportOrdersDelivery:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // Support OrdersReceive - EJS Template Route
+    router.get('/Employee/Support/SupportOrdersReceive', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Support/SupportOrdersReceive', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering SupportOrdersReceive:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // Support CancelledOrders - EJS Template Route
+    router.get('/Employee/Support/SupportCancelledOrders', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Support/SupportCancelledOrders', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering SupportCancelledOrders:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // Support CompletedOrders - EJS Template Route
+    router.get('/Employee/Support/SupportCompletedOrders', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Support/SupportCompletedOrders', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering SupportCompletedOrders:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // Support ManageUsers - EJS Template Route
+    router.get('/Employee/Support/SupportManageUsers', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Support/SupportManageUsers', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering SupportManageUsers:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // Support ChatSupport - EJS Template Route
+    router.get('/Employee/Support/SupportChatSupport', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Support/SupportChatSupport', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering SupportChatSupport:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // Support CMS - EJS Template Route
+    router.get('/Employee/Support/SupportCMS', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Support/SupportCMS', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering SupportCMS:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // Support Logs - EJS Template Route
+    router.get('/Employee/Support/SupportLogs', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Support/SupportLogs', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering SupportLogs:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // Transaction Products - EJS Template Route
+    router.get('/Employee/Transaction/TransactionProducts', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Transaction/TransactionProducts', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering TransactionProducts:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // Transaction Variations - EJS Template Route
+    router.get('/Employee/Transaction/TransactionVariations', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Transaction/TransactionVariations', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering TransactionVariations:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // Transaction Materials - EJS Template Route
+    router.get('/Employee/Transaction/TransactionMaterials', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Transaction/TransactionMaterials', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering TransactionMaterials:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // Transaction Alerts - EJS Template Route
+    router.get('/Employee/Transaction/TransactionAlerts', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Transaction/TransactionAlerts', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering TransactionAlerts:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // Transaction Archived - EJS Template Route
+    router.get('/Employee/Transaction/TransactionArchived', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Transaction/TransactionArchived', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering TransactionArchived:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // Transaction Rates - EJS Template Route
+    router.get('/Employee/Transaction/TransactionRates', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Transaction/TransactionRates', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering TransactionRates:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // Transaction WalkIn - EJS Template Route
+    router.get('/Employee/Transaction/TransactionWalkIn', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Transaction/TransactionWalkIn', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering TransactionWalkIn:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // Transaction OrdersPending - EJS Template Route
+    router.get('/Employee/Transaction/TransactionOrdersPending', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Transaction/TransactionOrdersPending', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering TransactionOrdersPending:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // Transaction OrdersProcessing - EJS Template Route
+    router.get('/Employee/Transaction/TransactionOrdersProcessing', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Transaction/TransactionOrdersProcessing', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering TransactionOrdersProcessing:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // Transaction OrdersShipping - EJS Template Route
+    router.get('/Employee/Transaction/TransactionOrdersShipping', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Transaction/TransactionOrdersShipping', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering TransactionOrdersShipping:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // Transaction OrdersDelivery - EJS Template Route
+    router.get('/Employee/Transaction/TransactionOrdersDelivery', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Transaction/TransactionOrdersDelivery', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering TransactionOrdersDelivery:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // Transaction OrdersReceive - EJS Template Route
+    router.get('/Employee/Transaction/TransactionOrdersReceive', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Transaction/TransactionOrdersReceive', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering TransactionOrdersReceive:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // Transaction CancelledOrders - EJS Template Route
+    router.get('/Employee/Transaction/TransactionCancelledOrders', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Transaction/TransactionCancelledOrders', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering TransactionCancelledOrders:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // Transaction CompletedOrders - EJS Template Route
+    router.get('/Employee/Transaction/TransactionCompletedOrders', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Transaction/TransactionCompletedOrders', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering TransactionCompletedOrders:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // Transaction ManageUsers - EJS Template Route
+    router.get('/Employee/Transaction/TransactionManageUsers', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Transaction/TransactionManageUsers', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering TransactionManageUsers:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // Transaction ChatSupport - EJS Template Route
+    router.get('/Employee/Transaction/TransactionChatSupport', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Transaction/TransactionChatSupport', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering TransactionChatSupport:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // Transaction CMS - EJS Template Route
+    router.get('/Employee/Transaction/TransactionCMS', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Transaction/TransactionCMS', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering TransactionCMS:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // Transaction Logs - EJS Template Route
+    router.get('/Employee/Transaction/TransactionLogs', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Transaction/TransactionLogs', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering TransactionLogs:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // UserManager Products - EJS Template Route
+    router.get('/Employee/UserManager/UserManagerProducts', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/UserManager/UserManagerProducts', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering UserManagerProducts:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // UserManager Variations - EJS Template Route
+    router.get('/Employee/UserManager/UserManagerVariations', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/UserManager/UserManagerVariations', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering UserManagerVariations:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // UserManager Materials - EJS Template Route
+    router.get('/Employee/UserManager/UserManagerMaterials', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/UserManager/UserManagerMaterials', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering UserManagerMaterials:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // UserManager Alerts - EJS Template Route
+    router.get('/Employee/UserManager/UserManagerAlerts', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/UserManager/UserManagerAlerts', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering UserManagerAlerts:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // UserManager Archived - EJS Template Route
+    router.get('/Employee/UserManager/UserManagerArchived', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/UserManager/UserManagerArchived', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering UserManagerArchived:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // UserManager Rates - EJS Template Route
+    router.get('/Employee/UserManager/UserManagerRates', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/UserManager/UserManagerRates', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering UserManagerRates:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // UserManager WalkIn - EJS Template Route
+    router.get('/Employee/UserManager/UserManagerWalkIn', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/UserManager/UserManagerWalkIn', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering UserManagerWalkIn:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // UserManager OrdersPending - EJS Template Route
+    router.get('/Employee/UserManager/UserManagerOrdersPending', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/UserManager/UserManagerOrdersPending', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering UserManagerOrdersPending:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // UserManager OrdersProcessing - EJS Template Route
+    router.get('/Employee/UserManager/UserManagerOrdersProcessing', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/UserManager/UserManagerOrdersProcessing', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering UserManagerOrdersProcessing:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // UserManager OrdersShipping - EJS Template Route
+    router.get('/Employee/UserManager/UserManagerOrdersShipping', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/UserManager/UserManagerOrdersShipping', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering UserManagerOrdersShipping:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // UserManager OrdersDelivery - EJS Template Route
+    router.get('/Employee/UserManager/UserManagerOrdersDelivery', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/UserManager/UserManagerOrdersDelivery', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering UserManagerOrdersDelivery:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // UserManager OrdersReceive - EJS Template Route
+    router.get('/Employee/UserManager/UserManagerOrdersReceive', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/UserManager/UserManagerOrdersReceive', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering UserManagerOrdersReceive:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // UserManager CancelledOrders - EJS Template Route
+    router.get('/Employee/UserManager/UserManagerCancelledOrders', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/UserManager/UserManagerCancelledOrders', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering UserManagerCancelledOrders:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // UserManager CompletedOrders - EJS Template Route
+    router.get('/Employee/UserManager/UserManagerCompletedOrders', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/UserManager/UserManagerCompletedOrders', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering UserManagerCompletedOrders:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // UserManager ManageUsers - EJS Template Route
+    router.get('/Employee/UserManager/UserManagerManageUsers', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/UserManager/UserManagerManageUsers', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering UserManagerManageUsers:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // UserManager ChatSupport - EJS Template Route
+    router.get('/Employee/UserManager/UserManagerChatSupport', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/UserManager/UserManagerChatSupport', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering UserManagerChatSupport:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // UserManager CMS - EJS Template Route
+    router.get('/Employee/UserManager/UserManagerCMS', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/UserManager/UserManagerCMS', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering UserManagerCMS:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+    // UserManager Logs - EJS Template Route
+    router.get('/Employee/UserManager/UserManagerLogs', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/UserManager/UserManagerLogs', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering UserManagerLogs:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // ===== TRANSACTION MODULE EJS TEMPLATE ROUTES =====
+    
+    // Transaction Products - EJS Template Route
+    router.get('/Employee/Transaction/TransactionProducts', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const page = parseInt(req.query.page) || 1;
+            const limit = 10;
+            const offset = (page - 1) * limit;
+            
+            const result = await pool.request()
+                .input('offset', sql.Int, offset)
+                .input('limit', sql.Int, limit)
+                .query(`
+                    SELECT ProductID, Name, Description, Price, Category, Stock, ImagePath, Thumbnails, Model3DPath, IsActive, CreatedDate
+                    FROM Products 
+                    WHERE IsActive = 1
+                    ORDER BY CreatedDate DESC
+                    OFFSET @offset ROWS
+                    FETCH NEXT @limit ROWS ONLY
+                `);
+            
+            const countResult = await pool.request().query('SELECT COUNT(*) as total FROM Products WHERE IsActive = 1');
+            const total = countResult.recordset[0].total;
+            const totalPages = Math.ceil(total / limit);
+            
+            res.render('Employee/Transaction/TransactionProducts', {
+                user: req.session.user,
+                products: result.recordset,
+                totalPages,
+                currentPage: page,
+                total
+            });
+        } catch (err) {
+            console.error('Error fetching products:', err);
+            res.render('Employee/Transaction/TransactionProducts', { user: req.session.user, products: [], error: 'Failed to load products.' });
+        }
+    });
+
+    // Transaction Variations - EJS Template Route
+    router.get('/Employee/Transaction/TransactionVariations', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Transaction/TransactionVariations', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering TransactionVariations:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // Transaction Materials - EJS Template Route
+    router.get('/Employee/Transaction/TransactionMaterials', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const result = await pool.request().query('SELECT * FROM RawMaterials WHERE IsActive = 1');
+            res.render('Employee/Transaction/TransactionMaterials', { user: req.session.user, materials: result.recordset });
+        } catch (err) {
+            console.error('Error fetching materials:', err);
+            res.render('Employee/Transaction/TransactionMaterials', { user: req.session.user, materials: [], error: 'Failed to load materials.' });
+        }
+    });
+
+    // Transaction Raw Materials - EJS Template Route
+    router.get('/Employee/Transaction/TransactionRawMaterials', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const result = await pool.request().query('SELECT * FROM RawMaterials WHERE IsActive = 1');
+            res.render('Employee/Transaction/TransactionMaterials', { user: req.session.user, materials: result.recordset });
+        } catch (err) {
+            console.error('Error fetching raw materials:', err);
+            res.render('Employee/Transaction/TransactionMaterials', { user: req.session.user, materials: [], error: 'Failed to load raw materials.' });
+        }
+    });
+
+    // Transaction Alerts - EJS Template Route
+    router.get('/Employee/Transaction/TransactionAlerts', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Transaction/TransactionAlerts', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering TransactionAlerts:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // Transaction Archived - EJS Template Route
+    router.get('/Employee/Transaction/TransactionArchived', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const productsResult = await pool.request().query('SELECT * FROM Products WHERE IsActive = 0');
+            const materialsResult = await pool.request().query('SELECT * FROM RawMaterials WHERE IsActive = 0');
+            
+            res.render('Employee/Transaction/TransactionArchived', {
+                user: req.session.user,
+                products: productsResult.recordset,
+                materials: materialsResult.recordset
+            });
+        } catch (err) {
+            console.error('Error fetching archived items:', err);
+            res.render('Employee/Transaction/TransactionArchived', { user: req.session.user, products: [], materials: [], error: 'Failed to load archived items.' });
+        }
+    });
+
+    // Transaction Rates - EJS Template Route
+    router.get('/Employee/Transaction/TransactionRates', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Transaction/TransactionRates', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering TransactionRates:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // Transaction WalkIn - EJS Template Route
+    router.get('/Employee/Transaction/TransactionWalkIn', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Transaction/TransactionWalkIn', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering TransactionWalkIn:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // Transaction OrdersPending - EJS Template Route
+    router.get('/Employee/Transaction/TransactionOrdersPending', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Transaction/TransactionOrdersPending', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering TransactionOrdersPending:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // Transaction OrdersProcessing - EJS Template Route
+    router.get('/Employee/Transaction/TransactionOrdersProcessing', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Transaction/TransactionOrdersProcessing', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering TransactionOrdersProcessing:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // Transaction OrdersShipping - EJS Template Route
+    router.get('/Employee/Transaction/TransactionOrdersShipping', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Transaction/TransactionOrdersShipping', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering TransactionOrdersShipping:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // Transaction OrdersDelivery - EJS Template Route
+    router.get('/Employee/Transaction/TransactionOrdersDelivery', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Transaction/TransactionOrdersDelivery', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering TransactionOrdersDelivery:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // Transaction OrdersReceive - EJS Template Route
+    router.get('/Employee/Transaction/TransactionOrdersReceive', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Transaction/TransactionOrdersReceive', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering TransactionOrdersReceive:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // Transaction CancelledOrders - EJS Template Route
+    router.get('/Employee/Transaction/TransactionCancelledOrders', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Transaction/TransactionCancelledOrders', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering TransactionCancelledOrders:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // Transaction CompletedOrders - EJS Template Route
+    router.get('/Employee/Transaction/TransactionCompletedOrders', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Transaction/TransactionCompletedOrders', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering TransactionCompletedOrders:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // Transaction ManageUsers - EJS Template Route
+    router.get('/Employee/Transaction/TransactionManageUsers', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const result = await pool.request().query(`
+                SELECT u.UserID, u.Username, u.FullName, u.Email, u.IsActive, u.CreatedDate, r.RoleName
+                FROM Users u
+                LEFT JOIN UserRoles ur ON u.UserID = ur.UserID
+                LEFT JOIN Roles r ON ur.RoleID = r.RoleID
+                ORDER BY u.CreatedDate DESC
+            `);
+            
+            res.render('Employee/Transaction/TransactionManageUsers', {
+                user: req.session.user,
+                users: result.recordset
+            });
+        } catch (err) {
+            console.error('Error fetching users:', err);
+            res.render('Employee/Transaction/TransactionManageUsers', { user: req.session.user, users: [], error: 'Failed to load users.' });
+        }
+    });
+
+    // Transaction ChatSupport - EJS Template Route
+    router.get('/Employee/Transaction/TransactionChatSupport', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Transaction/TransactionChatSupport', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering TransactionChatSupport:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // Transaction CMS - EJS Template Route
+    router.get('/Employee/Transaction/TransactionCMS', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Transaction/TransactionCMS', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering TransactionCMS:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // Transaction Logs - EJS Template Route
+    router.get('/Employee/Transaction/TransactionLogs', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Transaction/TransactionLogs', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering TransactionLogs:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // ===== TRANSACTION MODULE POST ROUTES AND API ENDPOINTS =====
+    
+    // Transaction Manager: Add Product POST route
+    router.post('/Employee/Transaction/Products/Add', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), upload.fields([
+        { name: 'image', maxCount: 1 },
+        { name: 'thumbnails', maxCount: 4 },
+        { name: 'model3d', maxCount: 1 }
+    ]), async (req, res) => {
+        try {
+            const { name, description, price, category, stock, isactive } = req.body;
+            const imagePath = req.files?.image ? req.files.image[0].path : null;
+            const thumbnails = req.files?.thumbnails ? req.files.thumbnails.map(file => file.path) : [];
+            const model3dPath = req.files?.model3d ? req.files.model3d[0].path : null;
+            
+            await pool.connect();
+            const result = await pool.request()
+                .input('name', sql.VarChar(255), name)
+                .input('description', sql.Text, description)
+                .input('price', sql.Decimal(10, 2), parseFloat(price))
+                .input('category', sql.VarChar(100), category)
+                .input('stock', sql.Int, parseInt(stock))
+                .input('imagePath', sql.VarChar(500), imagePath)
+                .input('thumbnails', sql.VarChar(1000), thumbnails.join(','))
+                .input('model3dPath', sql.VarChar(500), model3dPath)
+                .input('isactive', sql.Bit, isactive === 'true' ? 1 : 0)
+                .query(`
+                    INSERT INTO Products (Name, Description, Price, Category, Stock, ImagePath, Thumbnails, Model3DPath, IsActive, CreatedDate)
+                    VALUES (@name, @description, @price, @category, @stock, @imagePath, @thumbnails, @model3dPath, @isactive, GETDATE())
+                `);
+            
+            req.flash('success', 'Product added successfully!');
+            res.redirect('/Employee/Transaction/Products');
+        } catch (err) {
+            console.error('Error adding product:', err);
+            req.flash('error', 'Failed to add product.');
+            res.redirect('/Employee/Transaction/Products');
+        }
+    });
+
+    // Transaction Manager: Edit Product POST route
+    router.post('/Employee/Transaction/Products/Edit', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), upload.fields([
+        { name: 'image', maxCount: 1 },
+        { name: 'thumbnails', maxCount: 4 },
+        { name: 'thumbnail1', maxCount: 1 },
+        { name: 'thumbnail2', maxCount: 1 },
+        { name: 'thumbnail3', maxCount: 1 },
+        { name: 'thumbnail4', maxCount: 1 },
+        { name: 'model3d', maxCount: 1 }
+    ]), async (req, res) => {
+        try {
+            const { productid, name, description, price, category, stock, isactive } = req.body;
+            const imagePath = req.files?.image ? req.files.image[0].path : null;
+            const model3dPath = req.files?.model3d ? req.files.model3d[0].path : null;
+            
+            // Handle thumbnails
+            const thumbnails = [];
+            if (req.files?.thumbnails) {
+                thumbnails.push(...req.files.thumbnails.map(file => file.path));
+            }
+            if (req.files?.thumbnail1) thumbnails.push(req.files.thumbnail1[0].path);
+            if (req.files?.thumbnail2) thumbnails.push(req.files.thumbnail2[0].path);
+            if (req.files?.thumbnail3) thumbnails.push(req.files.thumbnail3[0].path);
+            if (req.files?.thumbnail4) thumbnails.push(req.files.thumbnail4[0].path);
+            
+            await pool.connect();
+            const result = await pool.request()
+                .input('productid', sql.Int, parseInt(productid))
+                .input('name', sql.VarChar(255), name)
+                .input('description', sql.Text, description)
+                .input('price', sql.Decimal(10, 2), parseFloat(price))
+                .input('category', sql.VarChar(100), category)
+                .input('stock', sql.Int, parseInt(stock))
+                .input('imagePath', sql.VarChar(500), imagePath)
+                .input('thumbnails', sql.VarChar(1000), thumbnails.join(','))
+                .input('model3dPath', sql.VarChar(500), model3dPath)
+                .input('isactive', sql.Bit, isactive === 'true' ? 1 : 0)
+                .query(`
+                    UPDATE Products 
+                    SET Name = @name, Description = @description, Price = @price, Category = @category, 
+                        Stock = @stock, ImagePath = ISNULL(@imagePath, ImagePath), 
+                        Thumbnails = ISNULL(@thumbnails, Thumbnails), Model3DPath = ISNULL(@model3dPath, Model3DPath), 
+                        IsActive = @isactive, UpdatedDate = GETDATE()
+                    WHERE ProductID = @productid
+                `);
+            
+            req.flash('success', 'Product updated successfully!');
+            res.redirect('/Employee/Transaction/Products');
+        } catch (err) {
+            console.error('Error updating product:', err);
+            req.flash('error', 'Failed to update product.');
+            res.redirect('/Employee/Transaction/Products');
+        }
+    });
+
+    // Transaction Manager: Delete Product POST route
+    router.post('/Employee/Transaction/Products/Delete/:id', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        const productId = req.params.id;
+        try {
+            await pool.connect();
+            const result = await pool.request()
+                .input('productid', sql.Int, parseInt(productId))
+                .query('UPDATE Products SET IsActive = 0 WHERE ProductID = @productid');
+            
+            req.flash('success', 'Product deleted successfully!');
+            res.redirect('/Employee/Transaction/Products');
+        } catch (err) {
+            console.error('Error deleting product:', err);
+            req.flash('error', 'Failed to delete product.');
+            res.redirect('/Employee/Transaction/Products');
+        }
+    });
+
+    // Transaction Manager: Update Stock POST route
+    router.post('/Employee/Transaction/Products/UpdateStock', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        const { productId, newStock } = req.body;
+        try {
+            await pool.connect();
+            const result = await pool.request()
+                .input('productid', sql.Int, parseInt(productId))
+                .input('newstock', sql.Int, parseInt(newStock))
+                .query('UPDATE Products SET Stock = @newstock WHERE ProductID = @productid');
+            
+            req.flash('success', 'Stock updated successfully!');
+            res.redirect('/Employee/Transaction/Products');
+        } catch (err) {
+            console.error('Error updating stock:', err);
+            req.flash('error', 'Failed to update stock.');
+            res.redirect('/Employee/Transaction/Products');
+        }
+    });
+
+    // Transaction Manager: Add Material POST route
+    router.post('/Employee/Transaction/RawMaterials/Add', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            const { name, description, quantityavailable, unit, supplier, costperunit } = req.body;
+            
+            await pool.connect();
+            const result = await pool.request()
+                .input('name', sql.VarChar(255), name)
+                .input('description', sql.Text, description)
+                .input('quantityavailable', sql.Int, parseInt(quantityavailable))
+                .input('unit', sql.VarChar(50), unit)
+                .input('supplier', sql.VarChar(255), supplier)
+                .input('costperunit', sql.Decimal(10, 2), parseFloat(costperunit))
+                .query(`
+                    INSERT INTO RawMaterials (Name, Description, QuantityAvailable, Unit, Supplier, CostPerUnit, IsActive, CreatedDate)
+                    VALUES (@name, @description, @quantityavailable, @unit, @supplier, @costperunit, 1, GETDATE())
+                `);
+            
+            req.flash('success', 'Raw material added successfully!');
+            res.redirect('/Employee/Transaction/RawMaterials');
+        } catch (err) {
+            console.error('Error adding raw material:', err);
+            req.flash('error', 'Failed to add raw material.');
+            res.redirect('/Employee/Transaction/RawMaterials');
+        }
+    });
+
+    // Transaction Manager: Edit Material POST route
+    router.post('/Employee/Transaction/RawMaterials/Edit', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            const { materialid, name, quantityavailable, unit } = req.body;
+            
+            await pool.connect();
+            const result = await pool.request()
+                .input('materialid', sql.Int, parseInt(materialid))
+                .input('name', sql.VarChar(255), name)
+                .input('quantityavailable', sql.Int, parseInt(quantityavailable))
+                .input('unit', sql.VarChar(50), unit)
+                .query(`
+                    UPDATE RawMaterials 
+                    SET Name = @name, QuantityAvailable = @quantityavailable, Unit = @unit, UpdatedDate = GETDATE()
+                    WHERE MaterialID = @materialid
+                `);
+            
+            req.flash('success', 'Raw material updated successfully!');
+            res.redirect('/Employee/Transaction/RawMaterials');
+        } catch (err) {
+            console.error('Error updating raw material:', err);
+            req.flash('error', 'Failed to update raw material.');
+            res.redirect('/Employee/Transaction/RawMaterials');
+        }
+    });
+
+    // Transaction Manager: Delete Material POST route
+    router.post('/Employee/Transaction/RawMaterials/Delete/:id', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        const materialId = req.params.id;
+        try {
+            await pool.connect();
+            const result = await pool.request()
+                .input('materialid', sql.Int, parseInt(materialId))
+                .query('UPDATE RawMaterials SET IsActive = 0 WHERE MaterialID = @materialid');
+            
+            req.flash('success', 'Raw material deleted successfully!');
+            res.redirect('/Employee/Transaction/RawMaterials');
+        } catch (err) {
+            console.error('Error deleting raw material:', err);
+            req.flash('error', 'Failed to delete raw material.');
+            res.redirect('/Employee/Transaction/RawMaterials');
+        }
+    });
+
+    // Transaction Manager: API endpoints for data fetching
+    router.get('/Employee/Transaction/Alerts/Data', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const productsResult = await pool.request().query(`
+                SELECT ProductID, Name, Stock, Category
+                FROM Products 
+                WHERE IsActive = 1 AND Stock < 10
+            `);
+            const materialsResult = await pool.request().query(`
+                SELECT MaterialID, Name, QuantityAvailable, Unit
+                FROM RawMaterials 
+                WHERE IsActive = 1 AND QuantityAvailable < 5
+            `);
+            
+            res.json({
+                lowStockProducts: productsResult.recordset,
+                lowStockMaterials: materialsResult.recordset
+            });
+        } catch (err) {
+            console.error('Error fetching alerts data:', err);
+            res.status(500).json({ error: 'Failed to fetch alerts data' });
+        }
+    });
+
+    router.get('/Employee/Transaction/Logs/Data', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const result = await pool.request().query(`
+                SELECT TOP 100
+                    l.LogID,
+                    l.UserID,
+                    l.Action,
+                    l.Details,
+                    l.Timestamp,
+                    u.Username,
+                    u.FullName
+                FROM ActivityLogs l
+                LEFT JOIN Users u ON l.UserID = u.UserID
+                ORDER BY l.Timestamp DESC
+            `);
+            
+            res.json({ logs: result.recordset });
+        } catch (err) {
+            console.error('Error fetching logs data:', err);
+            res.status(500).json({ error: 'Failed to fetch logs data' });
+        }
+    });
+
+    // ===== SUPPORT MODULE EJS TEMPLATE ROUTES =====
+    
+    // Support Products - EJS Template Route
+    router.get('/Employee/Support/SupportProducts', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const page = parseInt(req.query.page) || 1;
+            const limit = 10;
+            const offset = (page - 1) * limit;
+            
+            const result = await pool.request()
+                .input('offset', sql.Int, offset)
+                .input('limit', sql.Int, limit)
+                .query(`
+                    SELECT ProductID, Name, Description, Price, Category, Stock, ImagePath, Thumbnails, Model3DPath, IsActive, CreatedDate
+                    FROM Products 
+                    WHERE IsActive = 1
+                    ORDER BY CreatedDate DESC
+                    OFFSET @offset ROWS
+                    FETCH NEXT @limit ROWS ONLY
+                `);
+            
+            const countResult = await pool.request().query('SELECT COUNT(*) as total FROM Products WHERE IsActive = 1');
+            const total = countResult.recordset[0].total;
+            const totalPages = Math.ceil(total / limit);
+            
+            res.render('Employee/Support/SupportProducts', {
+                user: req.session.user,
+                products: result.recordset,
+                totalPages,
+                currentPage: page,
+                total
+            });
+        } catch (err) {
+            console.error('Error fetching products:', err);
+            res.render('Employee/Support/SupportProducts', { user: req.session.user, products: [], error: 'Failed to load products.' });
+        }
+    });
+
+    // Support Variations - EJS Template Route
+    router.get('/Employee/Support/SupportVariations', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Support/SupportVariations', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering SupportVariations:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // Support Materials - EJS Template Route
+    router.get('/Employee/Support/SupportMaterials', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const result = await pool.request().query('SELECT * FROM RawMaterials WHERE IsActive = 1');
+            res.render('Employee/Support/SupportMaterials', { user: req.session.user, materials: result.recordset });
+        } catch (err) {
+            console.error('Error fetching materials:', err);
+            res.render('Employee/Support/SupportMaterials', { user: req.session.user, materials: [], error: 'Failed to load materials.' });
+        }
+    });
+
+    // Support Raw Materials - EJS Template Route
+    router.get('/Employee/Support/SupportRawMaterials', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const result = await pool.request().query('SELECT * FROM RawMaterials WHERE IsActive = 1');
+            res.render('Employee/Support/SupportMaterials', { user: req.session.user, materials: result.recordset });
+        } catch (err) {
+            console.error('Error fetching raw materials:', err);
+            res.render('Employee/Support/SupportMaterials', { user: req.session.user, materials: [], error: 'Failed to load raw materials.' });
+        }
+    });
+
+    // Support Alerts - EJS Template Route
+    router.get('/Employee/Support/SupportAlerts', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Support/SupportAlerts', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering SupportAlerts:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // Support Archived - EJS Template Route
+    router.get('/Employee/Support/SupportArchived', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const productsResult = await pool.request().query('SELECT * FROM Products WHERE IsActive = 0');
+            const materialsResult = await pool.request().query('SELECT * FROM RawMaterials WHERE IsActive = 0');
+            
+            res.render('Employee/Support/SupportArchived', {
+                user: req.session.user,
+                products: productsResult.recordset,
+                materials: materialsResult.recordset
+            });
+        } catch (err) {
+            console.error('Error fetching archived items:', err);
+            res.render('Employee/Support/SupportArchived', { user: req.session.user, products: [], materials: [], error: 'Failed to load archived items.' });
+        }
+    });
+
+    // Support Rates - EJS Template Route
+    router.get('/Employee/Support/SupportRates', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Support/SupportRates', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering SupportRates:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // Support WalkIn - EJS Template Route
+    router.get('/Employee/Support/SupportWalkIn', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Support/SupportWalkIn', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering SupportWalkIn:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // Support OrdersPending - EJS Template Route
+    router.get('/Employee/Support/SupportOrdersPending', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Support/SupportOrdersPending', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering SupportOrdersPending:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // Support OrdersProcessing - EJS Template Route
+    router.get('/Employee/Support/SupportOrdersProcessing', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Support/SupportOrdersProcessing', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering SupportOrdersProcessing:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // Support OrdersShipping - EJS Template Route
+    router.get('/Employee/Support/SupportOrdersShipping', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Support/SupportOrdersShipping', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering SupportOrdersShipping:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // Support OrdersDelivery - EJS Template Route
+    router.get('/Employee/Support/SupportOrdersDelivery', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Support/SupportOrdersDelivery', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering SupportOrdersDelivery:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // Support OrdersReceive - EJS Template Route
+    router.get('/Employee/Support/SupportOrdersReceive', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Support/SupportOrdersReceive', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering SupportOrdersReceive:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // Support CancelledOrders - EJS Template Route
+    router.get('/Employee/Support/SupportCancelledOrders', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Support/SupportCancelledOrders', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering SupportCancelledOrders:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // Support CompletedOrders - EJS Template Route
+    router.get('/Employee/Support/SupportCompletedOrders', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Support/SupportCompletedOrders', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering SupportCompletedOrders:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // Support ManageUsers - EJS Template Route
+    router.get('/Employee/Support/SupportManageUsers', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const result = await pool.request().query(`
+                SELECT u.UserID, u.Username, u.FullName, u.Email, u.IsActive, u.CreatedDate, r.RoleName
+                FROM Users u
+                LEFT JOIN UserRoles ur ON u.UserID = ur.UserID
+                LEFT JOIN Roles r ON ur.RoleID = r.RoleID
+                ORDER BY u.CreatedDate DESC
+            `);
+            
+            res.render('Employee/Support/SupportManageUsers', {
+                user: req.session.user,
+                users: result.recordset
+            });
+        } catch (err) {
+            console.error('Error fetching users:', err);
+            res.render('Employee/Support/SupportManageUsers', { user: req.session.user, users: [], error: 'Failed to load users.' });
+        }
+    });
+
+    // Support ChatSupport - EJS Template Route
+    router.get('/Employee/Support/SupportChatSupport', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Support/SupportChatSupport', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering SupportChatSupport:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // Support CMS - EJS Template Route
+    router.get('/Employee/Support/SupportCMS', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Support/SupportCMS', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering SupportCMS:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // Support Logs - EJS Template Route
+    router.get('/Employee/Support/SupportLogs', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/Support/SupportLogs', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering SupportLogs:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // ===== SUPPORT MODULE POST ROUTES AND API ENDPOINTS =====
+    
+    // Support: Add Product POST route
+    router.post('/Employee/Support/Products/Add', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), upload.fields([
+        { name: 'image', maxCount: 1 },
+        { name: 'thumbnails', maxCount: 4 },
+        { name: 'model3d', maxCount: 1 }
+    ]), async (req, res) => {
+        try {
+            const { name, description, price, category, stock, isactive } = req.body;
+            const imagePath = req.files?.image ? req.files.image[0].path : null;
+            const thumbnails = req.files?.thumbnails ? req.files.thumbnails.map(file => file.path) : [];
+            const model3dPath = req.files?.model3d ? req.files.model3d[0].path : null;
+            
+            await pool.connect();
+            const result = await pool.request()
+                .input('name', sql.VarChar(255), name)
+                .input('description', sql.Text, description)
+                .input('price', sql.Decimal(10, 2), parseFloat(price))
+                .input('category', sql.VarChar(100), category)
+                .input('stock', sql.Int, parseInt(stock))
+                .input('imagePath', sql.VarChar(500), imagePath)
+                .input('thumbnails', sql.VarChar(1000), thumbnails.join(','))
+                .input('model3dPath', sql.VarChar(500), model3dPath)
+                .input('isactive', sql.Bit, isactive === 'true' ? 1 : 0)
+                .query(`
+                    INSERT INTO Products (Name, Description, Price, Category, Stock, ImagePath, Thumbnails, Model3DPath, IsActive, CreatedDate)
+                    VALUES (@name, @description, @price, @category, @stock, @imagePath, @thumbnails, @model3dPath, @isactive, GETDATE())
+                `);
+            
+            req.flash('success', 'Product added successfully!');
+            res.redirect('/Employee/Support/Products');
+        } catch (err) {
+            console.error('Error adding product:', err);
+            req.flash('error', 'Failed to add product.');
+            res.redirect('/Employee/Support/Products');
+        }
+    });
+
+    // Support: Edit Product POST route
+    router.post('/Employee/Support/Products/Edit', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), upload.fields([
+        { name: 'image', maxCount: 1 },
+        { name: 'thumbnails', maxCount: 4 },
+        { name: 'thumbnail1', maxCount: 1 },
+        { name: 'thumbnail2', maxCount: 1 },
+        { name: 'thumbnail3', maxCount: 1 },
+        { name: 'thumbnail4', maxCount: 1 },
+        { name: 'model3d', maxCount: 1 }
+    ]), async (req, res) => {
+        try {
+            const { productid, name, description, price, category, stock, isactive } = req.body;
+            const imagePath = req.files?.image ? req.files.image[0].path : null;
+            const model3dPath = req.files?.model3d ? req.files.model3d[0].path : null;
+            
+            // Handle thumbnails
+            const thumbnails = [];
+            if (req.files?.thumbnails) {
+                thumbnails.push(...req.files.thumbnails.map(file => file.path));
+            }
+            if (req.files?.thumbnail1) thumbnails.push(req.files.thumbnail1[0].path);
+            if (req.files?.thumbnail2) thumbnails.push(req.files.thumbnail2[0].path);
+            if (req.files?.thumbnail3) thumbnails.push(req.files.thumbnail3[0].path);
+            if (req.files?.thumbnail4) thumbnails.push(req.files.thumbnail4[0].path);
+            
+            await pool.connect();
+            const result = await pool.request()
+                .input('productid', sql.Int, parseInt(productid))
+                .input('name', sql.VarChar(255), name)
+                .input('description', sql.Text, description)
+                .input('price', sql.Decimal(10, 2), parseFloat(price))
+                .input('category', sql.VarChar(100), category)
+                .input('stock', sql.Int, parseInt(stock))
+                .input('imagePath', sql.VarChar(500), imagePath)
+                .input('thumbnails', sql.VarChar(1000), thumbnails.join(','))
+                .input('model3dPath', sql.VarChar(500), model3dPath)
+                .input('isactive', sql.Bit, isactive === 'true' ? 1 : 0)
+                .query(`
+                    UPDATE Products 
+                    SET Name = @name, Description = @description, Price = @price, Category = @category, 
+                        Stock = @stock, ImagePath = ISNULL(@imagePath, ImagePath), 
+                        Thumbnails = ISNULL(@thumbnails, Thumbnails), Model3DPath = ISNULL(@model3dPath, Model3DPath), 
+                        IsActive = @isactive, UpdatedDate = GETDATE()
+                    WHERE ProductID = @productid
+                `);
+            
+            req.flash('success', 'Product updated successfully!');
+            res.redirect('/Employee/Support/Products');
+        } catch (err) {
+            console.error('Error updating product:', err);
+            req.flash('error', 'Failed to update product.');
+            res.redirect('/Employee/Support/Products');
+        }
+    });
+
+    // Support: Delete Product POST route
+    router.post('/Employee/Support/Products/Delete/:id', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        const productId = req.params.id;
+        try {
+            await pool.connect();
+            const result = await pool.request()
+                .input('productid', sql.Int, parseInt(productId))
+                .query('UPDATE Products SET IsActive = 0 WHERE ProductID = @productid');
+            
+            req.flash('success', 'Product deleted successfully!');
+            res.redirect('/Employee/Support/Products');
+        } catch (err) {
+            console.error('Error deleting product:', err);
+            req.flash('error', 'Failed to delete product.');
+            res.redirect('/Employee/Support/Products');
+        }
+    });
+
+    // Support: Update Stock POST route
+    router.post('/Employee/Support/Products/UpdateStock', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        const { productId, newStock } = req.body;
+        try {
+            await pool.connect();
+            const result = await pool.request()
+                .input('productid', sql.Int, parseInt(productId))
+                .input('newstock', sql.Int, parseInt(newStock))
+                .query('UPDATE Products SET Stock = @newstock WHERE ProductID = @productid');
+            
+            req.flash('success', 'Stock updated successfully!');
+            res.redirect('/Employee/Support/Products');
+        } catch (err) {
+            console.error('Error updating stock:', err);
+            req.flash('error', 'Failed to update stock.');
+            res.redirect('/Employee/Support/Products');
+        }
+    });
+
+    // Support: Add Material POST route
+    router.post('/Employee/Support/RawMaterials/Add', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            const { name, description, quantityavailable, unit, supplier, costperunit } = req.body;
+            
+            await pool.connect();
+            const result = await pool.request()
+                .input('name', sql.VarChar(255), name)
+                .input('description', sql.Text, description)
+                .input('quantityavailable', sql.Int, parseInt(quantityavailable))
+                .input('unit', sql.VarChar(50), unit)
+                .input('supplier', sql.VarChar(255), supplier)
+                .input('costperunit', sql.Decimal(10, 2), parseFloat(costperunit))
+                .query(`
+                    INSERT INTO RawMaterials (Name, Description, QuantityAvailable, Unit, Supplier, CostPerUnit, IsActive, CreatedDate)
+                    VALUES (@name, @description, @quantityavailable, @unit, @supplier, @costperunit, 1, GETDATE())
+                `);
+            
+            req.flash('success', 'Raw material added successfully!');
+            res.redirect('/Employee/Support/RawMaterials');
+        } catch (err) {
+            console.error('Error adding raw material:', err);
+            req.flash('error', 'Failed to add raw material.');
+            res.redirect('/Employee/Support/RawMaterials');
+        }
+    });
+
+    // Support: Edit Material POST route
+    router.post('/Employee/Support/RawMaterials/Edit', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            const { materialid, name, quantityavailable, unit } = req.body;
+            
+            await pool.connect();
+            const result = await pool.request()
+                .input('materialid', sql.Int, parseInt(materialid))
+                .input('name', sql.VarChar(255), name)
+                .input('quantityavailable', sql.Int, parseInt(quantityavailable))
+                .input('unit', sql.VarChar(50), unit)
+                .query(`
+                    UPDATE RawMaterials 
+                    SET Name = @name, QuantityAvailable = @quantityavailable, Unit = @unit, UpdatedDate = GETDATE()
+                    WHERE MaterialID = @materialid
+                `);
+            
+            req.flash('success', 'Raw material updated successfully!');
+            res.redirect('/Employee/Support/RawMaterials');
+        } catch (err) {
+            console.error('Error updating raw material:', err);
+            req.flash('error', 'Failed to update raw material.');
+            res.redirect('/Employee/Support/RawMaterials');
+        }
+    });
+
+    // Support: Delete Material POST route
+    router.post('/Employee/Support/RawMaterials/Delete/:id', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        const materialId = req.params.id;
+        try {
+            await pool.connect();
+            const result = await pool.request()
+                .input('materialid', sql.Int, parseInt(materialId))
+                .query('UPDATE RawMaterials SET IsActive = 0 WHERE MaterialID = @materialid');
+            
+            req.flash('success', 'Raw material deleted successfully!');
+            res.redirect('/Employee/Support/RawMaterials');
+        } catch (err) {
+            console.error('Error deleting raw material:', err);
+            req.flash('error', 'Failed to delete raw material.');
+            res.redirect('/Employee/Support/RawMaterials');
+        }
+    });
+
+    // Support: API endpoints for data fetching
+    router.get('/Employee/Support/Alerts/Data', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const productsResult = await pool.request().query(`
+                SELECT ProductID, Name, Stock, Category
+                FROM Products 
+                WHERE IsActive = 1 AND Stock < 10
+            `);
+            const materialsResult = await pool.request().query(`
+                SELECT MaterialID, Name, QuantityAvailable, Unit
+                FROM RawMaterials 
+                WHERE IsActive = 1 AND QuantityAvailable < 5
+            `);
+            
+            res.json({
+                lowStockProducts: productsResult.recordset,
+                lowStockMaterials: materialsResult.recordset
+            });
+        } catch (err) {
+            console.error('Error fetching alerts data:', err);
+            res.status(500).json({ error: 'Failed to fetch alerts data' });
+        }
+    });
+
+    router.get('/Employee/Support/Logs/Data', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const result = await pool.request().query(`
+                SELECT TOP 100
+                    l.LogID,
+                    l.UserID,
+                    l.Action,
+                    l.Details,
+                    l.Timestamp,
+                    u.Username,
+                    u.FullName
+                FROM ActivityLogs l
+                LEFT JOIN Users u ON l.UserID = u.UserID
+                ORDER BY l.Timestamp DESC
+            `);
+            
+            res.json({ logs: result.recordset });
+        } catch (err) {
+            console.error('Error fetching logs data:', err);
+            res.status(500).json({ error: 'Failed to fetch logs data' });
+        }
+    });
+
+    // ===== USERMANAGER MODULE EJS TEMPLATE ROUTES =====
+    
+    // UserManager Products - EJS Template Route
+    router.get('/Employee/UserManager/UserManagerProducts', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const page = parseInt(req.query.page) || 1;
+            const limit = 10;
+            const offset = (page - 1) * limit;
+            
+            const result = await pool.request()
+                .input('offset', sql.Int, offset)
+                .input('limit', sql.Int, limit)
+                .query(`
+                    SELECT ProductID, Name, Description, Price, Category, Stock, ImagePath, Thumbnails, Model3DPath, IsActive, CreatedDate
+                    FROM Products 
+                    WHERE IsActive = 1
+                    ORDER BY CreatedDate DESC
+                    OFFSET @offset ROWS
+                    FETCH NEXT @limit ROWS ONLY
+                `);
+            
+            const countResult = await pool.request().query('SELECT COUNT(*) as total FROM Products WHERE IsActive = 1');
+            const total = countResult.recordset[0].total;
+            const totalPages = Math.ceil(total / limit);
+            
+            res.render('Employee/UserManager/UserManagerProducts', {
+                user: req.session.user,
+                products: result.recordset,
+                totalPages,
+                currentPage: page,
+                total
+            });
+        } catch (err) {
+            console.error('Error fetching products:', err);
+            res.render('Employee/UserManager/UserManagerProducts', { user: req.session.user, products: [], error: 'Failed to load products.' });
+        }
+    });
+
+    // UserManager Variations - EJS Template Route
+    router.get('/Employee/UserManager/UserManagerVariations', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/UserManager/UserManagerVariations', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering UserManagerVariations:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // UserManager Materials - EJS Template Route
+    router.get('/Employee/UserManager/UserManagerMaterials', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const result = await pool.request().query('SELECT * FROM RawMaterials WHERE IsActive = 1');
+            res.render('Employee/UserManager/UserManagerMaterials', { user: req.session.user, materials: result.recordset });
+        } catch (err) {
+            console.error('Error fetching materials:', err);
+            res.render('Employee/UserManager/UserManagerMaterials', { user: req.session.user, materials: [], error: 'Failed to load materials.' });
+        }
+    });
+
+    // UserManager Raw Materials - EJS Template Route
+    router.get('/Employee/UserManager/UserManagerRawMaterials', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const result = await pool.request().query('SELECT * FROM RawMaterials WHERE IsActive = 1');
+            res.render('Employee/UserManager/UserManagerMaterials', { user: req.session.user, materials: result.recordset });
+        } catch (err) {
+            console.error('Error fetching raw materials:', err);
+            res.render('Employee/UserManager/UserManagerMaterials', { user: req.session.user, materials: [], error: 'Failed to load raw materials.' });
+        }
+    });
+
+    // UserManager Alerts - EJS Template Route
+    router.get('/Employee/UserManager/UserManagerAlerts', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/UserManager/UserManagerAlerts', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering UserManagerAlerts:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // UserManager Archived - EJS Template Route
+    router.get('/Employee/UserManager/UserManagerArchived', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const productsResult = await pool.request().query('SELECT * FROM Products WHERE IsActive = 0');
+            const materialsResult = await pool.request().query('SELECT * FROM RawMaterials WHERE IsActive = 0');
+            
+            res.render('Employee/UserManager/UserManagerArchived', {
+                user: req.session.user,
+                products: productsResult.recordset,
+                materials: materialsResult.recordset
+            });
+        } catch (err) {
+            console.error('Error fetching archived items:', err);
+            res.render('Employee/UserManager/UserManagerArchived', { user: req.session.user, products: [], materials: [], error: 'Failed to load archived items.' });
+        }
+    });
+
+    // UserManager Rates - EJS Template Route
+    router.get('/Employee/UserManager/UserManagerRates', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/UserManager/UserManagerRates', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering UserManagerRates:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // UserManager WalkIn - EJS Template Route
+    router.get('/Employee/UserManager/UserManagerWalkIn', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/UserManager/UserManagerWalkIn', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering UserManagerWalkIn:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // UserManager OrdersPending - EJS Template Route
+    router.get('/Employee/UserManager/UserManagerOrdersPending', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/UserManager/UserManagerOrdersPending', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering UserManagerOrdersPending:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // UserManager OrdersProcessing - EJS Template Route
+    router.get('/Employee/UserManager/UserManagerOrdersProcessing', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/UserManager/UserManagerOrdersProcessing', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering UserManagerOrdersProcessing:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // UserManager OrdersShipping - EJS Template Route
+    router.get('/Employee/UserManager/UserManagerOrdersShipping', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/UserManager/UserManagerOrdersShipping', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering UserManagerOrdersShipping:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // UserManager OrdersDelivery - EJS Template Route
+    router.get('/Employee/UserManager/UserManagerOrdersDelivery', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/UserManager/UserManagerOrdersDelivery', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering UserManagerOrdersDelivery:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // UserManager OrdersReceive - EJS Template Route
+    router.get('/Employee/UserManager/UserManagerOrdersReceive', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/UserManager/UserManagerOrdersReceive', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering UserManagerOrdersReceive:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // UserManager CancelledOrders - EJS Template Route
+    router.get('/Employee/UserManager/UserManagerCancelledOrders', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/UserManager/UserManagerCancelledOrders', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering UserManagerCancelledOrders:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // UserManager CompletedOrders - EJS Template Route
+    router.get('/Employee/UserManager/UserManagerCompletedOrders', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/UserManager/UserManagerCompletedOrders', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering UserManagerCompletedOrders:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // UserManager ManageUsers - EJS Template Route
+    router.get('/Employee/UserManager/UserManagerManageUsers', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const result = await pool.request().query(`
+                SELECT u.UserID, u.Username, u.FullName, u.Email, u.IsActive, u.CreatedDate, r.RoleName
+                FROM Users u
+                LEFT JOIN UserRoles ur ON u.UserID = ur.UserID
+                LEFT JOIN Roles r ON ur.RoleID = r.RoleID
+                ORDER BY u.CreatedDate DESC
+            `);
+            
+            res.render('Employee/UserManager/UserManagerManageUsers', {
+                user: req.session.user,
+                users: result.recordset
+            });
+        } catch (err) {
+            console.error('Error fetching users:', err);
+            res.render('Employee/UserManager/UserManagerManageUsers', { user: req.session.user, users: [], error: 'Failed to load users.' });
+        }
+    });
+
+    // UserManager ChatSupport - EJS Template Route
+    router.get('/Employee/UserManager/UserManagerChatSupport', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/UserManager/UserManagerChatSupport', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering UserManagerChatSupport:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // UserManager CMS - EJS Template Route
+    router.get('/Employee/UserManager/UserManagerCMS', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/UserManager/UserManagerCMS', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering UserManagerCMS:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // UserManager Logs - EJS Template Route
+    router.get('/Employee/UserManager/UserManagerLogs', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            res.render('Employee/UserManager/UserManagerLogs', {
+                user: req.session.user,
+                userRole: req.session.user ? req.session.user.role : 'Guest',
+                products: [],
+                users: [],
+                orders: [],
+                totalPages: 1,
+                currentPage: 1,
+                total: 0,
+                alerts: [],
+                variations: [],
+                categories: [],
+                reviews: [],
+                testimonials: [],
+                projects: [],
+                logs: [],
+                transactions: [],
+                deliveries: [],
+                support: [],
+                chats: []
+            });
+        } catch (error) {
+            console.error('Error rendering UserManagerLogs:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
+
+    // ===== USERMANAGER MODULE POST ROUTES AND API ENDPOINTS =====
+    
+    // UserManager: Add Product POST route
+    router.post('/Employee/UserManager/Products/Add', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), upload.fields([
+        { name: 'image', maxCount: 1 },
+        { name: 'thumbnails', maxCount: 4 },
+        { name: 'model3d', maxCount: 1 }
+    ]), async (req, res) => {
+        try {
+            const { name, description, price, category, stock, isactive } = req.body;
+            const imagePath = req.files?.image ? req.files.image[0].path : null;
+            const thumbnails = req.files?.thumbnails ? req.files.thumbnails.map(file => file.path) : [];
+            const model3dPath = req.files?.model3d ? req.files.model3d[0].path : null;
+            
+            await pool.connect();
+            const result = await pool.request()
+                .input('name', sql.VarChar(255), name)
+                .input('description', sql.Text, description)
+                .input('price', sql.Decimal(10, 2), parseFloat(price))
+                .input('category', sql.VarChar(100), category)
+                .input('stock', sql.Int, parseInt(stock))
+                .input('imagePath', sql.VarChar(500), imagePath)
+                .input('thumbnails', sql.VarChar(1000), thumbnails.join(','))
+                .input('model3dPath', sql.VarChar(500), model3dPath)
+                .input('isactive', sql.Bit, isactive === 'true' ? 1 : 0)
+                .query(`
+                    INSERT INTO Products (Name, Description, Price, Category, Stock, ImagePath, Thumbnails, Model3DPath, IsActive, CreatedDate)
+                    VALUES (@name, @description, @price, @category, @stock, @imagePath, @thumbnails, @model3dPath, @isactive, GETDATE())
+                `);
+            
+            req.flash('success', 'Product added successfully!');
+            res.redirect('/Employee/UserManager/Products');
+        } catch (err) {
+            console.error('Error adding product:', err);
+            req.flash('error', 'Failed to add product.');
+            res.redirect('/Employee/UserManager/Products');
+        }
+    });
+
+    // UserManager: Edit Product POST route
+    router.post('/Employee/UserManager/Products/Edit', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), upload.fields([
+        { name: 'image', maxCount: 1 },
+        { name: 'thumbnails', maxCount: 4 },
+        { name: 'thumbnail1', maxCount: 1 },
+        { name: 'thumbnail2', maxCount: 1 },
+        { name: 'thumbnail3', maxCount: 1 },
+        { name: 'thumbnail4', maxCount: 1 },
+        { name: 'model3d', maxCount: 1 }
+    ]), async (req, res) => {
+        try {
+            const { productid, name, description, price, category, stock, isactive } = req.body;
+            const imagePath = req.files?.image ? req.files.image[0].path : null;
+            const model3dPath = req.files?.model3d ? req.files.model3d[0].path : null;
+            
+            // Handle thumbnails
+            const thumbnails = [];
+            if (req.files?.thumbnails) {
+                thumbnails.push(...req.files.thumbnails.map(file => file.path));
+            }
+            if (req.files?.thumbnail1) thumbnails.push(req.files.thumbnail1[0].path);
+            if (req.files?.thumbnail2) thumbnails.push(req.files.thumbnail2[0].path);
+            if (req.files?.thumbnail3) thumbnails.push(req.files.thumbnail3[0].path);
+            if (req.files?.thumbnail4) thumbnails.push(req.files.thumbnail4[0].path);
+            
+            await pool.connect();
+            const result = await pool.request()
+                .input('productid', sql.Int, parseInt(productid))
+                .input('name', sql.VarChar(255), name)
+                .input('description', sql.Text, description)
+                .input('price', sql.Decimal(10, 2), parseFloat(price))
+                .input('category', sql.VarChar(100), category)
+                .input('stock', sql.Int, parseInt(stock))
+                .input('imagePath', sql.VarChar(500), imagePath)
+                .input('thumbnails', sql.VarChar(1000), thumbnails.join(','))
+                .input('model3dPath', sql.VarChar(500), model3dPath)
+                .input('isactive', sql.Bit, isactive === 'true' ? 1 : 0)
+                .query(`
+                    UPDATE Products 
+                    SET Name = @name, Description = @description, Price = @price, Category = @category, 
+                        Stock = @stock, ImagePath = ISNULL(@imagePath, ImagePath), 
+                        Thumbnails = ISNULL(@thumbnails, Thumbnails), Model3DPath = ISNULL(@model3dPath, Model3DPath), 
+                        IsActive = @isactive, UpdatedDate = GETDATE()
+                    WHERE ProductID = @productid
+                `);
+            
+            req.flash('success', 'Product updated successfully!');
+            res.redirect('/Employee/UserManager/Products');
+        } catch (err) {
+            console.error('Error updating product:', err);
+            req.flash('error', 'Failed to update product.');
+            res.redirect('/Employee/UserManager/Products');
+        }
+    });
+
+    // UserManager: Delete Product POST route
+    router.post('/Employee/UserManager/Products/Delete/:id', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        const productId = req.params.id;
+        try {
+            await pool.connect();
+            const result = await pool.request()
+                .input('productid', sql.Int, parseInt(productId))
+                .query('UPDATE Products SET IsActive = 0 WHERE ProductID = @productid');
+            
+            req.flash('success', 'Product deleted successfully!');
+            res.redirect('/Employee/UserManager/Products');
+        } catch (err) {
+            console.error('Error deleting product:', err);
+            req.flash('error', 'Failed to delete product.');
+            res.redirect('/Employee/UserManager/Products');
+        }
+    });
+
+    // UserManager: Update Stock POST route
+    router.post('/Employee/UserManager/Products/UpdateStock', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        const { productId, newStock } = req.body;
+        try {
+            await pool.connect();
+            const result = await pool.request()
+                .input('productid', sql.Int, parseInt(productId))
+                .input('newstock', sql.Int, parseInt(newStock))
+                .query('UPDATE Products SET Stock = @newstock WHERE ProductID = @productid');
+            
+            req.flash('success', 'Stock updated successfully!');
+            res.redirect('/Employee/UserManager/Products');
+        } catch (err) {
+            console.error('Error updating stock:', err);
+            req.flash('error', 'Failed to update stock.');
+            res.redirect('/Employee/UserManager/Products');
+        }
+    });
+
+    // UserManager: Add Material POST route
+    router.post('/Employee/UserManager/RawMaterials/Add', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            const { name, description, quantityavailable, unit, supplier, costperunit } = req.body;
+            
+            await pool.connect();
+            const result = await pool.request()
+                .input('name', sql.VarChar(255), name)
+                .input('description', sql.Text, description)
+                .input('quantityavailable', sql.Int, parseInt(quantityavailable))
+                .input('unit', sql.VarChar(50), unit)
+                .input('supplier', sql.VarChar(255), supplier)
+                .input('costperunit', sql.Decimal(10, 2), parseFloat(costperunit))
+                .query(`
+                    INSERT INTO RawMaterials (Name, Description, QuantityAvailable, Unit, Supplier, CostPerUnit, IsActive, CreatedDate)
+                    VALUES (@name, @description, @quantityavailable, @unit, @supplier, @costperunit, 1, GETDATE())
+                `);
+            
+            req.flash('success', 'Raw material added successfully!');
+            res.redirect('/Employee/UserManager/RawMaterials');
+        } catch (err) {
+            console.error('Error adding raw material:', err);
+            req.flash('error', 'Failed to add raw material.');
+            res.redirect('/Employee/UserManager/RawMaterials');
+        }
+    });
+
+    // UserManager: Edit Material POST route
+    router.post('/Employee/UserManager/RawMaterials/Edit', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            const { materialid, name, quantityavailable, unit } = req.body;
+            
+            await pool.connect();
+            const result = await pool.request()
+                .input('materialid', sql.Int, parseInt(materialid))
+                .input('name', sql.VarChar(255), name)
+                .input('quantityavailable', sql.Int, parseInt(quantityavailable))
+                .input('unit', sql.VarChar(50), unit)
+                .query(`
+                    UPDATE RawMaterials 
+                    SET Name = @name, QuantityAvailable = @quantityavailable, Unit = @unit, UpdatedDate = GETDATE()
+                    WHERE MaterialID = @materialid
+                `);
+            
+            req.flash('success', 'Raw material updated successfully!');
+            res.redirect('/Employee/UserManager/RawMaterials');
+        } catch (err) {
+            console.error('Error updating raw material:', err);
+            req.flash('error', 'Failed to update raw material.');
+            res.redirect('/Employee/UserManager/RawMaterials');
+        }
+    });
+
+    // UserManager: Delete Material POST route
+    router.post('/Employee/UserManager/RawMaterials/Delete/:id', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        const materialId = req.params.id;
+        try {
+            await pool.connect();
+            const result = await pool.request()
+                .input('materialid', sql.Int, parseInt(materialId))
+                .query('UPDATE RawMaterials SET IsActive = 0 WHERE MaterialID = @materialid');
+            
+            req.flash('success', 'Raw material deleted successfully!');
+            res.redirect('/Employee/UserManager/RawMaterials');
+        } catch (err) {
+            console.error('Error deleting raw material:', err);
+            req.flash('error', 'Failed to delete raw material.');
+            res.redirect('/Employee/UserManager/RawMaterials');
+        }
+    });
+
+    // UserManager: API endpoints for data fetching
+    router.get('/Employee/UserManager/Alerts/Data', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const productsResult = await pool.request().query(`
+                SELECT ProductID, Name, Stock, Category
+                FROM Products 
+                WHERE IsActive = 1 AND Stock < 10
+            `);
+            const materialsResult = await pool.request().query(`
+                SELECT MaterialID, Name, QuantityAvailable, Unit
+                FROM RawMaterials 
+                WHERE IsActive = 1 AND QuantityAvailable < 5
+            `);
+            
+            res.json({
+                lowStockProducts: productsResult.recordset,
+                lowStockMaterials: materialsResult.recordset
+            });
+        } catch (err) {
+            console.error('Error fetching alerts data:', err);
+            res.status(500).json({ error: 'Failed to fetch alerts data' });
+        }
+    });
+
+    router.get('/Employee/UserManager/Logs/Data', isAuthenticated, hasAnyRole(['Admin', 'InventoryManager', 'OrderSupport', 'TransactionManager', 'UserManager', 'Employee']), async (req, res) => {
+        try {
+            await pool.connect();
+            const result = await pool.request().query(`
+                SELECT TOP 100
+                    l.LogID,
+                    l.UserID,
+                    l.Action,
+                    l.Details,
+                    l.Timestamp,
+                    u.Username,
+                    u.FullName
+                FROM ActivityLogs l
+                LEFT JOIN Users u ON l.UserID = u.UserID
+                ORDER BY l.Timestamp DESC
+            `);
+            
+            res.json({ logs: result.recordset });
+        } catch (err) {
+            console.error('Error fetching logs data:', err);
+            res.status(500).json({ error: 'Failed to fetch logs data' });
+        }
+    });
+
+    return router;
+};

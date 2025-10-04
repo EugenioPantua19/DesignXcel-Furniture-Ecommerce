@@ -3,159 +3,175 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UserManager Chat Support - Design Excellence</title>
-    <div data-user-role="<%= user.roleName || user.RoleName %>" data-user-id="<%= user.UserID %>" style="display: none;"></div>
+    <title>Chat Support - User Manager</title>
     <link rel="stylesheet" href="/css/Employee/Admin/AdminIndexStyles.css">
     <style>
-        /* UserManager-specific styles */
-        .usermanager-header {
-            background: linear-gradient(135deg, #28a745, #20c997);
-            color: white;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
-
-        .usermanager-header h1 {
-            margin: 0;
-            font-size: 2em;
-        }
-
-        .usermanager-header p {
-            margin: 5px 0 0 0;
-            opacity: 0.9;
-        }
-
-        .chat-card {
-            background: white;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 15px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            border-left: 4px solid #28a745;
-        }
-
-        .chat-user {
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 5px;
-        }
-
-        .chat-details {
-            color: #666;
-            font-size: 0.9em;
-        }
+      .chat-support-container { display: flex; height: 80vh; background: #f7f7f7; border-radius: 8px; overflow: hidden; }
+      .chat-thread-list { width: 340px; background: #fff; border-right: 1px solid #eee; display: flex; flex-direction: column; }
+      .chat-search-bar { padding: 16px; border-bottom: 1px solid #eee; display: flex; justify-content: center; align-items: center; }
+      .chat-search-input { width: 90%; max-width: 260px; padding: 8px 12px; border-radius: 6px; border: 1px solid #ccc; display: block; margin: 0 auto; }
+      .chat-thread-items { flex: 1; overflow-y: auto; }
+      .chat-thread-item { padding: 14px 18px; border-bottom: 1px solid #f2f2f2; cursor: pointer; display: flex; align-items: center; justify-content: space-between; background: #fff; transition: background 0.15s; }
+      .chat-thread-item.active { background: #f0f0f0; }
+      .chat-thread-item.unread { font-weight: bold; }
+      .chat-thread-info { flex: 1; }
+      .chat-thread-name { font-size: 1.05em; }
+      .chat-thread-last { color: #888; font-size: 0.95em; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .chat-thread-unread { background: #e74c3c; color: #fff; border-radius: 12px; font-size: 0.85em; padding: 2px 8px; margin-left: 8px; }
+      .chat-conversation { flex: 1; display: flex; flex-direction: column; max-width: 1400px; min-width: 0; margin: 0 auto; }
+      .chat-conversation-header { padding: 18px 24px; border-bottom: 1px solid #eee; background: #fff; font-weight: 600; font-size: 1.1em; }
+      .chat-messages-area { flex: 1; padding: 24px; overflow-y: auto; background: #e5e7eb; }
+      .chat-message-row { margin-bottom: 16px; display: flex; }
+      .chat-message-row.admin { justify-content: flex-end; }
+      .chat-message-bubble { max-width: 60%; padding: 10px 16px; border-radius: 16px; font-size: 1em; background: #F0B21B; color: #2c3e50; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+      .chat-message-row.customer .chat-message-bubble { background: #fffbe6; color: #2c3e50; border-bottom-left-radius: 4px; }
+      .chat-message-row.admin .chat-message-bubble { background: #F0B21B; color: #2c3e50; border-bottom-right-radius: 4px; }
+      .chat-reply-area { padding: 18px 24px; border-top: 1px solid #eee; background: #fff; display: flex; }
+      .chat-reply-input { flex: 1; border-radius: 16px; border: 1px solid #ccc; padding: 10px 16px; font-size: 1em; margin-right: 12px; }
+      .chat-reply-btn { background: #F0B21B; color: #2c3e50; border: none; border-radius: 16px; padding: 10px 24px; font-weight: 600; cursor: pointer; }
     </style>
 </head>
 <body>
     <div class="dashboard-container">
         <div class="sidebar">
             <div class="sidebar-header">
-                <h3>User Manager Panel</h3>
+                <h3>UserManager Panel</h3>
             </div>
             <ul class="sidebar-menu">
-                <li><a href="/Employee/UserManager">Dashboard</a></li>
-                <li class="sidebar-section-label" style="font-weight:normal;">Inventory</li>
+                <li class="sidebar-section-label">Inventory</li>
                 <ul class="sidebar-submenu" style="display:block;">
-                    <li><a href="/Employee/UserManager/UserManagerProducts" data-permission="products">Products</a></li>
-                    <li><a href="/Employee/UserManager/UserManagerVariations" data-permission="variations">Variations</a></li>
-                    <li><a href="/Employee/UserManager/UserManagerMaterials" data-permission="materials">Raw Materials</a></li>
-                    <li><a href="/Employee/UserManager/UserManagerAlerts" data-permission="alerts">Alerts</a></li>
-                    <li><a href="/Employee/UserManager/UserManagerArchived" data-permission="archived">Archived items</a></li>
+                    <li><a href="/Employee/UserManager/Products">Products</a></li>
+                    <li><a href="/Employee/UserManager/UserManagerRawMaterials">Raw Materials</a></li>
+                    <li><a href="/Employee/UserManager/Alerts">Alerts</a></li>
+                    <li><a href="/Employee/UserManager/Archived">Archived items</a></li>
                 </ul>
-                <li class="sidebar-section-label" style="font-weight:normal;">Transactions</li>
+                <li class="sidebar-section-label">Transactions</li>
                 <ul class="sidebar-submenu" style="display:block;">
-                    <li><a href="/Employee/UserManager/UserManagerRates" data-permission="rates">Delivery Rates</a></li>
-                    <li><a href="/Employee/UserManager/UserManagerWalkIn" data-permission="transactions">Walk In</a></li>
-                    <li><a href="/Employee/UserManager/UserManagerOrdersPending" data-permission="orders">Orders Pending</a></li>
-                    <li><a href="/Employee/UserManager/UserManagerOrdersProcessing" data-permission="orders">Orders Processing</a></li>
-                    <li><a href="/Employee/UserManager/UserManagerOrdersShipping" data-permission="orders">Orders Shipping</a></li>
-                    <li><a href="/Employee/UserManager/UserManagerOrdersDelivery" data-permission="orders">Orders Delivery</a></li>
-                    <li><a href="/Employee/UserManager/UserManagerOrdersReceive" data-permission="orders">Orders Receive</a></li>
-                    <li><a href="/Employee/UserManager/UserManagerCancelledOrders" data-permission="orders">Cancelled Orders</a></li>
-                    <li><a href="/Employee/UserManager/UserManagerCompletedOrders" data-permission="orders">Completed Orders</a></li>
+                    <li><a href="/Employee/UserManager/UserManagerDeliveryRates">Delivery Rates</a></li>
+                    <li><a href="/Employee/UserManager/WalkIn">Walk In</a></li>
+                    <li><a href="/Employee/UserManager/OrdersPending">Pending Orders</a></li>
+                    <li><a href="/Employee/UserManager/OrdersProcessing">In Process</a></li>
+                    <li><a href="/Employee/UserManager/OrdersShipping">Shipping</a></li>
+                    <li><a href="/Employee/UserManager/OrdersDelivery">On Delivery</a></li>
+                    <li><a href="/Employee/UserManager/OrdersReceive">To Receive</a></li>
+                    <li><a href="/Employee/UserManager/CancelledOrders">Cancelled Orders</a></li>
+                    <li><a href="/Employee/UserManager/CompletedOrders">Completed Orders</a></li>
                 </ul>
-                <li><a href="/Employee/Admin/ManageUsers" data-permission="users">Manage Users</a></li>
-                <li><a href="/Employee/UserManager/UserManagerChatSupport" data-permission="chat">Chat Support</a></li>
-                <li><a href="/Employee/UserManager/UserManagerCMS" data-permission="content">Content Management</a></li>
-                <li><a href="/Employee/UserManager/UserManagerLogs" data-permission="logs">Activity Logs</a></li>
+                <li><a href="/Employee/UserManager/ManageUsers">Manage Users</a></li>
+                <li><a href="/Employee/UserManager/ChatSupport">Chat Support</a></li>
+                <li><a href="/Employee/UserManager/CMS">Content Management</a></li>
+                <li><a href="/Employee/UserManager/Logs">Activity Logs</a></li>
             </ul>
-            <div class="logout-section">
-                <a href="/logout" class="logout-button" onclick="handleLogout(event)">Logout</a>
-            </div>
         </div>
         <div class="main-content">
-            <div class="usermanager-header">
-                <h1>💬 Chat Support</h1>
-                <p>Manage customer support chat for user management</p>
+            <div class="header">
+                <h2>Chat Support</h2>
             </div>
-            
             <div class="content-area">
-                <div class="chat-section">
-                    <h2>Chat Support</h2>
-                    <p>View and manage customer support chat for user management</p>
-                    
-                    <!-- Chat conversations will be loaded here -->
-                    <div id="chat-container">
-                        <p>Loading chat conversations...</p>
-                    </div>
+              <div class="chat-support-container">
+                <!-- Left: Thread List -->
+                <div class="chat-thread-list">
+                  <div class="chat-search-bar">
+                    <input class="chat-search-input" type="text" placeholder="Search..." />
+                  </div>
+                  <div class="chat-thread-items">
+                    <% if (threads && threads.length) { %>
+                      <% threads.forEach(function(thread) { %>
+                        <div class="chat-thread-item<%= selectedThread && selectedThread.CustomerID === thread.CustomerID ? ' active' : '' %><%= thread.UnreadCount > 0 ? ' unread' : '' %>">
+                          <div class="chat-thread-info">
+                            <div class="chat-thread-name"><%= thread.FullName %></div>
+                            <div class="chat-thread-last"><%= thread.LastMessageText %></div>
+                          </div>
+                          <% if (thread.UnreadCount > 0) { %>
+                            <span class="chat-thread-unread"><%= thread.UnreadCount %></span>
+                          <% } %>
+                        </div>
+                      <% }); %>
+                    <% } else { %>
+                      <div style="padding: 24px; color: #888;">No chats yet.</div>
+                    <% } %>
+                  </div>
                 </div>
+                <!-- Right: Conversation -->
+                <div class="chat-conversation">
+                  <% if (selectedThread) { %>
+                    <div class="chat-conversation-header">
+                      <%= selectedThread.FullName %> &lt;<%= selectedThread.Email %>&gt;
+                      <button id="reload-messages-btn" style="float:right; margin-left:16px; padding:4px 14px; border-radius:8px; border:none; background:#F0B21B; color:#2c3e50; font-weight:600; cursor:pointer;">Reload</button>
+                    </div>
+                    <div class="chat-messages-area">
+                      <% if (messages && messages.length) { %>
+                        <% messages.forEach(function(msg) { %>
+                          <div class="chat-message-row <%= msg.SenderType === 'support' ? 'admin' : 'customer' %>">
+                            <div class="chat-message-bubble"><%= msg.MessageText %></div>
+                          </div>
+                        <% }); %>
+                      <% } else { %>
+                        <div style="color: #888;">No messages yet.</div>
+                      <% } %>
+                    </div>
+                    <form class="chat-reply-area" id="chat-reply-form" autocomplete="off">
+                      <input class="chat-reply-input" id="chat-reply-input" type="text" placeholder="Type your reply..." autocomplete="off" />
+                      <button class="chat-reply-btn" type="submit">Send</button>
+                    </form>
+                  <% } else { %>
+                    <div class="chat-conversation-header">Select a chat to view conversation</div>
+                  <% } %>
+                </div>
+              </div>
             </div>
         </div>
     </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            window.userPermissions.updateUI();
-            }
-            
-            // Load chat conversations for usermanager view
-            loadChatForUserManager();
-        });
-        
-        function loadChatForUserManager() {
-            fetch('/api/chat/usermanager')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        displayChat(data.chat);
-                    } else {
-                        document.getElementById('chat-container').innerHTML = 
-                            '<p>Error loading chat: ' + data.message + '</p>';
-                    }
-                })
-                .catch(error => {
-                    console.error('Error loading chat:', error);
-                    document.getElementById('chat-container').innerHTML = 
-                        '<p>Error loading chat. Please try again.</p>';
-                });
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('chat-reply-form');
+    const input = document.getElementById('chat-reply-input');
+    const customerId = "<%= selectedThread ? selectedThread.CustomerID : '' %>";
+    const reloadBtn = document.getElementById('reload-messages-btn');
+    const messagesArea = document.querySelector('.chat-messages-area');
+
+    form.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const message = input.value.trim();
+      if (!message) return;
+      const res = await fetch(`/api/support/chat/messages/${customerId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message })
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchMessagesAndUpdate(); // Just refresh messages, don't reload page
+        input.value = '';
+      } else {
+        alert('Failed to send message');
+      }
+    });
+
+    async function fetchMessagesAndUpdate() {
+      if (!customerId) return;
+      const res = await fetch(`/api/support/chat/messages/${customerId}`);
+      const data = await res.json();
+      if (data.success && Array.isArray(data.messages)) {
+        let html = '';
+        if (data.messages.length === 0) {
+          html = '<div style="color: #888;">No messages yet.</div>';
+        } else {
+          data.messages.forEach(function(msg) {
+            const rowClass = msg.SenderType === 'support' ? 'admin' : 'customer';
+            html += `<div class="chat-message-row ${rowClass}"><div class="chat-message-bubble">${msg.MessageText}</div></div>`;
+          });
         }
-        
-        function displayChat(chat) {
-            const container = document.getElementById('chat-container');
-            
-            if (chat.length === 0) {
-                container.innerHTML = '<p>No chat conversations available.</p>';
-                return;
-            }
-            
-            let html = '';
-            
-            chat.forEach(conversation => {
-                html += `
-                    <div class="chat-card">
-                        <div class="chat-user">${conversation.CustomerName}</div>
-                        <div class="chat-details">
-                            Last Message: ${conversation.LastMessage} | 
-                            Status: ${conversation.Status} | 
-                            Updated: ${new Date(conversation.UpdatedAt).toLocaleDateString()}
-                        </div>
-                    </div>
-                `;
-            });
-            
-            container.innerHTML = html;
-        }
-    </script>
+        messagesArea.innerHTML = html;
+        messagesArea.scrollTop = messagesArea.scrollHeight;
+      }
+    }
+    // Polling every 2 seconds
+    setInterval(fetchMessagesAndUpdate, 2000);
+    // Manual reload button
+    if (reloadBtn) reloadBtn.addEventListener('click', fetchMessagesAndUpdate);
+  });
+</script>
 </body>
-</html>
+</html> 

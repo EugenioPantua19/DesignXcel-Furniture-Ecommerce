@@ -3,159 +3,614 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inventory Manage Users - Design Excellence</title>
-    <div data-user-role="<%= user.roleName || user.RoleName %>" data-user-id="<%= user.UserID %>" style="display: none;"></div>
+    <title>Manage Users - Design Excellence</title>
     <link rel="stylesheet" href="/css/Employee/Admin/AdminIndexStyles.css">
     <style>
-        /* Inventory-specific styles */
-        .inventory-header {
-            background: linear-gradient(135deg, #6f42c1, #5a2d91);
-            color: white;
+        /* General table styling */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            margin-bottom: 30px;
+        }
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+            color: #333;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tr:hover {
+            background-color: #e9e9e9;
+        }
+
+        .manage-users-section {
+            background-color: #fff;
             padding: 20px;
-            border-radius: 8px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             margin-bottom: 20px;
         }
 
-        .inventory-header h1 {
-            margin: 0;
-            font-size: 2em;
-        }
-
-        .inventory-header p {
-            margin: 5px 0 0 0;
-            opacity: 0.9;
-        }
-
-        .user-card {
-            background: white;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 15px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            border-left: 4px solid #6f42c1;
-        }
-
-        .user-name {
-            font-weight: bold;
+        .manage-users-section h3 {
             color: #333;
-            margin-bottom: 5px;
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+            padding-bottom: 10px;
         }
 
-        .user-details {
-            color: #666;
+        .manage-users-section table th {
+            background-color: #f2f2f2;
+            color: #333;
+        }
+
+        /* Sidebar submenu and section label styles */
+        .sidebar-section-label {
+            color: #fff;
+            font-weight: bold;
+            padding: 12px 18px 6px 18px;
+            background: #333;
+            border-top: 1px solid #444;
+            border-bottom: none;
+            margin-top: 2px;
+            margin-bottom: 0;
+            font-size: 1.08em;
+        }
+        .sidebar-submenu {
+            list-style: none;
+            margin: 0 0 0 0;
+            padding: 0 0 0 18px;
+            background: #444;
+        }
+        .sidebar-submenu li a {
+            color: #fff;
+            display: block;
+            padding: 10px 0 10px 10px;
+            text-decoration: none;
+            font-size: 1em;
+            border-bottom: 1px solid #555;
+            transition: background 0.2s;
+        }
+        .sidebar-submenu li a:hover {
+            background: #555;
+        }
+
+        .edit-user-btn {
+            background-color: #FFC107;
+            color: #222;
+            border: none;
+            border-radius: 5px;
+            padding: 6px 16px;
+            font-size: 1em;
+            font-weight: 400;
+            cursor: pointer;
+            margin-right: 7px;
+            transition: background-color 0.2s;
+        }
+        .edit-user-btn:hover, .edit-user-btn:focus {
+            background-color: #e0ac06;
+            color: #111;
+        }
+        /* Delete functionality removed for security */
+
+        .access-btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
             font-size: 0.9em;
+            margin-left: 5px;
+            transition: background-color 0.3s;
+        }
+        
+        .access-btn:hover {
+            background-color: #0056b3;
+        }
+        
+        .access-dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: #000;
+            min-width: 200px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            z-index: 1;
+            border-radius: 4px;
+            right: 0;
+            top: 100%;
+        }
+        
+        .access-dropdown-content a {
+            color: white;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+            transition: background-color 0.3s;
+            border-bottom: 1px solid #333;
+        }
+        
+        .access-dropdown-content a:hover {
+            background-color: #333;
+            color: white;
+        }
+        
+        .access-dropdown-content a:first-child {
+            border-top-left-radius: 4px;
+            border-top-right-radius: 4px;
+        }
+        
+        .access-dropdown-content a:last-child {
+            border-bottom-left-radius: 4px;
+            border-bottom-right-radius: 4px;
+            border-bottom: none;
+        }
+        
+        .permission-buttons {
+            display: flex;
+            gap: 5px;
+            margin-top: 8px;
+        }
+        
+        .permission-btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.8em;
+            transition: background-color 0.3s;
+        }
+        
+        .permission-btn:hover {
+            background-color: #0056b3;
+        }
+        
+        .permission-btn.view-only {
+            background-color: #28a745;
+        }
+        
+        .permission-btn.view-only:hover {
+            background-color: #1e7e34;
+        }
+        
+        .permission-btn.no-access {
+            background-color: #dc3545;
+        }
+        
+        .permission-btn.no-access:hover {
+            background-color: #c82333;
+        }
+
+        .access-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0,0,0,0.4);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .access-modal {
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+            padding: 32px 32px 24px 32px;
+            min-width: 320px;
+            max-width: 95vw;
+            width: 400px;
+            position: relative;
+            animation: fadeIn 0.2s;
+        }
+        .access-modal-close {
+            position: absolute;
+            top: 12px;
+            right: 18px;
+            font-size: 1.7em;
+            color: #888;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+        .access-modal-close:hover {
+            color: #c00;
+        }
+        .access-modal-section {
+            margin-bottom: 18px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .access-modal-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        .access-modal-section-title {
+            font-weight: bold;
+            color: #222;
+            margin-bottom: 8px;
         }
     </style>
 </head>
 <body>
+    <%
+        // Ensure userRole is defined with a fallback
+        if (typeof userRole === 'undefined') {
+            userRole = user && user.role ? user.role : 'Guest';
+        }
+    %>
     <div class="dashboard-container">
+        <!-- Sidebar content -->
         <div class="sidebar">
             <div class="sidebar-header">
-                <h3>Inventory Manager Panel</h3>
+                <h3>Inventory Panel</h3>
             </div>
             <ul class="sidebar-menu">
-                <li><a href="/Employee/InventoryManager">Dashboard</a></li>
                 <li class="sidebar-section-label" style="font-weight:normal;">Inventory</li>
                 <ul class="sidebar-submenu" style="display:block;">
-                    <li><a href="/Employee/Inventory/InventoryProducts" data-permission="products">Products</a></li>
-                    <li><a href="/Employee/Inventory/InventoryVariations" data-permission="variations">Variations</a></li>
-                    <li><a href="/Employee/Inventory/InventoryMaterials" data-permission="materials">Raw Materials</a></li>
-                    <li><a href="/Employee/Inventory/InventoryAlerts" data-permission="alerts">Alerts</a></li>
-                    <li><a href="/Employee/Inventory/InventoryArchived" data-permission="archived">Archived items</a></li>
+                    <li><a href="/Employee/Inventory/InventoryProducts">Products</a></li>
+                    <li><a href="/Employee/Inventory/InventoryMaterials">Raw Materials</a></li>
+                    <li><a href="/Employee/Inventory/InventoryAlerts">Alerts</a></li>
+                    <li><a href="/Employee/Inventory/InventoryArchived">Archived items</a></li>
                 </ul>
                 <li class="sidebar-section-label" style="font-weight:normal;">Transactions</li>
                 <ul class="sidebar-submenu" style="display:block;">
-                    <li><a href="/Employee/Inventory/InventoryRates" data-permission="rates">Delivery Rates</a></li>
-                    <li><a href="/Employee/Inventory/InventoryWalkIn" data-permission="transactions">Walk In</a></li>
-                    <li><a href="/Employee/Inventory/InventoryOrdersPending" data-permission="orders">Orders Pending</a></li>
-                    <li><a href="/Employee/Inventory/InventoryOrdersProcessing" data-permission="orders">Orders Processing</a></li>
-                    <li><a href="/Employee/Inventory/InventoryOrdersShipping" data-permission="orders">Orders Shipping</a></li>
-                    <li><a href="/Employee/Inventory/InventoryOrdersDelivery" data-permission="orders">Orders Delivery</a></li>
-                    <li><a href="/Employee/Inventory/InventoryOrdersReceive" data-permission="orders">Orders Receive</a></li>
-                    <li><a href="/Employee/Inventory/InventoryCancelledOrders" data-permission="orders">Cancelled Orders</a></li>
-                    <li><a href="/Employee/Inventory/InventoryCompletedOrders" data-permission="orders">Completed Orders</a></li>
+                    <li><a href="/Employee/Inventory/InventoryRates">Delivery Rates</a></li>
+                    <li><a href="/Employee/Inventory/InventoryWalkIn">Walk In</a></li>
+                    <li><a href="/Employee/Inventory/InventoryOrdersPending">Orders Pending</a></li>
+                    <li><a href="/Employee/Inventory/InventoryOrdersProcessing">Orders Processing</a></li>
+                    <li><a href="/Employee/Inventory/InventoryOrdersShipping">Orders Shipping</a></li>
+                    <li><a href="/Employee/Inventory/InventoryOrdersDelivery">Orders Delivery</a></li>
+                    <li><a href="/Employee/Inventory/InventoryOrdersReceive">Orders Receive</a></li>
+                    <li><a href="/Employee/Inventory/InventoryCancelledOrders">Cancelled Orders</a></li>
+                    <li><a href="/Employee/Inventory/InventoryCompletedOrders">Completed Orders</a></li>
                 </ul>
-                <li><a href="/Employee/Inventory/InventoryManageUsers" data-permission="users">Manage Users</a></li>
-                <li><a href="/Employee/Admin/ChatSupport" data-permission="chat">Chat Support</a></li>
-                <li><a href="/Employee/Inventory/InventoryCMS" data-permission="content">Content Management</a></li>
-                <li><a href="/Employee/Admin/Logs" data-permission="logs">Activity Logs</a></li>
+                <li><a href="/Employee/Inventory/InventoryManageUsers">Manage Users</a></li>
+                <li><a href="/Employee/Inventory/InventoryChatSupport">Chat Support</a></li>
+                <li><a href="/Employee/Inventory/InventoryCMS">Content Management</a></li>
+                <li><a href="/Employee/Inventory/InventoryLogs">Activity Logs</a></li>
             </ul>
-            <div class="logout-section">
-                <a href="/logout" class="logout-button" onclick="handleLogout(event)">Logout</a>
-            </div>
         </div>
+
         <div class="main-content">
-            <div class="inventory-header">
-                <h1>👥 User Management</h1>
-                <p>Manage users for inventory management</p>
+            <div class="header">
+                <h2>Manage Users</h2>
             </div>
-            
             <div class="content-area">
-                <div class="users-section">
-                    <h2>User Management</h2>
-                    <p>View and manage users for inventory management</p>
-                    
-                    <!-- Users will be loaded here -->
-                    <div id="users-container">
-                        <p>Loading users...</p>
-                    </div>
+                <div class="manage-users-section">
+                    <h3>Admin Accounts</h3>
+                    <table id="adminAccountsTable">
+                        <thead>
+                            <tr>
+                                <th>User ID</th>
+                                <th>Username</th>
+                                <th>Full Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Created At</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% if (users && users.length > 0 && users.some(u => u.RoleName === 'Admin')) { %>
+                                <% users.filter(user => user.RoleName === 'Admin').forEach(function(user) { %>
+                                    <tr>
+                                        <td><%= user.UserID %></td>
+                                        <td><%= user.Username %></td>
+                                        <td><%= user.FullName %></td>
+                                        <td><%= user.Email %></td>
+                                        <td><%= user.RoleName %></td>
+                                        <td><%= user.IsActive ? 'Active' : 'Inactive' %></td>
+                                        <td><%= user.CreatedAt ? new Date(user.CreatedAt).toLocaleDateString() : 'N/A' %></td>
+                                        <td>
+                                            <button class="edit-user-btn"
+                                                data-userid="<%= user.UserID %>"
+                                                data-username="<%= user.Username %>"
+                                                data-fullname="<%= user.FullName %>"
+                                                data-email="<%= user.Email %>"
+                                                data-roleid="<%= user.RoleID %>"
+                                                data-isactive="<%= user.IsActive ? 1 : 0 %>"
+                                                title="Edit"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 20h9"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16.5 3.5a2.121 2.121 0 113 3L7 19.5 3 21l1.5-4L16.5 3.5z"/></svg>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                <% }); %>
+                            <% } else { %>
+                                <tr><td colspan="8">No admin accounts found.</td></tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="manage-users-section">
+                    <h3>Employee Accounts</h3>
+                    <table id="employeeAccountsTable">
+                        <thead>
+                            <tr>
+                                <th>User ID</th>
+                                <th>Username</th>
+                                <th>Full Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Created At</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% if (users && users.length > 0 && users.some(u => u.RoleName !== 'Admin')) { %>
+                                <% users.filter(user => user.RoleName !== 'Admin').forEach(function(user) { %>
+                                    <tr>
+                                        <td><%= user.UserID %></td>
+                                        <td><%= user.Username %></td>
+                                        <td><%= user.FullName %></td>
+                                        <td><%= user.Email %></td>
+                                        <td><%= user.RoleName %></td>
+                                        <td><%= user.IsActive ? 'Active' : 'Inactive' %></td>
+                                        <td><%= user.CreatedAt ? new Date(user.CreatedAt).toLocaleDateString() : 'N/A' %></td>
+                                        <td>
+                                            <button class="edit-user-btn"
+                                                data-userid="<%= user.UserID %>"
+                                                data-username="<%= user.Username %>"
+                                                data-fullname="<%= user.FullName %>"
+                                                data-email="<%= user.Email %>"
+                                                data-roleid="<%= user.RoleID %>"
+                                                data-isactive="<%= user.IsActive ? 1 : 0 %>"
+                                                title="Edit"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 20h9"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16.5 3.5a2.121 2.121 0 113 3L7 19.5 3 21l1.5-4L16.5 3.5z"/></svg>
+                                            </button>
+                                            <% if (typeof locals.userRole !== 'undefined' && locals.userRole === 'Admin') { %>
+                                                <button class="access-btn" onclick="showAccessModal(<%= user.UserID %>)">Access</button>
+                                            <% } %>
+                                            <button class="toggle-btn"
+                                                onclick="toggleUserStatus(<%= user.UserID %>, <%= user.IsActive ? 0 : 1 %>)"
+                                                style="background-color: <%= user.IsActive ? '#dc3545' : '#28a745' %>; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.9em; margin-left: 5px;">
+                                            >
+                                                <%= user.IsActive ? 'Deactivate' : 'Activate' %>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                <% }); %>
+                            <% } else { %>
+                                <tr><td colspan="8">No employee accounts found.</td></tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                    <p id="noEmployeeAccounts" style="display:none;">No employee accounts found.</p>
+                </div>
+
+                <div class="manage-users-section">
+                    <h3>Customer Accounts</h3>
+                    <table id="customerAccountsTable">
+                        <thead>
+                            <tr>
+                                <th>Customer ID</th>
+                                <th>Full Name</th>
+                                <th>Email</th>
+                                <th>Phone Number</th>
+                                <th>Status</th>
+                                <th>Created At</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Customer data will be loaded here by JavaScript -->
+                        </tbody>
+                    </table>
+                    <p id="noCustomerAccounts" style="display:none;">No customer accounts found.</p>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Edit User Modal -->
+    <div id="editUserModal" class="modal" style="display:none;">
+        <div class="modal-content" style="max-width: 420px;">
+            <span class="close-button" id="closeEditUserModal" style="float:right;cursor:pointer;font-size:1.5em;">&times;</span>
+            <h3>Edit User</h3>
+            <form id="editUserForm" method="POST" action="/Employee/Admin/Users/Edit">
+                <input type="hidden" id="editUserID" name="userId">
+                <label for="editUsername">Username:</label>
+                <input type="text" id="editUsername" name="username" required><br><br>
+                <label for="editFullName">Full Name:</label>
+                <input type="text" id="editFullName" name="fullName" required><br><br>
+                <label for="editEmail">Email:</label>
+                <input type="email" id="editEmail" name="email" required><br><br>
+                <label for="editRole">Role:</label>
+                <select id="editRole" name="roleId" required>
+                    <option value="1">InventoryManager</option>
+                    <option value="2">TransactionManager</option>
+                    <option value="3">UserManager</option>
+                    <option value="8">OrderSupport</option>
+                    <option value="5">Admin</option>
+                </select><br><br>
+                <label for="editIsActive">Status:</label>
+                <select id="editIsActive" name="isActive" required>
+                    <option value="1">Active</option>
+                    <option value="0">Inactive</option>
+                </select><br><br>
+                <button type="submit">Save Changes</button>
+                <button type="button" id="cancelEditUser">Cancel</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Custom Success Popup -->
+    <div id="customPopup" class="custom-popup" style="display:none;position:fixed;top:20px;right:20px;background-color:#4CAF50;color:white;padding:15px 25px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:1000;max-width:300px;">
+        <div class="custom-popup-content" style="display:flex;align-items:center;gap:12px;">
+            <span class="custom-popup-icon" style="font-size:24px;">✓</span>
+            <span class="custom-popup-message" style="font-size:14px;line-height:1.4;"></span>
+        </div>
+    </div>
+
+    <script src="/js/Employee/Admin/AdminManageUsers.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            window.userPermissions.updateUI();
+        // Ensure setPermission is defined globally
+        if (typeof setPermission !== 'function') {
+            function setPermission(section, permission, userId) {
+                // Placeholder: implement permission saving logic here
+                console.log(`Set ${section} permission to ${permission} for user ${userId}`);
             }
-            
-            // Load users for inventory view
-            loadUsersForInventory();
-        });
-        
-        function loadUsersForInventory() {
-            fetch('/api/users/inventory')
-                .then(response => response.json())
+        }
+
+        function showAccessModal(userId) {
+            const oldModal = document.getElementById('accessModalOverlay');
+            if (oldModal) oldModal.remove();
+            const modalHtml = `
+            <div class="access-modal-overlay" id="accessModalOverlay">
+                <div class="access-modal">
+                    <button class="access-modal-close" onclick="closeAccessModal()">&times;</button>
+                    <form id="accessPermissionsForm">
+                        <input type="hidden" id="accessUserId" value="${userId}">
+                        <div class="access-modal-section">
+                            <div class="access-modal-section-title">Inventory</div>
+                            <div class="permission-checkboxes">
+                                <label><input type="checkbox" name="inventory" value="edit" onchange="setPermissionCheckbox('inventory', 'edit', this, ${userId})"> Can Access</label>
+                                <label><input type="checkbox" name="inventory" value="none" onchange="setPermissionCheckbox('inventory', 'none', this, ${userId})"> No Access</label>
+                            </div>
+                        </div>
+                        <div class="access-modal-section">
+                            <div class="access-modal-section-title">Transactions</div>
+                            <div class="permission-checkboxes">
+                                <label><input type="checkbox" name="transactions" value="edit" onchange="setPermissionCheckbox('transactions', 'edit', this, ${userId})"> Can Access</label>
+                                <label><input type="checkbox" name="transactions" value="none" onchange="setPermissionCheckbox('transactions', 'none', this, ${userId})"> No Access</label>
+                            </div>
+                        </div>
+                        <div class="access-modal-section">
+                            <div class="access-modal-section-title">Manage Users</div>
+                            <div class="permission-checkboxes">
+                                <label><input type="checkbox" name="users" value="edit" onchange="setPermissionCheckbox('users', 'edit', this, ${userId})"> Can Access</label>
+                                <label><input type="checkbox" name="users" value="none" onchange="setPermissionCheckbox('users', 'none', this, ${userId})"> No Access</label>
+                            </div>
+                        </div>
+                        <div class="access-modal-section">
+                            <div class="access-modal-section-title">Chat Support</div>
+                            <div class="permission-checkboxes">
+                                <label><input type="checkbox" name="chat" value="edit" onchange="setPermissionCheckbox('chat', 'edit', this, ${userId})"> Can Access</label>
+                                <label><input type="checkbox" name="chat" value="none" onchange="setPermissionCheckbox('chat', 'none', this, ${userId})"> No Access</label>
+                            </div>
+                        </div>
+                        <div class="access-modal-section">
+                            <div class="access-modal-section-title">Content Management</div>
+                            <div class="permission-checkboxes">
+                                <label><input type="checkbox" name="content" value="edit" onchange="setPermissionCheckbox('content', 'edit', this, ${userId})"> Can Access</label>
+                                <label><input type="checkbox" name="content" value="none" onchange="setPermissionCheckbox('content', 'none', this, ${userId})"> No Access</label>
+                            </div>
+                        </div>
+                        <div class="access-modal-section">
+                            <div class="access-modal-section-title">Activity Logs</div>
+                            <div class="permission-checkboxes">
+                                <label><input type="checkbox" name="logs" value="edit" onchange="setPermissionCheckbox('logs', 'edit', this, ${userId})"> Can Access</label>
+                                <label><input type="checkbox" name="logs" value="none" onchange="setPermissionCheckbox('logs', 'none', this, ${userId})"> No Access</label>
+                            </div>
+                        </div>
+                        <button type="button" id="saveAccessPermissionsBtn" style="background-color:#007bff;color:white;border:none;padding:10px 22px;border-radius:5px;font-size:1em;font-weight:500;cursor:pointer;transition:background-color 0.2s;margin-top:18px;float:right;">Save Changes</button>
+                    </form>
+                </div>
+            </div>`;
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            document.getElementById('accessModalOverlay').onclick = function(e) {
+                if (e.target === this) closeAccessModal();
+            };
+
+            // Fetch and set permissions
+            fetch(`/Employee/Admin/Users/GetPermissions/${userId}`)
+                .then(res => res.json())
                 .then(data => {
                     if (data.success) {
-                        displayUsers(data.users);
+                        const sections = ['inventory', 'transactions', 'users', 'chat', 'content', 'logs'];
+                        sections.forEach(section => {
+                            const canAccess = data.permissions[section];
+                            const editCb = document.querySelector(`#accessModalOverlay input[name='${section}'][value='edit']`);
+                            const noneCb = document.querySelector(`#accessModalOverlay input[name='${section}'][value='none']`);
+                            if (editCb && noneCb) {
+                                editCb.checked = !!canAccess;
+                                noneCb.checked = !canAccess;
+                            }
+                        });
+                    }
+                });
+        }
+        function closeAccessModal() {
+            const modal = document.getElementById('accessModalOverlay');
+            if (modal) modal.remove();
+        }
+        function setPermissionCheckbox(section, permission, checkbox, userId) {
+            const checkboxes = document.querySelectorAll(`input[name='${section}']`);
+            checkboxes.forEach(cb => {
+                if (cb !== checkbox) cb.checked = false;
+            });
+            if (checkbox.checked) {
+                setPermission(section, permission, userId);
+            }
+        }
+
+        // Toggle user status function
+        function toggleUserStatus(userId, newStatus) {
+            if (confirm(`Are you sure you want to ${newStatus ? 'activate' : 'deactivate'} this user?`)) {
+                fetch(`/Employee/Inventory/InventoryManageUsers/ToggleActive/${userId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => {
+                    if (response.ok) {
+                        showCustomPopup(`User ${newStatus ? 'activated' : 'deactivated'} successfully!`);
+                        setTimeout(() => {
+                            location.reload();
+                        }, 1500);
                     } else {
-                        document.getElementById('users-container').innerHTML = 
-                            '<p>Error loading users: ' + data.message + '</p>';
+                        alert('Failed to update user status');
                     }
                 })
                 .catch(error => {
-                    console.error('Error loading users:', error);
-                    document.getElementById('users-container').innerHTML = 
-                        '<p>Error loading users. Please try again.</p>';
+                    console.error('Error:', error);
+                    alert('An error occurred while updating user status');
                 });
-        }
-        
-        function displayUsers(users) {
-            const container = document.getElementById('users-container');
-            
-            if (users.length === 0) {
-                container.innerHTML = '<p>No users available.</p>';
-                return;
             }
-            
-            let html = '';
-            
-            users.forEach(user => {
-                html += `
-                    <div class="user-card">
-                        <div class="user-name">${user.FullName}</div>
-                        <div class="user-details">
-                            Role: ${user.RoleName} | 
-                            Email: ${user.Email} | 
-                            Status: ${user.IsActive ? 'Active' : 'Inactive'}
-                        </div>
-                    </div>
-                `;
-            });
-            
-            container.innerHTML = html;
         }
+
+        // Delete functionality removed for security reasons
+        document.body.addEventListener('click', function(e) {
+            if (e.target && e.target.id === 'saveAccessPermissionsBtn') {
+                const userId = document.getElementById('accessUserId').value;
+                const sections = ['inventory', 'transactions', 'users', 'chat', 'content', 'logs'];
+                const permissions = {};
+                sections.forEach(section => {
+                    const checked = document.querySelector(`#accessModalOverlay input[name='${section}'][value='edit']`).checked;
+                    permissions[section] = checked;
+                });
+                fetch('/Employee/Admin/Users/SetPermissions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId, permissions })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        closeAccessModal();
+                        showCustomPopup('Permissions updated!');
+                    } else {
+                        alert('Failed to save permissions');
+                    }
+                });
+            }
+        });
     </script>
 </body>
-</html>
+</html> 

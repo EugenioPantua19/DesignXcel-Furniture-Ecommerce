@@ -81,13 +81,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     >
                         ${employee.IsActive ? 'Deactivate' : 'Activate'}
                     </button>
-                    <button class="delete-user-btn" 
-                        data-user-id="${employee.UserID}"
-                        data-user-name="${employee.FullName}"
-                        style="background-color: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.9em; margin-left: 5px;"
-                    >
-                        Delete
-                    </button>
                 </td>
             `;
         });
@@ -175,13 +168,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     >
                         ${customer.IsActive ? 'Deactivate' : 'Activate'}
                     </button>
-                    <button class="delete-customer-btn" 
-                        data-customer-id="${customer.CustomerID}"
-                        data-customer-name="${customer.FullName}"
-                        style="background-color: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.9em; margin-left: 5px;"
-                    >
-                        Delete
-                    </button>
                 </td>
             `;
         });
@@ -215,27 +201,6 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        // Handle delete user buttons
-        if (e.target.classList.contains('delete-user-btn')) {
-            const btn = e.target;
-            const userId = btn.getAttribute('data-user-id');
-            const userName = btn.getAttribute('data-user-name');
-            
-            console.log('🗑️ Deleting user:', { userId, userName });
-            deleteUser(userId, userName);
-            return;
-        }
-        
-        // Handle delete customer buttons
-        if (e.target.classList.contains('delete-customer-btn')) {
-            const btn = e.target;
-            const customerId = btn.getAttribute('data-customer-id');
-            const customerName = btn.getAttribute('data-customer-name');
-            
-            console.log('🗑️ Deleting customer:', { customerId, customerName });
-            deleteCustomer(customerId, customerName);
-            return;
-        }
         
         if (e.target.classList.contains('edit-user-btn')) {
             const btn = e.target;
@@ -357,75 +322,6 @@ function toggleUserStatus(userId, newStatus) {
     }
 }
 
-// Delete user function
-function deleteUser(userId, userName) {
-    console.log('🎯 deleteUser called with:', { userId, userName });
-    
-    if (confirm(`Are you sure you want to delete user "${userName}"? This action cannot be undone.`)) {
-        console.log('✅ User confirmed, making API request...');
-        
-        fetch(`/Employee/Admin/ManageUsers/Delete/${userId}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        })
-        .then(response => {
-            console.log('📡 API response status:', response.status);
-            if (response.ok) {
-                console.log('✅ User deleted successfully');
-                showCustomPopup(`User "${userName}" deleted successfully!`);
-                setTimeout(() => {
-                    location.reload();
-                }, 1500);
-            } else {
-                console.error('❌ API request failed with status:', response.status);
-                alert('Failed to delete user');
-            }
-        })
-        .catch(error => {
-            console.error('❌ Network error:', error);
-            alert('An error occurred while deleting user');
-        });
-    } else {
-        console.log('❌ User cancelled the operation');
-    }
-}
-
-// Delete customer function
-function deleteCustomer(customerId, customerName) {
-    console.log('🎯 deleteCustomer called with:', { customerId, customerName });
-    
-    if (confirm(`Are you sure you want to delete customer "${customerName}"? This action cannot be undone.`)) {
-        console.log('✅ User confirmed, making API request...');
-        
-        fetch(`/Employee/Admin/Customers/Delete/${customerId}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        })
-        .then(response => {
-            console.log('📡 API response status:', response.status);
-            if (response.ok) {
-                console.log('✅ Customer deleted successfully');
-                showCustomPopup(`Customer "${customerName}" deleted successfully!`);
-                setTimeout(() => {
-                    location.reload();
-                }, 1500);
-            } else {
-                console.error('❌ API request failed with status:', response.status);
-                alert('Failed to delete customer');
-            }
-        })
-        .catch(error => {
-            console.error('❌ Network error:', error);
-            alert('An error occurred while deleting customer');
-        });
-    } else {
-        console.log('❌ User cancelled the operation');
-    }
-}
 
 // Edit customer function
 function editCustomer(btn) {

@@ -3,184 +3,297 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Transaction Alerts - Design Excellence</title>
-    <div data-user-role="<%= user.roleName || user.RoleName %>" data-user-id="<%= user.UserID %>" style="display: none;"></div>
+    <title>Alerts - Transaction</title>
     <link rel="stylesheet" href="/css/Employee/Admin/AdminIndexStyles.css">
     <style>
-        /* Transaction-specific styles */
-        .transaction-header {
-            background: linear-gradient(135deg, #007bff, #0056b3);
-            color: white;
+        /* General table styling (can be moved to AdminIndexStyles.css if common) */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            margin-bottom: 30px;
+            /* Removed explicit table border to rely on cell borders */
+        }
+        th,
+        td {
+            border: 1px solid #ddd; /* Softer border color like the image */
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2; /* Light gray background for headers */
+            color: #333; /* Darker text for headers */
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9; /* Lighter background for even rows */
+        }
+        tr:hover {
+            background-color: #e9e9e9; /* Slightly lighter hover */
+        }
+
+        .alert-section {
+            background-color: #fff;
             padding: 20px;
-            border-radius: 8px;
+            border-radius: 5px; /* Consistent with AdminIndexStyles.css */
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Softer shadow like the image */
             margin-bottom: 20px;
+            /* Removed explicit border to rely on shadow */
         }
 
-        .transaction-header h1 {
-            margin: 0;
-            font-size: 2em;
-        }
-
-        .transaction-header p {
-            margin: 5px 0 0 0;
-            opacity: 0.9;
-        }
-
-        .alert-card {
-            background: white;
-            border-radius: 8px;
-            padding: 15px;
+        .alert-section h3 {
+            color: #333; /* Darker text for headings */
+            margin-top: 0;
             margin-bottom: 15px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            border-left: 4px solid #007bff;
+            font-size: 1.5em;
+            /* Removed border-bottom from h3 */
+            padding-bottom: 10px;
         }
 
-        .alert-card.critical {
-            border-left-color: #dc3545;
-            background: #fff5f5;
+        .alert-section table th {
+            background-color: #f2f2f2; /* Consistent with general table th */
+            color: #333; /* Consistent with general table th */
         }
 
-        .alert-card.warning {
-            border-left-color: #ffc107;
-            background: #fffbf0;
-        }
-
-        .alert-card.info {
-            border-left-color: #17a2b8;
-            background: #f0f9ff;
-        }
-
-        .alert-title {
+        .low-stock {
+            color: #ffc000; /* Yellow color for low stock */
             font-weight: bold;
-            color: #333;
-            margin-bottom: 5px;
         }
 
-        .alert-description {
-            color: #666;
-            font-size: 0.9em;
-            margin-bottom: 10px;
+        .out-of-stock {
+            color: #dc3545; /* Red color for out of stock */
+            font-weight: bold;
         }
 
-        .alert-meta {
-            font-size: 0.8em;
-            color: #999;
+        .critical-stock {
+            color: #ff9800;
+            font-weight: bold;
+        }
+
+        /* Sidebar submenu and section label styles */
+        .sidebar-section-label {
+            color: #fff;
+            font-weight: bold;
+            padding: 12px 18px 6px 18px;
+            background: #333;
+            border-top: 1px solid #444;
+            border-bottom: none;
+            margin-top: 2px;
+            margin-bottom: 0;
+            font-size: 1.08em;
+        }
+        .sidebar-submenu {
+            list-style: none;
+            margin: 0 0 0 0;
+            padding: 0 0 0 18px;
+            background: #444;
+        }
+        .sidebar-submenu li a {
+            color: #fff;
+            display: block;
+            padding: 10px 0 10px 10px;
+            text-decoration: none;
+            font-size: 1em;
+            border-bottom: 1px solid #555;
+            transition: background 0.2s;
+        }
+        .sidebar-submenu li a:hover {
+            background: #555;
         }
     </style>
 </head>
 <body>
     <div class="dashboard-container">
+        <!-- Sidebar content - Consider using EJS partials for reusability -->
         <div class="sidebar">
             <div class="sidebar-header">
-                <h3>Transaction Manager Panel</h3>
+                <h3>Transaction Panel</h3>
             </div>
             <ul class="sidebar-menu">
-                <li><a href="/Employee/TransactionManager">Dashboard</a></li>
                 <li class="sidebar-section-label" style="font-weight:normal;">Inventory</li>
                 <ul class="sidebar-submenu" style="display:block;">
-                    <li><a href="/Employee/Transaction/TransactionProducts" data-permission="products">Products</a></li>
-                    <li><a href="/Employee/Transaction/TransactionVariations" data-permission="variations">Variations</a></li>
-                    <li><a href="/Employee/Transaction/TransactionMaterials" data-permission="materials">Raw Materials</a></li>
-                    <li><a href="/Employee/Transaction/TransactionAlerts" data-permission="alerts">Alerts</a></li>
-                    <li><a href="/Employee/Admin/Archived" data-permission="archived">Archived items</a></li>
+                    <li><a href="/Employee/Transaction/Products">Products</a></li>
+                    <li><a href="/Employee/Transaction/TransactionRawMaterials">Raw Materials</a></li>
+                    <li><a href="/Employee/Transaction/Alerts">Alerts</a></li>
+                    <li><a href="/Employee/Transaction/Archived">Archived items</a></li>
                 </ul>
                 <li class="sidebar-section-label" style="font-weight:normal;">Transactions</li>
                 <ul class="sidebar-submenu" style="display:block;">
-                    <li><a href="/Employee/Admin/DeliveryRates" data-permission="rates">Delivery Rates</a></li>
-                    <li><a href="/Employee/Admin/WalkIn" data-permission="transactions">Walk In</a></li>
-                    <li><a href="/Employee/Admin/OrdersPending" data-permission="orders">Orders Pending</a></li>
-                    <li><a href="/Employee/Admin/OrdersProcessing" data-permission="orders">Orders Processing</a></li>
-                    <li><a href="/Employee/Admin/OrdersShipping" data-permission="orders">Orders Shipping</a></li>
-                    <li><a href="/Employee/Admin/OrdersDelivery" data-permission="orders">Orders Delivery</a></li>
-                    <li><a href="/Employee/Admin/OrdersReceive" data-permission="orders">Orders Receive</a></li>
-                    <li><a href="/Employee/Admin/CancelledOrders" data-permission="orders">Cancelled Orders</a></li>
-                    <li><a href="/Employee/Admin/CompletedOrders" data-permission="orders">Completed Orders</a></li>
+                    <li><a href="/Employee/Transaction/TransactionDeliveryRates">Delivery Rates</a></li>
+                    <li><a href="/Employee/Transaction/WalkIn">Walk In</a></li>
+                    <li><a href="/Employee/Transaction/OrdersPending">Orders Pending</a></li>
+                    <li><a href="/Employee/Transaction/OrdersProcessing">Orders Processing</a></li>
+                    <li><a href="/Employee/Transaction/OrdersShipping">Orders Shipping</a></li>
+                    <li><a href="/Employee/Transaction/OrdersDelivery">Orders Delivery</a></li>
+                    <li><a href="/Employee/Transaction/OrdersReceive">Orders Receive</a></li>
+                    <li><a href="/Employee/Transaction/CancelledOrders">Cancelled Orders</a></li>
+                    <li><a href="/Employee/Transaction/CompletedOrders">Completed Orders</a></li>
                 </ul>
-                <li><a href="/Employee/Admin/ManageUsers" data-permission="users">Manage Users</a></li>
-                <li><a href="/Employee/Admin/ChatSupport" data-permission="chat">Chat Support</a></li>
-                <li><a href="/Employee/Admin/CMS" data-permission="content">Content Management</a></li>
-                <li><a href="/Employee/Admin/Logs" data-permission="logs">Activity Logs</a></li>
+                <li><a href="/Employee/Transaction/ManageUsers">Manage Users</a></li>
+                <li><a href="/Employee/Transaction/ChatSupport">Chat Support</a></li>
+                <li><a href="/Employee/Transaction/CMS">Content Management</a></li>
+                <li><a href="/Employee/Transaction/Logs">Activity Logs</a></li>
             </ul>
-            <div class="logout-section">
-                <a href="/logout" class="logout-button" onclick="handleLogout(event)">Logout</a>
-            </div>
         </div>
+
         <div class="main-content">
-            <div class="transaction-header">
-                <h1>⚠️ System Alerts</h1>
-                <p>Monitor system alerts for transaction processing</p>
+            <div class="header">
+                <h2>Inventory Alerts</h2>
             </div>
-            
             <div class="content-area">
-                <div class="alerts-section">
-                    <h2>Active Alerts</h2>
-                    <p>Stay informed about system issues that may affect transaction processing</p>
-                    
-                    <!-- Alerts will be loaded here -->
-                    <div id="alerts-container">
-                        <p>Loading alerts...</p>
+                <div style="margin-bottom: 18px;">
+                    <form id="safetyStockForm" style="display:inline-block;margin-right:18px;">
+                        <b>Safety Stock:</b>
+                        <input type="number" id="safetyStockInput" min="1" value="10" style="width:60px;padding:4px 8px;border-radius:4px;border:1px solid #ccc;">
+                        <button type="submit" style="background:#2196F3;color:#fff;border:none;border-radius:4px;padding:4px 14px;font-size:1em;cursor:pointer;">Set</button>
+                    </form>
+                    <span id="safetyStockLegend"></span>
+                    <div style="margin-top: 8px; display: flex; gap: 18px; align-items: center;">
+                        <span style="display: flex; align-items: center; gap: 6px;">
+                            <span style="display:inline-block;width:22px;height:22px;background:#dc3545;border-radius:4px;margin-right:4px;"></span>
+                            <span style="color:#333;font-size:1em;">Out of Stock (0 quantity)</span>
+                        </span>
+                        <span style="display: flex; align-items: center; gap: 6px;">
+                            <span style="display:inline-block;width:22px;height:22px;background:#ff9800;border-radius:4px;margin-right:4px;"></span>
+                            <span style="color:#333;font-size:1em;">Critical Stock (1-<span id="legendCritical"></span> quantity)</span>
+                        </span>
+                        <span style="display: flex; align-items: center; gap: 6px;">
+                            <span style="display:inline-block;width:22px;height:22px;background:#ffc000;border-radius:4px;margin-right:4px;border:1px solid #ffe082;"></span>
+                            <span style="color:#333;font-size:1em;">Low Stock (<span id="legendLowStart"></span>-<span id="legendLowEnd"></span> quantity)</span>
+                        </span>
                     </div>
+                </div>
+                <div class="alert-section">
+                    <h3>Low Stock Products</h3>
+                    <table id="lowStockProductsTable">
+                        <thead>
+                            <tr>
+                                <th>Product ID</th>
+                                <th>Name</th>
+                                <th>Current Stock</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Product data will be loaded here by JavaScript -->
+                        </tbody>
+                    </table>
+                    <p id="noLowStockProducts" style="display:none;">No low stock products found.</p>
+                </div>
+
+                <div class="alert-section">
+                    <h3>Low Stock Raw Materials</h3>
+                    <table id="lowStockMaterialsTable">
+                        <thead>
+                            <tr>
+                                <th>Material ID</th>
+                                <th>Name</th>
+                                <th>Quantity Available</th>
+                                <th>Unit</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Raw material data will be loaded here by JavaScript -->
+                        </tbody>
+                    </table>
+                    <p id="noLowStockMaterials" style="display:none;">No low stock raw materials found.</p>
                 </div>
             </div>
         </div>
     </div>
 
+    <script src="/js/Employee/Admin/AdminAlerts.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            window.userPermissions.updateUI();
-            }
-            
-            // Load alerts for transaction view
-            loadAlertsForTransaction();
-        });
-        
-        function loadAlertsForTransaction() {
-            fetch('/api/alerts/transaction')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        displayAlerts(data.alerts);
-                    } else {
-                        document.getElementById('alerts-container').innerHTML = 
-                            '<p>Error loading alerts: ' + data.message + '</p>';
-                    }
-                })
-                .catch(error => {
-                    console.error('Error loading alerts:', error);
-                    document.getElementById('alerts-container').innerHTML = 
-                        '<p>Error loading alerts. Please try again.</p>';
-                });
-        }
-        
-        function displayAlerts(alerts) {
-            const container = document.getElementById('alerts-container');
-            
-            if (alerts.length === 0) {
-                container.innerHTML = '<p>No active alerts.</p>';
-                return;
-            }
-            
-            let html = '';
-            
-            alerts.forEach(alert => {
-                const alertClass = alert.Priority === 'Critical' ? 'critical' : 
-                                 alert.Priority === 'Warning' ? 'warning' : 'info';
+        // Dropdown functionality for sidebar
+        document.querySelectorAll('.dropdown-toggle').forEach(item => {
+            item.addEventListener('click', event => {
+                event.preventDefault();
+                const dropdownMenu = item.nextElementSibling;
+                const isVisible = dropdownMenu.style.display === 'block';
                 
-                html += `
-                    <div class="alert-card ${alertClass}">
-                        <div class="alert-title">${alert.Title}</div>
-                        <div class="alert-description">${alert.Description}</div>
-                        <div class="alert-meta">
-                            Priority: ${alert.Priority} | 
-                            Created: ${new Date(alert.CreatedAt).toLocaleDateString()} |
-                            Status: ${alert.Status}
-                        </div>
-                    </div>
-                `;
+                // Close all other dropdowns first
+                document.querySelectorAll('.dropdown-menu').forEach(menu => {
+                    menu.style.display = 'none';
+                });
+                
+                // Toggle the clicked dropdown
+                dropdownMenu.style.display = isVisible ? 'none' : 'block';
             });
-            
-            container.innerHTML = html;
-        }
+        });
+
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function(event) {
+            const dropdowns = document.querySelectorAll('.dropdown');
+            dropdowns.forEach(dropdown => {
+                if (!dropdown.contains(event.target)) {
+                    const dropdownMenu = dropdown.querySelector('.dropdown-menu');
+                    if (dropdownMenu) {
+                        dropdownMenu.style.display = 'none';
+                    }
+                }
+            });
+        });
+    </script>
+    <script>
+    async function updateSafetyStockUI() {
+        const res = await fetch('/api/safety-stock-value');
+        const data = await res.json();
+        const value = data.value || 10;
+        document.getElementById('safetyStockInput').value = value;
+        document.getElementById('legendCritical').textContent = value;
+        document.getElementById('legendLowStart').textContent = value + 1;
+        document.getElementById('legendLowEnd').textContent = value * 2;
+    }
+    document.addEventListener('DOMContentLoaded', function() {
+        updateSafetyStockUI();
+        document.getElementById('safetyStockForm').onsubmit = async function(e) {
+            e.preventDefault();
+            const value = parseInt(document.getElementById('safetyStockInput').value);
+            if (!value || value < 1) return alert('Enter a valid safety stock value.');
+            const res = await fetch('/api/safety-stock-value', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ value })
+            });
+            if (res.ok) {
+                updateSafetyStockUI();
+                location.reload();
+            } else {
+                alert('Failed to update safety stock value.');
+            }
+        };
+    });
+    </script>
+    <!-- Safety Stock Warning Modal -->
+    <div id="safetyStockModal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.4);z-index:3000;justify-content:center;align-items:center;">
+      <div style="background:#fff;padding:32px 28px 24px 28px;border-radius:10px;box-shadow:0 6px 32px rgba(0,0,0,0.18);max-width:350px;width:90vw;position:relative;text-align:center;">
+        <span id="closeSafetyModal" style="position:absolute;top:10px;right:16px;font-size:1.5em;color:#888;cursor:pointer;">&times;</span>
+        <div style="font-size:2.5em;color:#ff9800;margin-bottom:10px;">&#9888;</div>
+        <div id="safetyStockModalMsg" style="font-size:1.15em;color:#c0392b;font-weight:600;margin-bottom:18px;">Warning: Some products or raw materials are at or below the safety stock.</div>
+        <button id="goToAlertsBtn" style="background:#ff9800;color:#fff;border:none;border-radius:6px;padding:10px 28px;font-size:1em;font-weight:500;cursor:pointer;transition:background 0.2s;">Go to Alerts for more details</button>
+      </div>
+    </div>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        fetch('/api/safety-stock-alert')
+            .then(res => res.json())
+            .then(data => {
+                if (data.hasAlert) {
+                    const modal = document.getElementById('safetyStockModal');
+                    document.getElementById('safetyStockModalMsg').textContent = `Warning: Some products or raw materials are at or below the safety stock (${data.safetyStock}).`;
+                    modal.style.display = 'flex';
+                    document.getElementById('goToAlertsBtn').onclick = function() {
+                        window.location.href = '/Employee/Transaction/Alerts';
+                    };
+                    document.getElementById('closeSafetyModal').onclick = function() {
+                        modal.style.display = 'none';
+                    };
+                    modal.onclick = function(e) {
+                        if (e.target === modal) modal.style.display = 'none';
+                    };
+                }
+            });
+    });
     </script>
 </body>
 </html>

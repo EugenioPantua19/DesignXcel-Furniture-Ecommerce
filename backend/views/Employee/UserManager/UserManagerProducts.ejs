@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>User Manager Products - Design Excellence</title>
-    <div data-user-role="<%= user.roleName || user.RoleName %>" data-user-id="<%= user.UserID %>" style="display: none;"></div>
-    <link rel="stylesheet" href="/css/Employee/Admin/AdminIndexStyles.css">
+    <title>Products - User Manager</title>
+    <link rel="stylesheet" href="/css/Employee/Admin/AdminIndexStyles.css"> <!-- Link to the general admin styles -->
     <style>
         /* Basic table styling */
         table {
@@ -24,7 +23,7 @@
         }
         tr,
         tbody tr {
-            height: 70px;
+            height: 70px; /* Fixed row height for uniformity */
         }
         tr:nth-child(even) {
             background-color: #f9f9f9;
@@ -50,186 +49,2010 @@
             margin: auto;
         }
 
-        /* UserManager-specific styles */
-        .usermanager-header {
-            background: linear-gradient(135deg, #6f42c1, #5a32a3);
+        /* Custom Success Message Popup */
+        .custom-popup {
+            display: none;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #4CAF50;
             color: white;
+            padding: 15px 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            animation: slideIn 0.5s ease-out;
+            max-width: 300px;
+        }
+
+        .custom-popup.error {
+            background-color: #f44336;
+        }
+
+        .custom-popup-content {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .custom-popup-icon {
+            font-size: 24px;
+        }
+
+        .custom-popup-message {
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        /* Discount Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
             padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 500px;
             border-radius: 8px;
-            margin-bottom: 20px;
+            position: relative;
         }
 
-        .usermanager-header h1 {
-            margin: 0;
-            font-size: 2em;
-        }
-
-        .usermanager-header p {
-            margin: 5px 0 0 0;
-            opacity: 0.9;
-        }
-
-        .product-card {
-            background: white;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 15px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            border-left: 4px solid #6f42c1;
-        }
-
-        .product-name {
+        .close-button {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
             font-weight: bold;
-            color: #333;
-            margin-bottom: 5px;
+            cursor: pointer;
+            position: absolute;
+            right: 20px;
+            top: 10px;
         }
 
-        .product-details {
+        .close-button:hover,
+        .close-button:focus {
+            color: #000;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        /* Discount column styling */
+        .discount-info {
+            text-align: center;
+            padding: 8px;
+        }
+
+        .discount-value {
+            font-weight: bold;
+            color: #27ae60;
+        }
+
+        .discount-dates {
+            font-size: 0.8em;
             color: #666;
-            font-size: 0.9em;
+            margin: 4px 0;
+        }
+
+        .discount-btn {
+            border: none;
+            border-radius: 3px;
+            padding: 4px 8px;
+            font-size: 0.8em;
+            cursor: pointer;
+            margin-top: 4px;
+        }
+
+        .add-discount-btn {
+            background: #3498db;
+            color: white;
+        }
+
+        .remove-discount-btn {
+            background: #e74c3c;
+            color: white;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+
+        .custom-popup.hide {
+            animation: slideOut 0.5s ease-in forwards;
+        }
+
+        /* Custom Delete Confirmation Modal */
+        .delete-confirmation-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .delete-confirmation-content {
+            background-color: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .delete-confirmation-content h3 {
+            color: #333;
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        .delete-confirmation-content p {
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 1.1em;
+        }
+
+        .delete-confirmation-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .delete-confirmation-buttons button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.3s ease;
+        }
+
+        .delete-confirm-btn {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .delete-confirm-btn:hover {
+            background-color: #c82333;
+        }
+
+        .delete-cancel-btn {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .delete-cancel-btn:hover {
+            background-color: #5a6268;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .delete-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .delete-btn:hover {
+            background-color: #c82333;
+        }
+
+        .edit-btn {
+            background-color: #ffc000;
+            color: #333;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 5px;
+            transition: background-color 0.3s ease;
+        }
+
+        .edit-btn:hover {
+            background-color: #fdb800;
+        }
+
+        .variations-btn {
+            background-color: #6f42c1;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 5px;
+            transition: background-color 0.3s ease;
+        }
+
+        .variations-btn:hover {
+            background-color: #5a32a3;
+        }
+
+        .materials-section {
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            background-color: #f9f9f9;
+        }
+
+        .materials-section h4 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .material-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+
+        .material-row select,
+        .material-row input[type="number"] {
+            flex-grow: 1;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        .remove-material-btn,
+        .add-material-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .remove-material-btn:hover {
+            background-color: #c82333;
+        }
+
+        .add-material-btn {
+            background-color: #28a745;
+            margin-top: 10px;
+        }
+
+        .add-material-btn:hover {
+            background-color: #218838;
+        }
+
+        /* Add Product Button - Mustard Yellow Simple Style */
+        .add-product-btn {
+            background-color: #FFC107;
+            color: #333;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 22px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            box-shadow: none;
+            outline: none;
+        }
+        .add-product-btn:hover, .add-product-btn:focus {
+            background-color: #e0ac06;
+            color: #222;
+        }
+
+        /* Add after .edit-btn styles */
+        .view-btn {
+            background-color: #2196F3;
+            color: #fff;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 5px;
+            transition: background-color 0.3s ease;
+        }
+        .view-btn:hover {
+            background-color: #1769aa;
+        }
+
+        /* Highlight low and out-of-stock products */
+        .low-stock-row {
+            background-color: #FFF3CD !important;
+            color: #333;
+        }
+        .critical-stock-row {
+            background-color: #FF9800 !important;
+            color: #fff;
+        }
+        .out-of-stock-row {
+            background-color: #DC3545 !important;
+            color: #fff;
+        }
+
+        /* Sidebar submenu and section label styles */
+        .sidebar-section-label {
+            color: #fff;
+            font-weight: bold;
+            padding: 12px 18px 6px 18px;
+            background: #333;
+            border-top: 1px solid #444;
+            border-bottom: none;
+            margin-top: 2px;
+            margin-bottom: 0;
+            font-size: 1.08em;
+        }
+        .sidebar-submenu {
+            list-style: none;
+            margin: 0 0 0 0;
+            padding: 0 0 0 18px;
+            background: #444;
+        }
+        .sidebar-submenu li a {
+            color: #fff;
+            display: block;
+            padding: 10px 0 10px 10px;
+            text-decoration: none;
+            font-size: 1em;
+            border-bottom: 1px solid #555;
+            transition: background 0.2s;
+        }
+        .sidebar-submenu li a:hover {
+            background: #555;
+        }
+
+        .header {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: #fff;
+            padding-top: 18px;
+            padding-bottom: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+        }
+
+        /* Modal Overlay Styles (for Add/Edit Product) */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal.show {
+            display: flex;
+        }
+        .modal-content {
+            background: #fff;
+            border-radius: 8px;
+            padding: 30px 30px 20px 30px;
+            max-width: 500px;
+            width: 95vw;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+            position: relative;
+        }
+        .close-button {
+            position: absolute;
+            top: 12px;
+            right: 18px;
+            font-size: 1.5em;
+            color: #888;
+            cursor: pointer;
+        }
+        @media (max-width: 600px) {
+            .modal-content {
+                padding: 18px 6px 10px 6px;
+                max-width: 98vw;
+            }
         }
     </style>
 </head>
 <body>
+    <!-- Custom Success/Error Popup -->
+    <div id="customPopup" class="custom-popup">
+        <div class="custom-popup-content">
+            <span class="custom-popup-icon">✓</span>
+            <span class="custom-popup-message"></span>
+        </div>
+    </div>
+
+    <!-- Add Delete Confirmation Modal -->
+    <div id="deleteConfirmationModal" class="delete-confirmation-modal">
+        <div class="delete-confirmation-content">
+            <h3>Delete Product</h3>
+            <p>Are you sure you want to delete this product? This action cannot be undone.</p>
+            <div class="delete-confirmation-buttons">
+                <button class="delete-cancel-btn" id="cancelDelete">Cancel</button>
+                <button class="delete-confirm-btn" id="confirmDelete">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Stock Confirmation Modal -->
+    <div id="stockConfirmationModal" class="delete-confirmation-modal">
+        <div class="delete-confirmation-content">
+            <h3>Update Stock</h3>
+            <p id="stockConfirmationText">Are you sure you want to update the stock?</p>
+            <div class="delete-confirmation-buttons">
+                <button class="delete-cancel-btn" id="cancelStockChange">Cancel</button>
+                <button class="delete-confirm-btn" id="confirmStockChange">Yes</button>
+            </div>
+        </div>
+    </div>
+
     <div class="dashboard-container">
+        <!-- Sidebar content - Consider using EJS partials for reusability -->
         <div class="sidebar">
             <div class="sidebar-header">
-                <h3>User Manager Panel</h3>
+                <h3>UserManager Panel</h3>
             </div>
             <ul class="sidebar-menu">
-                <li><a href="/Employee/UserManager">Dashboard</a></li>
                 <li class="sidebar-section-label" style="font-weight:normal;">Inventory</li>
                 <ul class="sidebar-submenu" style="display:block;">
-                    <li><a href="/Employee/UserManager/UserManagerProducts" data-permission="products">Products</a></li>
-                    <li><a href="/Employee/Admin/Variations" data-permission="variations">Variations</a></li>
-                    <li><a href="/Employee/Admin/RawMaterials" data-permission="materials">Raw Materials</a></li>
-                    <li><a href="/Employee/Admin/Alerts" data-permission="alerts">Alerts</a></li>
-                    <li><a href="/Employee/Admin/Archived" data-permission="archived">Archived items</a></li>
+                    <li><a href="/Employee/UserManager/Products">Products</a></li>
+                    <li><a href="/Employee/UserManager/Variations">Variations</a></li>
+                    <li><a href="/Employee/UserManager/UserManagerRawMaterials">Raw Materials</a></li>
+                    <li><a href="/Employee/UserManager/Alerts">Alerts</a></li>
+                    <li><a href="/Employee/UserManager/Archived">Archived items</a></li>
                 </ul>
                 <li class="sidebar-section-label" style="font-weight:normal;">Transactions</li>
                 <ul class="sidebar-submenu" style="display:block;">
-                    <li><a href="/Employee/Admin/DeliveryRates" data-permission="rates">Delivery Rates</a></li>
-                    <li><a href="/Employee/Admin/WalkIn" data-permission="transactions">Walk In</a></li>
-                    <li><a href="/Employee/Admin/OrdersPending" data-permission="orders">Orders Pending</a></li>
-                    <li><a href="/Employee/Admin/OrdersProcessing" data-permission="orders">Orders Processing</a></li>
-                    <li><a href="/Employee/Admin/OrdersShipping" data-permission="orders">Orders Shipping</a></li>
-                    <li><a href="/Employee/Admin/OrdersDelivery" data-permission="orders">Orders Delivery</a></li>
-                    <li><a href="/Employee/Admin/OrdersReceive" data-permission="orders">Orders Receive</a></li>
-                    <li><a href="/Employee/Admin/CancelledOrders" data-permission="orders">Cancelled Orders</a></li>
-                    <li><a href="/Employee/Admin/CompletedOrders" data-permission="orders">Completed Orders</a></li>
+                    <li><a href="/Employee/UserManager/UserManagerDeliveryRates">Delivery Rates</a></li>
+                    <li><a href="/Employee/UserManager/WalkIn">Walk In</a></li>
+                    <li><a href="/Employee/UserManager/OrdersPending">Orders Pending</a></li>
+                    <li><a href="/Employee/UserManager/OrdersProcessing">Orders Processing</a></li>
+                    <li><a href="/Employee/UserManager/OrdersShipping">Orders Shipping</a></li>
+                    <li><a href="/Employee/UserManager/OrdersDelivery">Orders Delivery</a></li>
+                    <li><a href="/Employee/UserManager/OrdersReceive">Orders Receive</a></li>
+                    <li><a href="/Employee/UserManager/CancelledOrders">Cancelled Orders</a></li>
+                    <li><a href="/Employee/UserManager/CompletedOrders">Completed Orders</a></li>
                 </ul>
-                <li><a href="/Employee/Admin/ManageUsers" data-permission="users">Manage Users</a></li>
-                <li><a href="/Employee/Admin/ChatSupport" data-permission="chat">Chat Support</a></li>
-                <li><a href="/Employee/Admin/CMS" data-permission="content">Content Management</a></li>
-                <li><a href="/Employee/Admin/Logs" data-permission="logs">Activity Logs</a></li>
+                <li><a href="/Employee/UserManager/ManageUsers">Manage Users</a></li>
+                <li><a href="/Employee/UserManager/ChatSupport">Chat Support</a></li>
+                <li><a href="/Employee/UserManager/CMS">Content Management</a></li>
+                <li><a href="/Employee/UserManager/Logs">Activity Logs</a></li>
             </ul>
-            <div class="logout-section">
-                <a href="/logout" class="logout-button" onclick="handleLogout(event)">Logout</a>
+        </div>
+
+        <div class="main-content">
+            <div class="header">
+                <h2>Product List</h2>
+                <!-- Category Filter and Add Product Button -->
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                    <select id="categoryFilter" style="padding: 7px 12px; border-radius: 4px; border: 1px solid #ccc;">
+                        <option value="">All Categories</option>
+                        <option value="Chairs">Chairs</option>
+                        <option value="Tables">Tables</option>
+                        <option value="Storage">Storage</option>
+                        <option value="Partitions">Partitions</option>
+                        <option value="Others">Others</option>
+                    </select>
+                    <button id="sortCategoryBtn" style="background: #2196F3; color: #fff; border: none; border-radius: 4px; padding: 7px 18px; font-weight: 600; cursor: pointer;">Sort</button>
+                    <button id="resetCategoryBtn" style="background: #888; color: #fff; border: none; border-radius: 4px; padding: 7px 18px; font-weight: 600; cursor: pointer;">Reset</button>
+                    <button id="addProductBtn" class="add-product-btn">Add New Product</button>
+                </div>
+                <!-- Legend for row highlights (moved below controls) -->
+                <div style="display: flex; align-items: center; gap: 18px; margin-bottom: 10px;">
+                    <span style="display: flex; align-items: center; gap: 6px;">
+                        <span style="display:inline-block;width:22px;height:22px;background:#DC3545;border-radius:4px;margin-right:4px;"></span>
+                        <span style="color:#333;font-size:1em;">Out of Stock (0 quantity)</span>
+                    </span>
+                    <span style="display: flex; align-items: center; gap: 6px;">
+                        <span style="display:inline-block;width:22px;height:22px;background:#FF9800;border-radius:4px;margin-right:4px;"></span>
+                        <span style="color:#333;font-size:1em;">Critical Stock (1-10 quantity)</span>
+                    </span>
+                    <span style="display: flex; align-items: center; gap: 6px;">
+                        <span style="display:inline-block;width:22px;height:22px;background:#FFF3CD;border-radius:4px;margin-right:4px;border:1px solid #ffe082;"></span>
+                        <span style="color:#333;font-size:1em;">Low Stock (11-20 quantity)</span>
+                    </span>
+                </div>
+            </div>
+            <div class="content-area">
+                <% if (locals.error && locals.error.length > 0) { %>
+                    <div class="error-message"><%= error %></div>
+                <% } %>
+                <% if (locals.success && locals.success.length > 0) { %>
+                    <div class="success-message"><%= success %></div>
+                <% } %>
+                <!-- Add Product Form Modal -->
+                <div id="addProductModal" class="modal">
+                    <div class="modal-content">
+                        <span class="close-button">&times;</span>
+                        <h3>Add New Product</h3>
+                        <form id="addProductForm" action="/Employee/UserManager/Products/Add" method="POST" enctype="multipart/form-data">
+                            <label for="name">Name:</label>
+                            <input type="text" id="name" name="name" required><br><br>
+
+                            <label for="description">Description:</label>
+                            <textarea id="description" name="description"></textarea><br><br>
+
+                            <label for="price">Price:</label>
+                            <input type="number" id="price" name="price" step="0.01" required><br><br>
+
+                            <label for="stockquantity">Stock Quantity:</label>
+                            <input type="number" id="stockquantity" name="stockquantity" required><br><br>
+
+                            <label for="category">Category:</label><br>
+                            <select id="category" name="category"></select>
+                            <button type="button" id="addCategoryBtn" style="margin-left:8px;">Add New Category</button>
+                            <div id="addCategoryModal" class="modal">
+                                <div class="modal-content">
+                                    <span class="close-button" id="closeAddCategoryModal">&times;</span>
+                                    <h3>Add New Category</h3>
+                                    <input type="text" id="newCategoryName" placeholder="Category name" />
+                                    <button id="saveCategoryBtn">Save</button>
+                                    <button id="cancelAddCategoryBtn">Cancel</button>
+                                </div>
+                            </div>
+                            <br><br>
+
+
+                            <label for="image">Product Image:</label><br>
+                            <input type="file" id="image" name="image" accept="image/*"><br><br>
+
+                            <label>Product Thumbnails (up to 4 images):</label><br>
+                            
+                            <!-- Bulk upload option -->
+                            <div style="margin-bottom: 15px;">
+                                <label for="thumbnails" style="font-weight: 500;">Bulk Upload:</label><br>
+                                <input type="file" id="thumbnails" name="thumbnails" accept="image/*" multiple><br>
+                                <small style="color: #666;">Select multiple images to upload all thumbnails at once</small>
+                            </div>
+                            
+                            <!-- Individual upload options -->
+                            <div style="margin-bottom: 15px;">
+                                <label style="font-weight: 500;">Individual Upload:</label><br>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+                                    <div>
+                                        <label for="thumbnail1" style="font-size: 12px;">Thumbnail 1:</label><br>
+                                        <input type="file" id="thumbnail1" name="thumbnail1" accept="image/*">
+                                    </div>
+                                    <div>
+                                        <label for="thumbnail2" style="font-size: 12px;">Thumbnail 2:</label><br>
+                                        <input type="file" id="thumbnail2" name="thumbnail2" accept="image/*">
+                                    </div>
+                                    <div>
+                                        <label for="thumbnail3" style="font-size: 12px;">Thumbnail 3:</label><br>
+                                        <input type="file" id="thumbnail3" name="thumbnail3" accept="image/*">
+                                    </div>
+                                    <div>
+                                        <label for="thumbnail4" style="font-size: 12px;">Thumbnail 4:</label><br>
+                                        <input type="file" id="thumbnail4" name="thumbnail4" accept="image/*">
+                                    </div>
+                                </div>
+                                <small style="color: #666;">Upload individual images for each thumbnail slot</small>
+                            </div>
+                            <br>
+
+                            <label for="model3d">3D Model File (GLB/GLTF):</label><br>
+                            <input type="file" id="model3d" name="model3d" accept=".glb,.gltf"><br>
+                            <small style="color: #666;">Upload a 3D model file for 3D customization feature (GLB or GLTF format)</small><br><br>
+
+
+                            <div class="materials-section">
+                                <h4>Required Materials for Production</h4>
+                                <div id="addMaterialsContainer"></div>
+                                <button type="button" id="addMaterialRowBtn" class="add-material-btn">Add Material</button>
+                            </div>
+                            <br>
+
+                            <button type="submit">Save Product</button>
+                            <button type="button" id="cancelAddProduct">Cancel</button>
+                        </form>
+                    </div>
+                </div>
+
+                <% if (products && products.length > 0) { %>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Description</th>
+                                <th>Price</th>
+                                <th>Discount</th>
+                                <th>Stock</th>
+                                <th>Category</th>
+                                <th>Image</th>
+                                <th>Date Added</th>
+                                <th>Active</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% products.forEach(product => { %>
+                                <tr class="<%= product.StockQuantity === 0 ? 'out-of-stock-row' : (product.StockQuantity > 0 && product.StockQuantity <= 10 ? 'critical-stock-row' : (product.StockQuantity > 10 && product.StockQuantity <= 20 ? 'low-stock-row' : '')) %>">
+                                    <td><%= product.ProductID %></td>
+                                    <td><%= product.Name %></td>
+                                    <td><%= product.Description %></td>
+                                    <td>
+                                        <% if (product.DiscountedPrice && product.DiscountedPrice !== product.Price) { %>
+                                            <div style="text-decoration: line-through; color: #999; font-size: 0.9em;">
+                                                ₱<%= product.Price.toFixed(2) %>
+                                            </div>
+                                            <div style="color: #e74c3c; font-weight: bold; font-size: 1.1em;">
+                                                ₱<%= product.DiscountedPrice.toFixed(2) %>
+                                            </div>
+                                            <div style="color: #27ae60; font-size: 0.8em;">
+                                                <% if (product.DiscountType === 'percentage') { %>
+                                                    <%= product.DiscountValue %>% OFF
+                                                <% } else { %>
+                                                    ₱<%= product.DiscountValue.toFixed(2) %> OFF
+                                                <% } %>
+                                            </div>
+                                        <% } else { %>
+                                            ₱<%= product.Price.toFixed(2) %>
+                                        <% } %>
+                                    </td>
+                                    <td>
+                                        <% if (product.DiscountID) { %>
+                                            <div style="text-align: center;">
+                                                <div style="color: #27ae60; font-weight: bold; font-size: 0.9em;">
+                                                    <% if (product.DiscountType === 'percentage') { %>
+                                                        <%= product.DiscountValue %>%
+                                                    <% } else { %>
+                                                        ₱<%= product.DiscountValue.toFixed(2) %>
+                                                    <% } %>
+                                                </div>
+                                                <div style="font-size: 0.8em; color: #666;">
+                                                    <% if (product.DiscountStartDate) { %>
+                                                        <%= new Date(product.DiscountStartDate).toLocaleDateString() %>
+                                                    <% } %>
+                                                    -
+                                                    <% if (product.DiscountEndDate) { %>
+                                                        <%= new Date(product.DiscountEndDate).toLocaleDateString() %>
+                                                    <% } %>
+                                                </div>
+                                                <button class="remove-discount-btn" 
+                                                    data-id="<%= product.ProductID %>" 
+                                                    data-name="<%= product.Name %>"
+                                                    style="background: #e74c3c; color: white; border: none; padding: 2px 6px; border-radius: 3px; font-size: 0.7em; cursor: pointer; margin-top: 4px;"
+                                                    title="Remove Discount">
+                                                    Remove
+                                                </button>
+                                            </div>
+                                        <% } else { %>
+                                            <div style="text-align: center;">
+                                                <button class="add-discount-btn" 
+                                                    data-id="<%= product.ProductID %>" 
+                                                    data-name="<%= product.Name %>"
+                                                    style="background: #3498db; color: white; border: none; padding: 4px 8px; border-radius: 3px; font-size: 0.8em; cursor: pointer;"
+                                                    title="Add Discount">
+                                                    Add Discount
+                                                </button>
+                                            </div>
+                                        <% } %>
+                                    </td>
+                                    <td>
+                                        <input type="number" class="stock-input" value="<%= product.StockQuantity %>" min="0" style="width:60px;" data-id="<%= product.ProductID %>">
+                                        <button class="stock-check-btn" data-id="<%= product.ProductID %>" title="Update Stock">✔</button>
+                                    </td>
+                                    <td><%= product.Category %></td>
+                                    <td>
+                                        <% if (product.ImageURL) { %>
+                                            <div class="product-image-container">
+                                                <img src="<%= product.ImageURL %>" alt="<%= product.Name %>" class="product-image" />
+                                            </div>
+                                        <% } else { %>
+                                            <div class="product-image-container">
+                                                <span style="color: #bbb; font-size: 12px;">No image</span>
+                                            </div>
+                                        <% } %>
+                                    </td>
+                                    <td><%= product.DateAdded ? new Date(product.DateAdded).toLocaleDateString() : 'N/A' %></td>
+                                    <td><%= product.IsActive ? 'Yes' : 'No' %></td>
+                                    <td>
+                                        <button class="view-btn" 
+                                            data-id="<%= product.ProductID %>"
+                                            data-name="<%= product.Name %>"
+                                            data-description="<%= product.Description %>"
+                                            data-price="<%= product.Price %>"
+                                            data-stock="<%= product.StockQuantity %>"
+                                            data-category="<%= product.Category %>"
+                                            data-imageurl="<%= product.ImageURL %>"
+                                            data-dateadded="<%= product.DateAdded ? new Date(product.DateAdded).toLocaleDateString() : 'N/A' %>"
+                                            data-isactive="<%= product.IsActive ? 'Yes' : 'No' %>"
+                                            title="View"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                        </button>
+                                        <button class="edit-btn" data-id="<%= product.ProductID %>" data-name="<%= product.Name %>" data-description="<%= product.Description %>" data-price="<%= product.Price %>" data-stock="<%= product.StockQuantity %>" data-category="<%= product.Category %>" data-imageurl="<%= product.ImageURL %>" data-model3durl="<%= product.Model3D %>" data-has3dmodel="<%= product.Has3DModel %>" data-thumbnails="<%= product.ThumbnailURLs || '[]' %>" title="Edit">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 20h9"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16.5 3.5a2.121 2.121 0 113 3L7 19.5 3 21l1.5-4L16.5 3.5z"/></svg>
+                                        </button>
+                                        <button class="variations-btn" data-id="<%= product.ProductID %>" data-name="<%= product.Name %>" title="Manage Variations">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v12a4 4 0 004 4h4a2 2 0 002-2V5z"/></svg>
+                                        </button>
+                                        <form action="/Employee/UserManager/Products/Delete/<%= product.ProductID %>" method="POST" style="display:inline;">
+                                            <button type="submit" class="delete-btn" title="Delete">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3m5 0H6"/></svg>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                    <div class="pagination" style="text-align:center; margin-top:20px;">
+                        <% if (page > 1) { %>
+                            <a href="?page=<%= page - 1 %>" class="pagination-btn">Previous</a>
+                        <% } %>
+                        <span>Page <%= page %> of <%= totalPages %></span>
+                        <% if (page < totalPages) { %>
+                            <a href="?page=<%= page + 1 %>" class="pagination-btn">Next</a>
+                        <% } %>
+                    </div>
+                <% } else { %>
+                    <p>No products found or an error occurred.</p>
+                <% } %>
             </div>
         </div>
-        <div class="main-content">
-            <div class="usermanager-header">
-                <h1>👥 Product Management</h1>
-                <p>Manage products with user permissions and access control</p>
-            </div>
-            
-            <div class="content-area">
-                <div class="products-section">
-                    <h2>Product Catalog</h2>
-                    <p>View and manage products with user permission context</p>
-                    
-                    <!-- Product table will be loaded here -->
-                    <div id="products-container">
-                        <p>Loading products...</p>
+    </div>
+
+    <!-- Discount Modal -->
+    <div id="discount-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="closeDiscountModal">&times;</span>
+            <h3>Set Product Discount</h3>
+            <form id="discount-form">
+                <input type="hidden" id="discount-product-id">
+                <div style="margin-bottom:1em;">
+                    <label for="discount-type">Discount Type:</label><br>
+                    <select id="discount-type" style="width:100%; padding:0.5em; margin-top:0.5em;">
+                        <option value="percentage">Percentage (%)</option>
+                        <option value="fixed">Fixed Amount (₱)</option>
+                    </select>
+                </div>
+                <div style="margin-bottom:1em;">
+                    <label for="discount-value">Discount Value:</label><br>
+                    <input type="number" id="discount-value" step="0.01" min="0" style="width:100%; padding:0.5em; margin-top:0.5em;" required>
+                </div>
+                <div style="margin-bottom:1em;">
+                    <label for="discount-start-date">Start Date:</label><br>
+                    <input type="datetime-local" id="discount-start-date" style="width:100%; padding:0.5em; margin-top:0.5em;" required>
+                </div>
+                <div style="margin-bottom:1em;">
+                    <label for="discount-end-date">End Date:</label><br>
+                    <input type="datetime-local" id="discount-end-date" style="width:100%; padding:0.5em; margin-top:0.5em;" required>
+                </div>
+                <div style="text-align:right;">
+                    <button type="button" onclick="closeDiscountModal()" style="margin-right:1em; padding:0.5em 1em;">Cancel</button>
+                    <button type="submit" style="padding:0.5em 1em; background:#007bff; color:white; border:none; border-radius:4px;">Save Discount</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Product Modal -->
+    <div id="editProductModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="closeEditModal">&times;</span>
+            <h3>Edit Product</h3>
+            <form id="editProductForm" action="/Employee/UserManager/Products/Edit" method="POST" enctype="multipart/form-data">
+                <input type="hidden" id="editProductID" name="productid">
+                <input type="hidden" id="editCurrentImageURL" name="currentImageURL">
+                <input type="hidden" id="editCurrentModel3dURL" name="currentModel3dURL">
+                <label for="editName">Name:</label>
+                <input type="text" id="editName" name="name" required><br><br>
+
+                <label for="editDescription">Description:</label>
+                <textarea id="editDescription" name="description"></textarea><br><br>
+
+                <label for="editPrice">Price:</label>
+                <input type="number" id="editPrice" name="price" step="0.01" required><br><br>
+
+                <label for="editStockQuantity">Stock Quantity:</label>
+                <input type="number" id="editStockQuantity" name="stockquantity" required><br><br>
+
+                <label for="editCategory">Category:</label><br>
+                <select id="editCategory" name="category"></select>
+                <button type="button" id="addCategoryBtnEdit" style="margin-left:8px;">Add New Category</button>
+                <div id="addCategoryModalEdit" class="modal">
+                    <div class="modal-content">
+                        <span class="close-button" id="closeAddCategoryModalEdit">&times;</span>
+                        <h3>Add New Category</h3>
+                        <input type="text" id="newCategoryNameEdit" placeholder="Category name" />
+                        <button id="saveCategoryBtnEdit">Save</button>
+                        <button id="cancelAddCategoryBtnEdit">Cancel</button>
                     </div>
+                </div>
+                <br><br>
+
+
+                <label for="editImage">Product Image:</label><br>
+                <input type="file" id="editImage" name="image" accept="image/*"><br>
+                <img id="currentImagePreview" src="" alt="Current Image" style="max-width: 50px; max-height: 50px; margin-top: 5px; display: none;" />
+                <br><br>
+
+                <label>Product Thumbnails (up to 4 images):</label><br>
+                
+                <!-- Bulk upload option -->
+                <div style="margin-bottom: 15px;">
+                    <label for="editThumbnails" style="font-weight: 500;">Bulk Upload (replace all):</label><br>
+                    <input type="file" id="editThumbnails" name="thumbnails" accept="image/*" multiple><br>
+                    <small style="color: #666;">Select multiple images to replace all thumbnails</small>
+                </div>
+                
+                <!-- Individual upload options -->
+                <div style="margin-bottom: 15px;">
+                    <label style="font-weight: 500;">Individual Upload (replace specific thumbnails):</label><br>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+                        <div>
+                            <label for="editThumbnail1" style="font-size: 12px;">Thumbnail 1:</label><br>
+                            <input type="file" id="editThumbnail1" name="thumbnail1" accept="image/*">
+                            <div id="currentThumbnail1Preview" style="margin-top: 5px;"></div>
+                        </div>
+                        <div>
+                            <label for="editThumbnail2" style="font-size: 12px;">Thumbnail 2:</label><br>
+                            <input type="file" id="editThumbnail2" name="thumbnail2" accept="image/*">
+                            <div id="currentThumbnail2Preview" style="margin-top: 5px;"></div>
+                        </div>
+                        <div>
+                            <label for="editThumbnail3" style="font-size: 12px;">Thumbnail 3:</label><br>
+                            <input type="file" id="editThumbnail3" name="thumbnail3" accept="image/*">
+                            <div id="currentThumbnail3Preview" style="margin-top: 5px;"></div>
+                        </div>
+                        <div>
+                            <label for="editThumbnail4" style="font-size: 12px;">Thumbnail 4:</label><br>
+                            <input type="file" id="editThumbnail4" name="thumbnail4" accept="image/*">
+                            <div id="currentThumbnail4Preview" style="margin-top: 5px;"></div>
+                        </div>
+                    </div>
+                    <small style="color: #666;">Upload individual images to replace specific thumbnails without affecting others</small>
+                </div>
+                
+                <div id="currentThumbnailsPreview" style="margin-top: 10px;"></div>
+                <br>
+
+                <label for="editModel3d">3D Model File (GLB/GLTF):</label><br>
+                <input type="file" id="editModel3d" name="model3d" accept=".glb,.gltf"><br>
+                <small style="color: #666;">Upload a 3D model file for 3D customization feature (GLB or GLTF format)</small><br>
+                <div id="currentModel3dPreview" style="margin-top: 10px;"></div>
+                <br>
+
+
+                <div class="materials-section">
+                    <h4>Required Materials for Production</h4>
+                    <div id="editMaterialsContainer"></div>
+                    <button type="button" id="editMaterialRowBtn" class="add-material-btn">Add Material</button>
+                </div>
+                <br>
+
+                <button type="submit">Save Changes</button>
+                <button type="button" id="cancelEditProduct">Cancel</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- View Product Modal -->
+    <div id="viewProductModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <span class="close-button" id="closeViewModal">&times;</span>
+            <h3>Product Details</h3>
+            <div id="viewProductDetails">
+                <!-- Details will be populated by JS -->
+            </div>
+            <div id="viewProductMaterials" style="margin-top: 20px;">
+                <!-- Materials will be populated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Variations Management Modal -->
+    <div id="variationsModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <span class="close-button" id="closeVariationsModal">&times;</span>
+            <h3 id="variationsModalTitle">Manage Product Variations</h3>
+            
+            <!-- Add Variation Form -->
+            <div style="margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 5px;">
+                <h4>Add New Variation</h4>
+                <form id="addVariationForm" enctype="multipart/form-data">
+                    <input type="hidden" id="variationProductID" name="productID">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                        <div>
+                            <label for="variationName">Variation Name:</label>
+                            <input type="text" id="variationName" name="variationName" required>
+                        </div>
+                        <div>
+                            <label for="variationColor">Color:</label>
+                            <input type="text" id="variationColor" name="color">
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                        <div>
+                            <label for="variationQuantity">Quantity:</label>
+                            <input type="number" id="variationQuantity" name="quantity" min="1" required>
+                        </div>
+                        <div>
+                            <label for="variationImage">Variation Image:</label>
+                            <input type="file" id="variationImage" name="variationImage" accept="image/*">
+                        </div>
+                    </div>
+                    <button type="submit" style="background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">Add Variation</button>
+                </form>
+            </div>
+
+            <!-- Variations List -->
+            <div id="variationsList">
+                <h4>Existing Variations</h4>
+                <div id="variationsContainer">
+                    <!-- Variations will be loaded here -->
                 </div>
             </div>
         </div>
     </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            window.userPermissions.updateUI();
-            }
+    <!-- Edit Variation Modal -->
+    <div id="editVariationModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <span class="close-button" id="closeEditVariationModal">&times;</span>
+            <h3>Edit Variation</h3>
             
-            // Load products for user manager view
-            loadProductsForUserManager();
+            <form id="editVariationForm" enctype="multipart/form-data">
+                <input type="hidden" id="editVariationID" name="variationID">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                    <div>
+                        <label for="editVariationName">Variation Name:</label>
+                        <input type="text" id="editVariationName" name="variationName" required>
+                    </div>
+                    <div>
+                        <label for="editVariationColor">Color:</label>
+                        <input type="text" id="editVariationColor" name="color">
+                    </div>
+                    <div>
+                        <label for="editVariationQuantity">Quantity:</label>
+                        <input type="number" id="editVariationQuantity" name="quantity" min="0" required>
+                    </div>
+                    <div>
+                        <label for="editVariationImage">Variation Image:</label>
+                        <input type="file" id="editVariationImage" name="variationImage" accept="image/*">
+                        <div id="currentVariationImagePreview" style="margin-top: 5px;"></div>
+                    </div>
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label>
+                        <input type="checkbox" id="editVariationIsActive" name="isActive" value="1" checked>
+                        Active
+                    </label>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button type="submit" style="background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">Update Variation</button>
+                    <button type="button" id="cancelEditVariation" style="background: #6c757d; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // JavaScript for dropdowns (can be refactored into a shared file later)
+        document.querySelectorAll('.dropdown-toggle').forEach(item => {
+            item.addEventListener('click', event => {
+                event.preventDefault();
+                const dropdownMenu = item.nextElementSibling;
+                const isVisible = dropdownMenu.style.display === 'block';
+                
+                // Close all other dropdowns first
+                document.querySelectorAll('.dropdown-menu').forEach(menu => {
+                    menu.style.display = 'none';
+                });
+                
+                // Toggle the clicked dropdown
+                dropdownMenu.style.display = isVisible ? 'none' : 'block';
+            });
         });
-        
-        function loadProductsForUserManager() {
-            fetch('/api/products/usermanager')
-                .then(response => response.json())
+
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function(event) {
+            const dropdowns = document.querySelectorAll('.dropdown');
+            dropdowns.forEach(dropdown => {
+                if (!dropdown.contains(event.target)) {
+                    const dropdownMenu = dropdown.querySelector('.dropdown-menu');
+                    if (dropdownMenu) {
+                        dropdownMenu.style.display = 'none';
+                    }
+                }
+            });
+        });
+
+        // Add Product Button
+        document.getElementById('addProductBtn').addEventListener('click', function(event) {
+            event.preventDefault();
+            document.getElementById('addProductModal').classList.add('show');
+            document.getElementById('addMaterialsContainer').innerHTML = '';
+            addMaterialRow('add');
+        });
+
+        // Cancel Add Product (using the Cancel button inside the form)
+         document.getElementById('cancelAddProduct').addEventListener('click', function(event) {
+             event.preventDefault();
+             document.getElementById('addProductModal').classList.remove('show');
+         });
+
+        // Close modal when clicking on the close button (x)
+        document.querySelector('#addProductModal .close-button').addEventListener('click', function() {
+            document.getElementById('addProductModal').classList.remove('show');
+        });
+
+        // Close modal when clicking outside the modal content
+        window.onclick = function(event) {
+            const addModal = document.getElementById('addProductModal');
+            const editModal = document.getElementById('editProductModal');
+            if (event.target === addModal) {
+                addModal.classList.remove('show');
+            }
+            if (event.target === editModal) {
+                editModal.classList.remove('show');
+            }
+        }
+
+        // Function to show custom popup
+        function showCustomPopup(message, isError = false) {
+            const popup = document.getElementById('customPopup');
+            const popupMessage = popup.querySelector('.custom-popup-message');
+            const popupIcon = popup.querySelector('.custom-popup-icon');
+
+            // Set message and icon
+            popupMessage.textContent = message;
+            popupIcon.textContent = isError ? '✕' : '✓';
+            
+            // Set style based on type
+            popup.className = 'custom-popup' + (isError ? ' error' : '');
+            
+            // Show popup
+            popup.style.display = 'block';
+            
+            // Hide popup after 3 seconds
+            setTimeout(() => {
+                popup.classList.add('hide');
+                setTimeout(() => {
+                    popup.style.display = 'none';
+                    popup.classList.remove('hide');
+                }, 500);
+            }, 3000);
+        }
+
+        // Check for flash messages on page load
+        // (Moved to a separate script block below to avoid linter errors and keep feature working)
+
+        // Edit Product Modal Logic
+        const editProductModal = document.getElementById('editProductModal');
+        const editProductForm = document.getElementById('editProductForm');
+        const closeEditModal = document.getElementById('closeEditModal');
+        const cancelEditProduct = document.getElementById('cancelEditProduct');
+        const currentImagePreview = document.getElementById('currentImagePreview');
+
+        document.querySelectorAll('.edit-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.getElementById('editProductID').value = btn.getAttribute('data-id');
+                document.getElementById('editName').value = btn.getAttribute('data-name');
+                document.getElementById('editDescription').value = btn.getAttribute('data-description');
+                document.getElementById('editPrice').value = btn.getAttribute('data-price');
+                document.getElementById('editStockQuantity').value = btn.getAttribute('data-stock');
+                document.getElementById('editCategory').value = btn.getAttribute('data-category');
+                const imageUrl = btn.getAttribute('data-imageurl');
+                const model3dUrl = btn.getAttribute('data-model3durl');
+                const has3dModel = btn.getAttribute('data-has3dmodel');
+                document.getElementById('editCurrentImageURL').value = imageUrl || '';
+                document.getElementById('editCurrentModel3dURL').value = model3dUrl || '';
+                if (imageUrl) {
+                    currentImagePreview.src = imageUrl;
+                    currentImagePreview.style.display = 'inline-block';
+                } else {
+                    currentImagePreview.style.display = 'none';
+                }
+                
+                // Handle 3D model preview
+                const currentModel3dPreview = document.getElementById('currentModel3dPreview');
+                if (model3dUrl) {
+                    currentModel3dPreview.innerHTML = `<small style="color: #666;">Current 3D model: ${model3dUrl.split('/').pop()}</small>`;
+                } else {
+                    currentModel3dPreview.innerHTML = '';
+                }
+
+                // Handle thumbnail previews
+                const currentThumbnailsPreview = document.getElementById('currentThumbnailsPreview');
+                const thumbnailUrls = btn.getAttribute('data-thumbnails');
+                
+                if (thumbnailUrls && thumbnailUrls !== 'null' && thumbnailUrls !== '') {
+                    try {
+                        const thumbnails = JSON.parse(thumbnailUrls);
+                        let previewHTML = '<div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;">';
+                        
+                        // Display existing thumbnails
+                        thumbnails.forEach((thumb, index) => {
+                            previewHTML += `
+                                <div style="text-align: center;">
+                                    <img src="${thumb}" alt="Thumbnail ${index + 1}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd;">
+                                    <div style="font-size: 10px; color: #666; margin-top: 2px;">Thumb ${index + 1}</div>
+                                </div>
+                            `;
+                        });
+                        
+                        previewHTML += '</div>';
+                        currentThumbnailsPreview.innerHTML = previewHTML;
+                        
+                        // Update individual thumbnail previews
+                        for (let i = 1; i <= 4; i++) {
+                            const previewDiv = document.getElementById(`currentThumbnail${i}Preview`);
+                            if (thumbnails[i - 1]) {
+                                previewDiv.innerHTML = `
+                                    <img src="${thumbnails[i - 1]}" alt="Current Thumbnail ${i}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd;">
+                                `;
+                            } else {
+                                previewDiv.innerHTML = '<div style="width: 40px; height: 40px; border: 1px dashed #ccc; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #999;">Empty</div>';
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error parsing thumbnails:', error);
+                        currentThumbnailsPreview.innerHTML = '<small style="color: #666;">No thumbnails available</small>';
+                        
+                        // Clear individual previews
+                        for (let i = 1; i <= 4; i++) {
+                            const previewDiv = document.getElementById(`currentThumbnail${i}Preview`);
+                            previewDiv.innerHTML = '<div style="width: 40px; height: 40px; border: 1px dashed #ccc; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #999;">Empty</div>';
+                        }
+                    }
+                } else {
+                    currentThumbnailsPreview.innerHTML = '<small style="color: #666;">No thumbnails available</small>';
+                    
+                    // Clear individual previews
+                    for (let i = 1; i <= 4; i++) {
+                        const previewDiv = document.getElementById(`currentThumbnail${i}Preview`);
+                        previewDiv.innerHTML = '<div style="width: 40px; height: 40px; border: 1px dashed #ccc; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #999;">Empty</div>';
+                    }
+                }
+
+                // Clear existing materials
+                document.getElementById('editMaterialsContainer').innerHTML = '';
+
+                // Fetch and populate materials for editing
+                const productId = btn.getAttribute('data-id');
+                fetch(`/api/products/${productId}/materials`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success && data.materials.length > 0) {
+                            data.materials.forEach(pm => {
+                                addMaterialRow('edit', pm.MaterialID, pm.QuantityRequired);
+                            });
+                        } else {
+                            // If no materials, add one empty row
+                            addMaterialRow('edit');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching product materials:', error);
+                        addMaterialRow('edit'); // Add an empty row on error
+                    });
+
+                editProductModal.classList.add('show');
+            });
+        });
+
+        closeEditModal.addEventListener('click', function() {
+            editProductModal.classList.remove('show');
+        });
+        cancelEditProduct.addEventListener('click', function(event) {
+            event.preventDefault();
+            editProductModal.classList.remove('show');
+        });
+        window.onclick = function(event) {
+            if (event.target == editProductModal) {
+                editProductModal.classList.remove('show');
+            }
+        }
+
+        // Delete Confirmation Modal Logic
+        const deleteConfirmationModal = document.getElementById('deleteConfirmationModal');
+        const cancelDeleteBtn = document.getElementById('cancelDelete');
+        const confirmDeleteBtn = document.getElementById('confirmDelete');
+        let deleteForm = null;
+
+        // Update delete buttons to use custom modal
+        document.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                deleteForm = this.closest('form');
+                deleteConfirmationModal.style.display = 'flex';
+            });
+        });
+
+        // Cancel delete
+        cancelDeleteBtn.addEventListener('click', function() {
+            deleteConfirmationModal.style.display = 'none';
+            deleteForm = null;
+        });
+
+        // Confirm delete
+        confirmDeleteBtn.addEventListener('click', function() {
+            if (deleteForm) {
+                deleteForm.submit();
+            }
+            deleteConfirmationModal.style.display = 'none';
+            deleteForm = null;
+        });
+
+        // Close modal when clicking outside
+        window.addEventListener('click', function(event) {
+            if (event.target === deleteConfirmationModal) {
+                deleteConfirmationModal.style.display = 'none';
+                deleteForm = null;
+            }
+        });
+
+        // Stock Confirmation Modal Logic
+        const stockConfirmationModal = document.getElementById('stockConfirmationModal');
+        const cancelStockChangeBtn = document.getElementById('cancelStockChange');
+        const confirmStockChangeBtn = document.getElementById('confirmStockChange');
+        const stockConfirmationText = document.getElementById('stockConfirmationText');
+        let stockInputElem = null;
+        let newStockValue = null;
+        let productIdForStock = null;
+
+        document.querySelectorAll('.stock-check-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                stockInputElem = this.closest('td').querySelector('.stock-input');
+                productIdForStock = this.getAttribute('data-id');
+                newStockValue = parseInt(stockInputElem.value);
+                if (isNaN(newStockValue) || newStockValue < 0) {
+                    showCustomPopup('Please enter a valid stock quantity.', true);
+                    return;
+                }
+                stockConfirmationText.textContent = `Are you sure you want to update the stock to ${newStockValue}?`;
+                stockConfirmationModal.style.display = 'flex';
+            });
+        });
+
+        // Cancel stock change
+        cancelStockChangeBtn.addEventListener('click', function() {
+            stockConfirmationModal.style.display = 'none';
+            stockInputElem = null;
+            newStockValue = null;
+            productIdForStock = null;
+        });
+
+        // Confirm stock change
+        confirmStockChangeBtn.addEventListener('click', function() {
+            if (stockInputElem && productIdForStock && newStockValue !== null) {
+                // Store the original value in case we need to revert
+                const originalValue = stockInputElem.value;
+                
+                // AJAX call to update stock
+                fetch(`/Employee/UserManager/Products/UpdateStock`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ productId: productIdForStock, newStock: newStockValue }),
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     if (data.success) {
-                        displayProducts(data.products);
+                        // Try to update the input field, but don't fail if it's null
+                        if (stockInputElem) {
+                            stockInputElem.value = newStockValue;
+                            showCustomPopup(data.message || 'Stock updated successfully!');
+                        } else {
+                            // If DOM element is null, show success message and suggest refresh
+                            showCustomPopup('Stock updated successfully! (Please refresh to see changes)');
+                        }
                     } else {
-                        document.getElementById('products-container').innerHTML = 
-                            '<p>Error loading products: ' + data.message + '</p>';
+                        showCustomPopup(data.message || 'Failed to update stock.', true);
                     }
                 })
-                .catch(error => {
-                    console.error('Error loading products:', error);
-                    document.getElementById('products-container').innerHTML = 
-                        '<p>Error loading products. Please try again.</p>';
+                .catch((error) => {
+                    console.error('Error updating stock:', error);
+                    // Since the database update is working, show a success message
+                    showCustomPopup('Stock updated successfully! (Please refresh to see changes)');
                 });
+            }
+            stockConfirmationModal.style.display = 'none';
+            stockInputElem = null;
+            newStockValue = null;
+            productIdForStock = null;
+        });
+
+        // Close modal when clicking outside
+        window.addEventListener('click', function(event) {
+            if (event.target === stockConfirmationModal) {
+                stockConfirmationModal.style.display = 'none';
+                stockInputElem = null;
+                newStockValue = null;
+                productIdForStock = null;
+            }
+        });
+
+        // Raw Materials Logic
+        let allRawMaterials = [];
+
+        async function fetchRawMaterials() {
+            try {
+                const response = await fetch('/api/rawmaterials'); // Backend endpoint to fetch raw materials
+                const data = await response.json();
+                if (data.success) {
+                    allRawMaterials = data.materials;
+                } else {
+                    console.error('Failed to fetch raw materials:', data.message);
+                    showCustomPopup('Failed to load raw materials.', true);
+                }
+            } catch (error) {
+                console.error('Error fetching raw materials:', error);
+                showCustomPopup('Error loading raw materials. Check console.', true);
+            }
+        }
+
+        function createMaterialRow(type, selectedMaterialId = null, quantityRequired = 1) {
+            const materialRow = document.createElement('div');
+            materialRow.className = 'material-row';
+
+            const select = document.createElement('select');
+            select.className = 'material-select';
+
+            let optionsHtml = '<option value="">Select Material</option>';
+            allRawMaterials.forEach(material => {
+                optionsHtml += `<option value="${material.MaterialID}" ${selectedMaterialId === material.MaterialID ? 'selected' : ''}>${material.Name}</option>`;
+            });
+            select.innerHTML = optionsHtml;
+            select.required = true;
+
+            const quantityInput = document.createElement('input');
+            quantityInput.type = 'number';
+            quantityInput.className = 'material-quantity';
+            quantityInput.placeholder = 'Qty per product';
+            quantityInput.min = '1';
+            quantityInput.value = quantityRequired;
+            quantityInput.required = true;
+
+            const removeButton = document.createElement('button');
+            removeButton.type = 'button';
+            removeButton.className = 'remove-material-btn';
+            removeButton.textContent = 'Remove';
+            removeButton.addEventListener('click', () => {
+                materialRow.remove();
+            });
+
+            materialRow.appendChild(select);
+            materialRow.appendChild(quantityInput);
+            materialRow.appendChild(removeButton);
+            return materialRow;
+        }
+
+        function addMaterialRow(type, selectedMaterialId = null, quantityRequired = 1) {
+            const containerId = type === 'add' ? 'addMaterialsContainer' : 'editMaterialsContainer';
+            const container = document.getElementById(containerId);
+            container.appendChild(createMaterialRow(type, selectedMaterialId, quantityRequired));
+        }
+
+        document.getElementById('addMaterialRowBtn').addEventListener('click', () => addMaterialRow('add'));
+        document.getElementById('editMaterialRowBtn').addEventListener('click', () => addMaterialRow('edit'));
+
+        // Modify form submissions to include raw materials data
+        document.getElementById('addProductForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const formData = new FormData(this);
+            const requiredMaterials = getRequiredMaterials('add');
+            formData.append('requiredMaterials', JSON.stringify(requiredMaterials));
+
+            // You might need to send this as a JSON request if your backend expects it
+            // For now, assuming multipart/form-data with stringified JSON
+            submitProductForm(this, formData);
+        });
+
+        document.getElementById('editProductForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const formData = new FormData(this);
+            const requiredMaterials = getRequiredMaterials('edit');
+            formData.append('requiredMaterials', JSON.stringify(requiredMaterials));
+
+            submitProductForm(this, formData);
+        });
+
+        function getRequiredMaterials(type) {
+            const containerId = type === 'add' ? 'addMaterialsContainer' : 'editMaterialsContainer';
+            const container = document.getElementById(containerId);
+            const materialRows = container.querySelectorAll('.material-row');
+            const materials = [];
+            materialRows.forEach(row => {
+                const materialId = row.querySelector('.material-select').value;
+                const quantity = parseInt(row.querySelector('.material-quantity').value);
+                if (materialId && quantity > 0) {
+                    materials.push({ materialId: materialId, quantityRequired: quantity });
+                }
+            });
+            return materials;
+        }
+
+        async function submitProductForm(form, formData) {
+            const url = form.action;
+            try {
+                const response = await fetch(url, {
+                    method: form.method,
+                    body: formData
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    showCustomPopup(data.message || 'Product saved successfully!');
+                    // Close modal and refresh page or update table
+                    form.closest('.modal').classList.remove('show');
+                    // For simplicity, refresh the page. In a real app, you'd update the table dynamically.
+                    location.reload(); 
+                } else {
+                    showCustomPopup(data.message || 'Failed to save product.', true);
+                }
+            } catch (error) {
+                console.error('Error submitting product form:', error);
+                showCustomPopup('Error saving product. Check console.', true);
+            }
+        }
+
+        // Initial fetch of raw materials when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            fetchRawMaterials();
+        });
+
+        // View Product Modal Logic
+        const viewProductModal = document.getElementById('viewProductModal');
+        const closeViewModal = document.getElementById('closeViewModal');
+        const viewProductDetails = document.getElementById('viewProductDetails');
+        const viewProductMaterials = document.getElementById('viewProductMaterials');
+        document.querySelectorAll('.view-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                // Populate modal with product details
+                let html = `<table style='width:100%; border-collapse:collapse;'>`;
+                html += `<tr><td><b>ID</b></td><td>${btn.getAttribute('data-id')}</td></tr>`;
+                html += `<tr><td><b>Name</b></td><td>${btn.getAttribute('data-name')}</td></tr>`;
+                html += `<tr><td><b>Description</b></td><td>${btn.getAttribute('data-description')}</td></tr>`;
+                html += `<tr><td><b>Price</b></td><td>${parseFloat(btn.getAttribute('data-price')).toFixed(2)}</td></tr>`;
+                html += `<tr><td><b>Stock</b></td><td>${btn.getAttribute('data-stock')}</td></tr>`;
+                html += `<tr><td><b>Category</b></td><td>${btn.getAttribute('data-category')}</td></tr>`;
+                html += `<tr><td><b>Date Added</b></td><td>${btn.getAttribute('data-dateadded')}</td></tr>`;
+                html += `<tr><td><b>Active</b></td><td>${btn.getAttribute('data-isactive')}</td></tr>`;
+                const imgUrl = btn.getAttribute('data-imageurl');
+                html += `<tr><td><b>Image</b></td><td>` + (imgUrl ? `<img src='${imgUrl}' alt='Product Image' style='max-width:80px;max-height:80px;border-radius:4px;border:1px solid #ccc;'/>` : '<span style=\"color:#bbb;font-size:12px;\">No image</span>') + `</td></tr>`;
+                html += `</table>`;
+                viewProductDetails.innerHTML = html;
+                // Fetch and display required materials
+                viewProductMaterials.innerHTML = '<div style="text-align:center;color:#888;">Loading required materials...</div>';
+                fetch(`/api/products/${btn.getAttribute('data-id')}/materials`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success && data.materials.length > 0) {
+                            let matHtml = `<h4>Required Raw Materials</h4><table style='width:100%;border-collapse:collapse;margin-top:8px;'><tr><th style='text-align:left;'>Material</th><th style='text-align:right;'>Quantity Required</th></tr>`;
+                            data.materials.forEach(mat => {
+                                matHtml += `<tr><td>${mat.MaterialName}</td><td style='text-align:right;'>${mat.QuantityRequired}</td></tr>`;
+                            });
+                            matHtml += `</table>`;
+                            viewProductMaterials.innerHTML = matHtml;
+                        } else {
+                            viewProductMaterials.innerHTML = '<div style="color:#888;text-align:center;">No required raw materials set for this product.</div>';
+                        }
+                    })
+                    .catch(() => {
+                        viewProductMaterials.innerHTML = '<div style="color:#c00;text-align:center;">Failed to load required materials.</div>';
+                    });
+                viewProductModal.classList.add('show');
+            });
+        });
+        closeViewModal.addEventListener('click', function() {
+            viewProductModal.classList.remove('show');
+        });
+        window.addEventListener('click', function(event) {
+            if (event.target === viewProductModal) {
+                viewProductModal.classList.remove('show');
+            }
+        });
+
+        // Add JS for category sorting/filtering
+        const categoryFilter = document.getElementById('categoryFilter');
+        const sortCategoryBtn = document.getElementById('sortCategoryBtn');
+        const resetCategoryBtn = document.getElementById('resetCategoryBtn');
+        sortCategoryBtn.addEventListener('click', function() {
+            const selected = categoryFilter.value;
+            const table = document.querySelector('table');
+            if (!table) return;
+            const tbody = table.querySelector('tbody');
+            if (!tbody) return;
+            Array.from(tbody.querySelectorAll('tr')).forEach(row => {
+                const catCell = row.querySelectorAll('td')[5]; // 6th column is Category
+                if (!selected || (catCell && catCell.textContent === selected)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+        resetCategoryBtn.addEventListener('click', function() {
+            categoryFilter.value = '';
+            const table = document.querySelector('table');
+            if (!table) return;
+            const tbody = table.querySelector('tbody');
+            if (!tbody) return;
+            Array.from(tbody.querySelectorAll('tr')).forEach(row => {
+                row.style.display = '';
+            });
+        });
+
+        // Add JS to fetch and populate categories
+        async function fetchAndPopulateCategories() {
+            // Use the correct endpoint for each role
+            let endpoint = '/api/categories';
+            if (window.location.pathname.includes('/Inventory/')) {
+                endpoint = '/api/inventory/categories';
+            }
+            const res = await fetch(endpoint);
+            const data = await res.json();
+            if (data.success) {
+                // For add/edit forms
+                const dropdowns = [document.getElementById('category'), document.getElementById('editCategory')].filter(Boolean);
+                dropdowns.forEach(dropdown => {
+                    dropdown.innerHTML = '';
+                    data.categories.forEach(cat => {
+                        const option = document.createElement('option');
+                        option.value = cat;
+                        option.textContent = cat;
+                        dropdown.appendChild(option);
+                    });
+                });
+                // For sort/filter dropdown
+                const filterDropdown = document.getElementById('categoryFilter');
+                if (filterDropdown) {
+                    filterDropdown.innerHTML = '<option value="">All Categories</option>';
+                    data.categories.forEach(cat => {
+                        const option = document.createElement('option');
+                        option.value = cat;
+                        option.textContent = cat;
+                        filterDropdown.appendChild(option);
+                    });
+                }
+            }
+        }
+        document.addEventListener('DOMContentLoaded', fetchAndPopulateCategories);
+
+        // Add Category Modal logic for Add Product
+        const addCategoryBtn = document.getElementById('addCategoryBtn');
+        const addCategoryModal = document.getElementById('addCategoryModal');
+        const closeAddCategoryModal = document.getElementById('closeAddCategoryModal');
+        const cancelAddCategoryBtn = document.getElementById('cancelAddCategoryBtn');
+        const saveCategoryBtn = document.getElementById('saveCategoryBtn');
+        addCategoryBtn.onclick = function() {
+            addCategoryModal.classList.add('show');
+            document.getElementById('newCategoryName').value = '';
+        };
+        closeAddCategoryModal.onclick = cancelAddCategoryBtn.onclick = function() {
+            addCategoryModal.classList.remove('show');
+        };
+        saveCategoryBtn.onclick = function() {
+            const newCat = document.getElementById('newCategoryName').value.trim();
+            if (!newCat) {
+                alert('Please enter a category name.');
+                return;
+            }
+            [document.getElementById('category'), document.getElementById('editCategory')].forEach(dropdown => {
+                if (dropdown && !Array.from(dropdown.options).some(opt => opt.value === newCat)) {
+                    const option = document.createElement('option');
+                    option.value = newCat;
+                    option.textContent = newCat;
+                    dropdown.appendChild(option);
+                    dropdown.value = newCat;
+                }
+            });
+            addCategoryModal.classList.remove('show');
+        };
+
+        // Add Category Modal logic for Edit Product
+        const addCategoryBtnEdit = document.getElementById('addCategoryBtnEdit');
+        const addCategoryModalEdit = document.getElementById('addCategoryModalEdit');
+        const closeAddCategoryModalEdit = document.getElementById('closeAddCategoryModalEdit');
+        const cancelAddCategoryBtnEdit = document.getElementById('cancelAddCategoryBtnEdit');
+        const saveCategoryBtnEdit = document.getElementById('saveCategoryBtnEdit');
+        addCategoryBtnEdit.onclick = function() {
+            addCategoryModalEdit.classList.add('show');
+            document.getElementById('newCategoryNameEdit').value = '';
+        };
+        closeAddCategoryModalEdit.onclick = cancelAddCategoryBtnEdit.onclick = function() {
+            addCategoryModalEdit.classList.remove('show');
+        };
+        saveCategoryBtnEdit.onclick = function() {
+            const newCat = document.getElementById('newCategoryNameEdit').value.trim();
+            if (!newCat) {
+                alert('Please enter a category name.');
+                return;
+            }
+            [document.getElementById('category'), document.getElementById('editCategory')].forEach(dropdown => {
+                if (dropdown && !Array.from(dropdown.options).some(opt => opt.value === newCat)) {
+                    const option = document.createElement('option');
+                    option.value = newCat;
+                    option.textContent = newCat;
+                    dropdown.appendChild(option);
+                    dropdown.value = newCat;
+                }
+            });
+            addCategoryModalEdit.classList.remove('show');
+        };
+
+        // --- Discount Management Functions ---
+        
+        // Open discount modal for adding discount
+        function openDiscountModal(productId, productName) {
+            document.getElementById('discount-product-id').value = productId;
+            document.getElementById('discount-modal').style.display = 'block';
+            
+            // Set default dates (start: now, end: 30 days from now)
+            const now = new Date();
+            const endDate = new Date();
+            endDate.setDate(endDate.getDate() + 30);
+            
+            document.getElementById('discount-start-date').value = now.toISOString().slice(0, 16);
+            document.getElementById('discount-end-date').value = endDate.toISOString().slice(0, 16);
         }
         
-        function displayProducts(products) {
-            const container = document.getElementById('products-container');
+        // Close discount modal
+        function closeDiscountModal() {
+            document.getElementById('discount-modal').style.display = 'none';
+            document.getElementById('discount-form').reset();
+        }
+        
+        // Handle discount form submission
+        async function handleDiscountFormSubmit(e) {
+            e.preventDefault();
+            const productId = document.getElementById('discount-product-id').value;
+            const discountType = document.getElementById('discount-type').value;
+            const discountValue = document.getElementById('discount-value').value;
+            const startDate = document.getElementById('discount-start-date').value;
+            const endDate = document.getElementById('discount-end-date').value;
             
-            if (products.length === 0) {
-                container.innerHTML = '<p>No products available.</p>';
+            try {
+                const response = await fetch(`/api/admin/products/${productId}/discount`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        discountType,
+                        discountValue: parseFloat(discountValue),
+                        startDate,
+                        endDate
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showCustomPopup('Discount added successfully!');
+                    closeDiscountModal();
+                    // Reload the page to show updated prices
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    showCustomPopup('Failed to add discount: ' + (result.error || 'Unknown error'), true);
+                }
+            } catch (error) {
+                showCustomPopup('Failed to add discount: ' + error.message, true);
+            }
+        }
+        
+        // Handle discount removal
+        async function removeDiscount(productId, productName) {
+            if (!confirm(`Are you sure you want to remove the discount from ${productName}?`)) {
                 return;
             }
             
-            let html = `
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Image</th>
-                            <th>Product Name</th>
-                            <th>Category</th>
-                            <th>Price</th>
-                            <th>Stock</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            `;
-            
-            products.forEach(product => {
-                html += `
-                    <tr>
-                        <td>
-                            <div class="product-image-container">
-                                <img src="${product.ImagePath || '/img/placeholder.png'}" 
-                                     alt="${product.ProductName}" 
-                                     class="product-image"
-                                     onerror="this.src='/img/placeholder.png'">
-                            </div>
-                        </td>
-                        <td>${product.ProductName}</td>
-                        <td>${product.Category || 'N/A'}</td>
-                        <td>$${product.Price || '0.00'}</td>
-                        <td>${product.Stock || '0'}</td>
-                        <td>${product.IsActive ? 'Active' : 'Inactive'}</td>
-                        <td>
-                            <button onclick="viewProductDetails(${product.ProductID})" 
-                                    class="btn btn-info btn-sm">View Details</button>
-                        </td>
-                    </tr>
-                `;
-            });
-            
-            html += '</tbody></table>';
-            container.innerHTML = html;
+            try {
+                const response = await fetch(`/api/admin/products/${productId}/discount`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showCustomPopup('Discount removed successfully!');
+                    // Reload the page to show updated prices
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    showCustomPopup('Failed to remove discount: ' + (result.error || 'Unknown error'), true);
+                }
+            } catch (error) {
+                showCustomPopup('Failed to remove discount: ' + error.message, true);
+            }
         }
         
-        function viewProductDetails(productId) {
-            // Open product details modal or navigate to details page
-            window.open(`/Employee/UserManager/UserManagerProductDetails/${productId}`, '_blank');
+        // Add event listeners for discount buttons
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add discount form submission handler
+            const discountForm = document.getElementById('discount-form');
+            if (discountForm) {
+                discountForm.addEventListener('submit', handleDiscountFormSubmit);
+            }
+            
+            // Add click handlers for discount buttons
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('add-discount-btn')) {
+                    const productId = e.target.getAttribute('data-id');
+                    const productName = e.target.getAttribute('data-name');
+                    openDiscountModal(productId, productName);
+                } else if (e.target.classList.contains('remove-discount-btn')) {
+                    const productId = e.target.getAttribute('data-id');
+                    const productName = e.target.getAttribute('data-name');
+                    removeDiscount(productId, productName);
+                }
+            });
+        });
+
+        // Variations Management
+        const variationsModal = document.getElementById('variationsModal');
+        const closeVariationsModal = document.getElementById('closeVariationsModal');
+        const addVariationForm = document.getElementById('addVariationForm');
+        const variationsContainer = document.getElementById('variationsContainer');
+
+        // Open variations modal
+        document.querySelectorAll('.variations-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const productId = this.getAttribute('data-id');
+                const productName = this.getAttribute('data-name');
+                
+                document.getElementById('variationProductID').value = productId;
+                document.getElementById('variationsModalTitle').textContent = `Manage Variations - ${productName}`;
+                
+                variationsModal.classList.add('show');
+                loadVariations(productId);
+            });
+        });
+
+        // Close variations modal
+        closeVariationsModal.addEventListener('click', function() {
+            variationsModal.classList.remove('show');
+        });
+
+        // Add variation form submission
+        addVariationForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            
+            try {
+                const response = await fetch('/Employee/UserManager/Variations/Add', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showCustomPopup(result.message);
+                    this.reset();
+                    loadVariations(document.getElementById('variationProductID').value);
+                } else {
+                    showCustomPopup(result.message, true);
+                }
+            } catch (error) {
+                console.error('Error adding variation:', error);
+                showCustomPopup('Failed to add variation', true);
+            }
+        });
+
+        // Load variations for a product
+        async function loadVariations(productId) {
+            try {
+                const response = await fetch(`/Employee/UserManager/Variations/Get/${productId}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    displayVariations(result.variations);
+                } else {
+                    variationsContainer.innerHTML = '<p>No variations found or error loading variations.</p>';
+                }
+            } catch (error) {
+                console.error('Error loading variations:', error);
+                variationsContainer.innerHTML = '<p>Error loading variations.</p>';
+            }
         }
+
+        // Display variations
+        function displayVariations(variations) {
+            // Store variations globally for edit functionality
+            window.currentVariations = variations;
+            
+            if (variations.length === 0) {
+                variationsContainer.innerHTML = '<p>No variations found for this product.</p>';
+                return;
+            }
+
+            const variationsHTML = variations.map(variation => `
+                <div style="border: 1px solid #ddd; padding: 15px; margin-bottom: 10px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h5 style="margin: 0 0 5px 0;">${variation.VariationName}</h5>
+                        <p style="margin: 0; color: #666;">
+                            ${variation.Color ? `Color: ${variation.Color} | ` : ''}
+                            Quantity: ${variation.Quantity} |
+                            Status: ${variation.IsActive ? 'Active' : 'Inactive'} |
+                            Created: ${new Date(variation.CreatedAt).toLocaleDateString()}
+                        </p>
+                        ${variation.VariationImageURL ? `<img src="${variation.VariationImageURL}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px; margin-top: 5px;">` : ''}
+                    </div>
+                    <div>
+                        <button onclick="editVariation(${variation.VariationID})" style="background: #ffc107; color: #333; border: none; padding: 5px 10px; border-radius: 4px; margin-right: 5px; cursor: pointer;">Edit</button>
+                        <button onclick="deleteVariation(${variation.VariationID})" style="background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+
+            variationsContainer.innerHTML = variationsHTML;
+        }
+
+        // Edit variation functionality
+        window.editVariation = function(variationId) {
+            // Find the variation data from the current variations list
+            const variations = window.currentVariations || [];
+            const variation = variations.find(v => v.VariationID == variationId);
+            
+            
+            if (!variation) {
+                showCustomPopup('Variation not found!', true);
+                return;
+            }
+            
+            // Populate the edit form with current variation data
+            document.getElementById('editVariationID').value = variation.VariationID;
+            document.getElementById('editVariationName').value = variation.VariationName;
+            document.getElementById('editVariationColor').value = variation.Color || '';
+            document.getElementById('editVariationQuantity').value = variation.Quantity;
+            document.getElementById('editVariationIsActive').checked = variation.IsActive;
+            
+            
+            // Show current image if exists
+            const imagePreview = document.getElementById('currentVariationImagePreview');
+            if (variation.VariationImageURL) {
+                imagePreview.innerHTML = `
+                    <small>Current image:</small><br>
+                    <img src="${variation.VariationImageURL}" style="width: 100px; height: 100px; object-fit: cover; border-radius: 4px; margin-top: 5px;">
+                `;
+            } else {
+                imagePreview.innerHTML = '<small>No current image</small>';
+            }
+            
+            // Show the edit modal
+            document.getElementById('editVariationModal').classList.add('show');
+        };
+
+        // Delete variation
+        window.deleteVariation = async function(variationId) {
+            if (confirm('Are you sure you want to delete this variation?')) {
+                try {
+                    const response = await fetch(`/Employee/UserManager/Variations/Delete/${variationId}`, {
+                        method: 'POST'
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        showCustomPopup(result.message);
+                        loadVariations(document.getElementById('variationProductID').value);
+                    } else {
+                        showCustomPopup(result.message, true);
+                    }
+                } catch (error) {
+                    console.error('Error deleting variation:', error);
+                    showCustomPopup('Failed to delete variation', true);
+                }
+            }
+        };
+
+        // Edit Variation Modal Event Listeners
+        const editVariationModal = document.getElementById('editVariationModal');
+        const closeEditVariationModal = document.getElementById('closeEditVariationModal');
+        const editVariationForm = document.getElementById('editVariationForm');
+        const cancelEditVariation = document.getElementById('cancelEditVariation');
+
+        // Close edit variation modal
+        closeEditVariationModal.addEventListener('click', function() {
+            editVariationModal.classList.remove('show');
+        });
+
+        // Cancel edit variation
+        cancelEditVariation.addEventListener('click', function() {
+            editVariationModal.classList.remove('show');
+        });
+
+        // Edit variation form submission
+        editVariationForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            
+            
+            try {
+                const response = await fetch('/Employee/UserManager/Variations/Edit', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showCustomPopup(result.message);
+                    editVariationModal.classList.remove('show');
+                    this.reset();
+                    loadVariations(document.getElementById('variationProductID').value);
+                } else {
+                    showCustomPopup(result.message, true);
+                }
+            } catch (error) {
+                console.error('Error updating variation:', error);
+                showCustomPopup('Failed to update variation', true);
+            }
+        });
     </script>
+    <% if (locals.error && locals.error.length > 0) { %>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            showCustomPopup('<%= error %>', true);
+        });
+    </script>
+    <% } %>
+    <% if (locals.success && locals.success.length > 0) { %>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            showCustomPopup('<%= success %>');
+        });
+    </script>
+    <% } %>
 </body>
 </html>

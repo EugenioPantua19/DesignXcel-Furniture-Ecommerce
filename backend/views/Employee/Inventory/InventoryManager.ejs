@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inventory Manager Dashboard - Design Excellence</title>
+    <title>Inventory Dashboard - Design Excellence</title>
     <link rel="stylesheet" href="/css/Employee/Admin/AdminIndexStyles.css">
     <style>
         .sidebar {
@@ -407,34 +407,33 @@
     <div class="dashboard-container">
         <div class="sidebar">
             <div class="sidebar-header">
-                <h3>Inventory Manager Panel</h3>
+                <h3>Inventory Panel</h3>
             </div>
             <ul class="sidebar-menu">
-                <li><a href="/Employee/InventoryManager">Dashboard</a></li>
                 <li class="sidebar-section-label" style="font-weight:normal;">Inventory</li>
                 <ul class="sidebar-submenu" style="display:block;">
-                    <li><a href="/Employee/Inventory/InvManagerProducts">Products</a></li>
-                    <li><a href="/Employee/Inventory/InvManagerVariations">Variations</a></li>
-                    <li><a href="/Employee/Inventory/InvManagerMaterials">Raw Materials</a></li>
-                    <li><a href="/Employee/Inventory/InvManagerAlerts">Alerts</a></li>
-                    <li><a href="/Employee/Inventory/InvManagerArchived">Archived items</a></li>
+                    <li><a href="/Employee/Inventory/InventoryProducts">Products</a></li>
+                    <li><a href="/Employee/Inventory/InventoryVariations">Variations</a></li>
+                    <li><a href="/Employee/Inventory/InventoryMaterials">Raw Materials</a></li>
+                    <li><a href="/Employee/Inventory/InventoryAlerts">Alerts</a></li>
+                    <li><a href="/Employee/Inventory/InventoryArchived">Archived items</a></li>
                 </ul>
                 <li class="sidebar-section-label" style="font-weight:normal;">Transactions</li>
                 <ul class="sidebar-submenu" style="display:block;">
-                    <li><a href="/Employee/Inventory/DeliveryRates">Delivery Rates</a></li>
-                    <li><a href="/Employee/Inventory/WalkIn">Walk In</a></li>
-                    <li><a href="/Employee/Inventory/InvManOrdersPending">Orders Pending</a></li>
-                    <li><a href="/Employee/Inventory/InvManOrdersProcessing">Orders Processing</a></li>
-                    <li><a href="/Employee/Inventory/InvManOrdersShipping">Orders Shipping</a></li>
-                    <li><a href="/Employee/Inventory/InvManOrdersDelivery">Orders Delivery</a></li>
-                    <li><a href="/Employee/Inventory/InvManOrdersReceive">Orders Receive</a></li>
-                    <li><a href="/Employee/Inventory/InvManCancelledOrders">Cancelled Orders</a></li>
-                    <li><a href="/Employee/Inventory/InvManCompletedOrders">Completed Orders</a></li>
+                    <li><a href="/Employee/Inventory/InventoryRates">Delivery Rates</a></li>
+                    <li><a href="/Employee/Inventory/InventoryWalkIn">Walk In</a></li>
+                    <li><a href="/Employee/Inventory/InventoryOrdersPending">Orders Pending</a></li>
+                    <li><a href="/Employee/Inventory/InventoryOrdersProcessing">Orders Processing</a></li>
+                    <li><a href="/Employee/Inventory/InventoryOrdersShipping">Orders Shipping</a></li>
+                    <li><a href="/Employee/Inventory/InventoryOrdersDelivery">Orders Delivery</a></li>
+                    <li><a href="/Employee/Inventory/InventoryOrdersReceive">Orders Receive</a></li>
+                    <li><a href="/Employee/Inventory/InventoryCancelledOrders">Cancelled Orders</a></li>
+                    <li><a href="/Employee/Inventory/InventoryCompletedOrders">Completed Orders</a></li>
                 </ul>
-                <li><a href="/Employee/Inventory/InvManagerManUsers">Manage Users</a></li>
-                <li><a href="/Employee/Inventory/InvManagerReviews">Reviews</a></li>
-                <li><a href="/Employee/Inventory/InvManChatSupport">Chat Support</a></li>
-                <li><a href="/Employee/Inventory/InvManagerCMS">Content Management</a></li>
+                <li><a href="/Employee/Inventory/InventoryManageUsers">Manage Users</a></li>
+                <li><a href="/Employee/Inventory/InventoryChatSupport">Chat Support</a></li>
+                <li><a href="/Employee/Inventory/InventoryCMS">Content Management</a></li>
+                <li><a href="/Employee/Inventory/InventoryLogs">Activity Logs</a></li>
             </ul>
             <div class="logout-section">
                 <a href="/logout" class="logout-button" onclick="handleLogout(event)">Logout</a>
@@ -455,7 +454,7 @@
                     <div id="alertsDropdown" style="display: none; position: absolute; right: 0; top: 38px; background: #fff; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.13); min-width: 320px; max-width: 400px; z-index: 3000;">
                         <div style="padding: 14px 18px; border-bottom: 1px solid #eee; font-weight: bold; color: #333;">Low & Out of Stock Alerts</div>
                         <div id="alertsDropdownContent" style="max-height: 320px; overflow-y: auto;"></div>
-                        <a href="/Employee/Inventory/InvManagerAlerts" id="alertsDropdownFooter" style="display:block;text-align:center;padding:12px 0 10px 0;font-size:0.98em;font-weight:600;color:#2196F3;text-decoration:none;border-top:1px solid #eee;transition:background 0.18s;cursor:pointer;">Go to Alerts</a>
+                        <a href="/Employee/Inventory/InventoryAlerts" id="alertsDropdownFooter" style="display:block;text-align:center;padding:12px 0 10px 0;font-size:0.98em;font-weight:600;color:#2196F3;text-decoration:none;border-top:1px solid #eee;transition:background 0.18s;cursor:pointer;">Go to Alerts</a>
                     </div>
                 </div>
             </div>

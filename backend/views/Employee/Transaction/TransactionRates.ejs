@@ -3,159 +3,175 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Transaction Rates - Design Excellence</title>
-    <div data-user-role="<%= user.roleName || user.RoleName %>" data-user-id="<%= user.UserID %>" style="display: none;"></div>
+    <title>Delivery Rates - Transaction</title>
     <link rel="stylesheet" href="/css/Employee/Admin/AdminIndexStyles.css">
-    <style>
-        /* Transaction-specific styles */
-        .transaction-header {
-            background: linear-gradient(135deg, #007bff, #0056b3);
-            color: white;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
-
-        .transaction-header h1 {
-            margin: 0;
-            font-size: 2em;
-        }
-
-        .transaction-header p {
-            margin: 5px 0 0 0;
-            opacity: 0.9;
-        }
-
-        .rate-card {
-            background: white;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 15px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            border-left: 4px solid #007bff;
-        }
-
-        .rate-name {
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 5px;
-        }
-
-        .rate-details {
-            color: #666;
-            font-size: 0.9em;
-        }
-    </style>
 </head>
 <body>
     <div class="dashboard-container">
         <div class="sidebar">
             <div class="sidebar-header">
-                <h3>Transaction Manager Panel</h3>
+                <h3>Transaction Panel</h3>
             </div>
             <ul class="sidebar-menu">
-                <li><a href="/Employee/TransactionManager">Dashboard</a></li>
                 <li class="sidebar-section-label" style="font-weight:normal;">Inventory</li>
                 <ul class="sidebar-submenu" style="display:block;">
-                    <li><a href="/Employee/Transaction/TransactionProducts" data-permission="products">Products</a></li>
-                    <li><a href="/Employee/Transaction/TransactionVariations" data-permission="variations">Variations</a></li>
-                    <li><a href="/Employee/Transaction/TransactionMaterials" data-permission="materials">Raw Materials</a></li>
-                    <li><a href="/Employee/Transaction/TransactionAlerts" data-permission="alerts">Alerts</a></li>
-                    <li><a href="/Employee/Transaction/TransactionArchived" data-permission="archived">Archived items</a></li>
+                    <li><a href="/Employee/Transaction/Products">Products</a></li>
+                    <li><a href="/Employee/Transaction/TransactionRawMaterials">Raw Materials</a></li>
+                    <li><a href="/Employee/Transaction/Alerts">Alerts</a></li>
+                    <li><a href="/Employee/Transaction/Archived">Archived items</a></li>
                 </ul>
                 <li class="sidebar-section-label" style="font-weight:normal;">Transactions</li>
                 <ul class="sidebar-submenu" style="display:block;">
-                    <li><a href="/Employee/Transaction/TransactionRates" data-permission="rates">Delivery Rates</a></li>
-                    <li><a href="/Employee/Transaction/TransactionWalkIn" data-permission="transactions">Walk In</a></li>
-                    <li><a href="/Employee/Transaction/TransactionOrdersPending" data-permission="orders">Orders Pending</a></li>
-                    <li><a href="/Employee/Transaction/TransactionOrdersProcessing" data-permission="orders">Orders Processing</a></li>
-                    <li><a href="/Employee/Transaction/TransactionOrdersShipping" data-permission="orders">Orders Shipping</a></li>
-                    <li><a href="/Employee/Transaction/TransactionOrdersDelivery" data-permission="orders">Orders Delivery</a></li>
-                    <li><a href="/Employee/Transaction/TransactionOrdersReceive" data-permission="orders">Orders Receive</a></li>
-                    <li><a href="/Employee/Transaction/TransactionCancelledOrders" data-permission="orders">Cancelled Orders</a></li>
-                    <li><a href="/Employee/Transaction/TransactionCompletedOrders" data-permission="orders">Completed Orders</a></li>
+                    <li><a href="/Employee/Transaction/TransactionDeliveryRates">Delivery Rates</a></li>
+                    <li><a href="/Employee/Transaction/WalkIn">Walk In</a></li>
+                    <li><a href="/Employee/Transaction/OrdersPending">Orders Pending</a></li>
+                    <li><a href="/Employee/Transaction/OrdersProcessing">Orders Processing</a></li>
+                    <li><a href="/Employee/Transaction/OrdersShipping">Orders Shipping</a></li>
+                    <li><a href="/Employee/Transaction/OrdersDelivery">Orders Delivery</a></li>
+                    <li><a href="/Employee/Transaction/OrdersReceive">Orders Receive</a></li>
+                    <li><a href="/Employee/Transaction/CancelledOrders">Cancelled Orders</a></li>
+                    <li><a href="/Employee/Transaction/CompletedOrders">Completed Orders</a></li>
                 </ul>
-                <li><a href="/Employee/Admin/ManageUsers" data-permission="users">Manage Users</a></li>
-                <li><a href="/Employee/Admin/ChatSupport" data-permission="chat">Chat Support</a></li>
-                <li><a href="/Employee/Admin/CMS" data-permission="content">Content Management</a></li>
-                <li><a href="/Employee/Admin/Logs" data-permission="logs">Activity Logs</a></li>
+                <li><a href="/Employee/Transaction/ManageUsers">Manage Users</a></li>
+                <li><a href="/Employee/Transaction/ChatSupport">Chat Support</a></li>
+                <li><a href="/Employee/Transaction/CMS">Content Management</a></li>
+                <li><a href="/Employee/Transaction/Logs">Activity Logs</a></li>
             </ul>
-            <div class="logout-section">
-                <a href="/logout" class="logout-button" onclick="handleLogout(event)">Logout</a>
-            </div>
         </div>
         <div class="main-content">
-            <div class="transaction-header">
-                <h1>💰 Delivery Rates</h1>
-                <p>Manage delivery rates for transaction processing</p>
+            <div class="header">
+                <h2>Delivery Rates</h2>
             </div>
-            
             <div class="content-area">
-                <div class="rates-section">
-                    <h2>Delivery Rates</h2>
-                    <p>View and manage delivery rates for transaction processing</p>
-                    
-                    <!-- Rates will be loaded here -->
-                    <div id="rates-container">
-                        <p>Loading rates...</p>
+                <% if (error) { %>
+                    <div class="error-message"><%= error %></div>
+                <% } %>
+                <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:16px;margin-bottom:14px;">
+                    <h3 style="margin-top:0;">Add Delivery Type</h3>
+                    <form id="addRateForm" action="/Employee/Transaction/TransactionDeliveryRates/Add" method="POST" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+                        <div>
+                            <label>Service Type</label>
+                            <input type="text" name="serviceType" required style="padding:8px;border:1px solid #ccc;border-radius:4px;">
+                        </div>
+                        <div>
+                            <label>Price</label>
+                            <input type="number" name="price" step="0.01" min="0" required style="padding:8px;border:1px solid #ccc;border-radius:4px;">
+                        </div>
+                        <button type="submit" style="background:#2563eb;color:#fff;border:none;border-radius:6px;padding:10px 16px;font-weight:600;">Create</button>
+                    </form>
+                </div>
+                <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:16px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <h3 style="margin-top:0;">Delivery Types</h3>
+                        <button id="reloadRates" style="background:#10b981;color:#fff;border:none;border-radius:6px;padding:8px 12px;font-weight:600;">Reload</button>
+                    </div>
+                    <div id="ratesContainer" style="overflow:auto;">
+                        <table style="width:100%;border-collapse:collapse;">
+                            <thead>
+                                <tr style="background:#f9fafb;border-bottom:1px solid #e5e7eb;">
+                                    <th style="text-align:left;padding:8px;">Service Type</th>
+                                    <th style="text-align:right;padding:8px;">Price</th>
+                                    <th style="text-align:left;padding:8px;">Created</th>
+                                    <th style="text-align:left;padding:8px;">By</th>
+                                    <th style="text-align:center;padding:8px;">Active</th>
+                                    <th style="text-align:center;padding:8px;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ratesRows"></tbody>
+                        </table>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            window.userPermissions.updateUI();
+    (function(){
+        const rowsEl = document.getElementById('ratesRows');
+        const reloadBtn = document.getElementById('reloadRates');
+        const addForm = document.getElementById('addRateForm');
+
+        // Popup
+        let popup = document.getElementById('ratesPopup');
+        if(!popup){
+            popup = document.createElement('div');
+            popup.id = 'ratesPopup';
+            popup.style.cssText = 'display:none;position:fixed;top:24px;right:24px;background:#10b981;color:#fff;padding:12px 18px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);font-weight:600;z-index:3000;';
+            popup.textContent = 'Saved!';
+            document.body.appendChild(popup);
+        }
+        function showPopup(msg, isError){
+            popup.textContent = msg || (isError ? 'Failed' : 'Saved!');
+            popup.style.background = isError ? '#dc2626' : '#10b981';
+            popup.style.display = 'block';
+            setTimeout(()=>{ popup.style.display='none'; }, 1800);
+        }
+
+        function fmt(n){ return '₱' + Number(n||0).toLocaleString(undefined,{minimumFractionDigits:2}); }
+        function dateFmt(d){ try { return new Date(d).toLocaleString(); } catch(e){ return d; } }
+
+        async function loadRates(){
+            rowsEl.innerHTML = '<tr><td colspan="6" style="padding:12px;color:#666;">Loading...</td></tr>';
+            try {
+                const r = await fetch('/api/admin/delivery-rates');
+                const j = await r.json();
+                if(!j.success){ rowsEl.innerHTML = `<tr><td colspan="6" style="padding:12px;color:#c00;">${j.message||'Failed to load'}</td></tr>`; return; }
+                const rates = j.rates||[];
+                if(!rates.length){ rowsEl.innerHTML = '<tr><td colspan="6" style="padding:12px;color:#666;">No delivery types yet.</td></tr>'; return; }
+                rowsEl.innerHTML = rates.map(rt=>{
+                    return `<tr data-id="${rt.RateID}" style="border-bottom:1px solid #e5e7eb;">
+                        <td style="padding:8px;"><input class="svc" value="${rt.ServiceType}" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;"></td>
+                        <td style="padding:8px;text-align:right;"><input class="price" type="number" step="0.01" min="0" value="${Number(rt.Price).toFixed(2)}" style="width:120px;padding:6px;border:1px solid #ddd;border-radius:4px;text-align:right;"></td>
+                        <td style="padding:8px;">${dateFmt(rt.CreatedAt)}</td>
+                        <td style="padding:8px;">${rt.CreatedByUsername||'-'}</td>
+                        <td style="padding:8px;text-align:center;"><input class="active" type="checkbox" ${rt.IsActive? 'checked':''}></td>
+                        <td style="padding:8px;text-align:center;"><button class="save" style="background:#3b82f6;color:#fff;border:none;border-radius:6px;padding:6px 10px;font-weight:600;">Save</button></td>
+                    </tr>`;
+                }).join('');
+            } catch(e){
+                rowsEl.innerHTML = '<tr><td colspan="6" style="padding:12px;color:#c00;">Error loading</td></tr>';
             }
-            
-            // Load rates for transaction view
-            loadRatesForTransaction();
-        });
-        
-        function loadRatesForTransaction() {
-            fetch('/api/rates/transaction')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        displayRates(data.rates);
-                    } else {
-                        document.getElementById('rates-container').innerHTML = 
-                            '<p>Error loading rates: ' + data.message + '</p>';
-                    }
-                })
-                .catch(error => {
-                    console.error('Error loading rates:', error);
-                    document.getElementById('rates-container').innerHTML = 
-                        '<p>Error loading rates. Please try again.</p>';
+        }
+
+        rowsEl.addEventListener('click', async (e)=>{
+            if(e.target && e.target.classList.contains('save')){
+                const tr = e.target.closest('tr');
+                const id = tr.getAttribute('data-id');
+                const svc = tr.querySelector('.svc').value.trim();
+                const price = tr.querySelector('.price').value;
+                const active = tr.querySelector('.active').checked;
+                const res = await fetch(`/Employee/Transaction/TransactionDeliveryRates/Update/${id}`, {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({ serviceType: svc, price: price, isActive: active })
                 });
-        }
-        
-        function displayRates(rates) {
-            const container = document.getElementById('rates-container');
-            
-            if (rates.length === 0) {
-                container.innerHTML = '<p>No rates available.</p>';
-                return;
+                const j = await res.json();
+                if(j.success){ showPopup('Updated'); loadRates(); } else { showPopup(j.message||'Update failed', true); }
             }
-            
-            let html = '';
-            
-            rates.forEach(rate => {
-                html += `
-                    <div class="rate-card">
-                        <div class="rate-name">${rate.RateName}</div>
-                        <div class="rate-details">
-                            Price: $${rate.Price} | 
-                            Distance: ${rate.Distance} km | 
-                            Status: ${rate.IsActive ? 'Active' : 'Inactive'}
-                        </div>
-                    </div>
-                `;
+        });
+
+        if(reloadBtn){ reloadBtn.onclick = loadRates; }
+        loadRates();
+
+        if(addForm){
+            addForm.addEventListener('submit', async function(ev){
+                ev.preventDefault();
+                const formData = new FormData(addForm);
+                const payload = { serviceType: formData.get('serviceType'), price: formData.get('price') };
+                try {
+                    const res = await fetch(addForm.action, { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
+                    const j = await res.json();
+                    if(j.success){
+                        addForm.reset();
+                        showPopup('Delivery type created');
+                        loadRates();
+                    } else {
+                        showPopup(j.message||'Create failed', true);
+                    }
+                } catch(err){
+                    showPopup('Create failed', true);
+                }
             });
-            
-            container.innerHTML = html;
         }
+    })();
     </script>
 </body>
 </html>

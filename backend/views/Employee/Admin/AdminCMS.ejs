@@ -1265,6 +1265,11 @@
                         if (tab === 'messages') {
                             loadMessages();
                         }
+                        
+                        // Load hero banner data when hero-banner tab is shown
+                        if (tab === 'hero-banner') {
+                            loadHeroBannerSettings();
+                        }
                     }
                     // --- Theme Tab Logic ---
                     async function fetchActiveTheme() {
@@ -1437,7 +1442,7 @@
                     
                     // Delete product function
                     window.deleteProduct = async function(productId, productName) {
-                        if (!confirm(`Are you sure you want to delete the product "${productName}"? This action cannot be undone and will also delete all related materials.`)) {
+                        if (!confirm(`Are you sure you want to PERMANENTLY DELETE the product "${productName}"? This will permanently remove the product and ALL related data (reviews, variations, discounts, materials, order history) from the database. This action CANNOT be undone!`)) {
                             return;
                         }
                         
@@ -1463,7 +1468,7 @@
                             console.log('Delete response result:', result);
                             
                             if (result.success) {
-                                document.getElementById('products-status').textContent = `Product "${productName}" deleted successfully!`;
+                                document.getElementById('products-status').textContent = `Product "${productName}" permanently deleted from database!`;
                                 renderProductsTable();
                             } else {
                                 document.getElementById('products-status').textContent = 'Failed to delete product.';
@@ -1826,7 +1831,7 @@
                     }
                 </script>
             </div>
-            <script src="/js/admin/AdminCMS.js"></script>
+            <script src="/js/Employee/Admin/AdminCMS.js"></script>
             <script>
                 // Initialize header offer bar functionality
                 document.addEventListener('DOMContentLoaded', function() {

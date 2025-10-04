@@ -21,6 +21,7 @@ const statusBadgeClass = (status) => {
   if (status === 'Cancelled') return 'status-badge status-cancelled';
   if (status === 'Pending') return 'status-badge status-pending';
   if (status === 'Completed' || status === 'Delivered') return 'status-badge status-completed';
+  if (status === 'Receive' || status === 'Received') return 'status-badge status-received';
   return 'status-badge';
 };
 
@@ -32,7 +33,7 @@ const statusIcon = (status) => {
   if (status === 'Processing') return <PackageIcon size={16} color="#3b82f6" style={iconStyle} />;
   if (status === 'Shipping' || status === 'Delivering') return <TruckIcon size={16} color="#8b5cf6" style={iconStyle} />;
   if (status === 'Completed' || status === 'Delivered') return <CheckCircleIcon size={16} color="#10b981" style={iconStyle} />;
-  if (status === 'Receive') return <PackageIcon size={16} color="#f59e0b" style={iconStyle} />;
+  if (status === 'Receive' || status === 'Received') return <PackageIcon size={16} color="#f59e0b" style={iconStyle} />;
   return <PackageIcon size={16} color="#6b7280" style={iconStyle} />;
 };
 
@@ -42,7 +43,7 @@ const statusBorderColor = (status) => {
   if (status === 'Processing') return '#3b82f6';
   if (status === 'Shipping' || status === 'Delivering') return '#8b5cf6';
   if (status === 'Completed' || status === 'Delivered') return '#10b981';
-  if (status === 'Receive') return '#f59e0b';
+  if (status === 'Receive' || status === 'Received') return '#f59e0b';
   return '#6b7280';
 };
 
@@ -841,7 +842,7 @@ const OrderHistory = () => {
                   </InlineLoader>
                 )}
                 
-                {order.Status === 'Receive' && (
+                {(order.Status === 'Receive' || order.Status === 'Received') && (
                   <InlineLoader 
                     isLoading={receiving[order.OrderID]} 
                     text="Processing..."

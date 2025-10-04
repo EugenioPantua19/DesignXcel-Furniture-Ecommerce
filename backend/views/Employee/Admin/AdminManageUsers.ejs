@@ -152,6 +152,106 @@
             border-bottom-right-radius: 4px;
             border-bottom: none;
         }
+
+        /* Permission Management Styles */
+        .permission-modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .permission-modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 600px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .permission-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .permission-modal-header h3 {
+            margin: 0;
+            color: #333;
+        }
+
+        .close {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: #000;
+        }
+
+        .permission-section {
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+
+        .permission-section label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .permission-section input[type="checkbox"] {
+            margin-right: 10px;
+            transform: scale(1.2);
+        }
+
+        .permission-actions {
+            margin-top: 20px;
+            text-align: right;
+        }
+
+        .permission-actions button {
+            margin-left: 10px;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .save-permissions {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .save-permissions:hover {
+            background-color: #0056b3;
+        }
+
+        .cancel-permissions {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .cancel-permissions:hover {
+            background-color: #545b62;
+        }
         
         .permission-buttons {
             display: flex;
@@ -240,6 +340,67 @@
             font-weight: bold;
             color: #222;
             margin-bottom: 8px;
+        }
+        
+        /* Permission Management Styles */
+        .permission-section {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        
+        .permission-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 15px;
+        }
+        
+        .permission-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            background: #f9f9f9;
+        }
+        
+        .permission-card h4 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 1.1em;
+        }
+        
+        .permission-checkbox {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+        }
+        
+        .permission-checkbox input[type="checkbox"] {
+            margin-right: 8px;
+            transform: scale(1.2);
+        }
+        
+        .permission-checkbox label {
+            font-size: 0.95em;
+            color: #555;
+            cursor: pointer;
+        }
+        
+        .save-permissions-btn {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 20px;
+            font-size: 1em;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+        
+        .save-permissions-btn:hover {
+            background-color: #218838;
         }
     </style>
 </head>
@@ -414,6 +575,59 @@
                     </table>
                     <p id="noCustomerAccounts" style="display:none;">No customer accounts found.</p>
                 </div>
+
+                <!-- Permission Management Section -->
+                <div class="permission-section">
+                    <h3>Role Permission Management</h3>
+                    <p>Configure which sections each role can access. Use the "Access" button next to each user to manage their individual permissions.</p>
+                    
+                    <div class="permission-grid">
+                        <div class="permission-card">
+                            <h4>Current Permission Status</h4>
+                            <p style="color: #666; font-size: 0.9em; margin-bottom: 15px;">
+                                Individual user permissions are managed per user. Click "Access" next to any user to modify their permissions.
+                            </p>
+                            
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                                <div style="padding: 10px; background: #f8f9fa; border-radius: 4px; border-left: 4px solid #28a745;">
+                                    <strong style="color: #28a745;">✅ Available Sections:</strong>
+                                    <ul style="margin: 5px 0 0 15px; font-size: 0.9em;">
+                                        <li>User Management</li>
+                                        <li>Inventory Management</li>
+                                        <li>Transaction Management</li>
+                                        <li>Order Management</li>
+                                        <li>Chat Support</li>
+                                        <li>Content Management</li>
+                                        <li>Activity Logs</li>
+                                    </ul>
+                                </div>
+                                
+                                <div style="padding: 10px; background: #fff3cd; border-radius: 4px; border-left: 4px solid #ffc107;">
+                                    <strong style="color: #856404;">⚠️ Permission System:</strong>
+                                    <ul style="margin: 5px 0 0 15px; font-size: 0.9em;">
+                                        <li>Admin: Full access to all sections</li>
+                                        <li>Other roles: Access granted per user</li>
+                                        <li>Default: No access unless granted</li>
+                                        <li>Security: Deny by default</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 20px; padding: 15px; background-color: #d1ecf1; border-left: 4px solid #17a2b8; border-radius: 4px;">
+                        <h4 style="margin: 0 0 10px 0; color: #0c5460;">How to Manage Permissions</h4>
+                        <ol style="margin: 10px 0 0 20px; color: #0c5460;">
+                            <li>Find the user in the table above</li>
+                            <li>Click the "Access" button next to their name</li>
+                            <li>Check/uncheck the sections they should access</li>
+                            <li>Click "Save Permissions" to apply changes</li>
+                        </ol>
+                        <p style="margin: 10px 0 0 0; color: #0c5460; font-size: 0.9em;">
+                            <strong>Note:</strong> Only Admin users can modify permissions. Each user's access is controlled individually.
+                        </p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -458,8 +672,13 @@
         </div>
     </div>
 
-    <script src="/js/admin/AdminManageUsers.js"></script>
+    <script src="/js/Employee/Admin/AdminManageUsers.js"></script>
     <script>
+        // Pass users data to JavaScript
+        const users = <%- JSON.stringify(users) %>;
+        console.log('Users data loaded:', users);
+        console.log('First user permissions:', users[0]?.permissions);
+        
         // Ensure setPermission is defined globally
         if (typeof setPermission !== 'function') {
             function setPermission(section, permission, userId) {
@@ -468,96 +687,146 @@
             }
         }
 
-        function showAccessModal(userId) {
-            const oldModal = document.getElementById('accessModalOverlay');
-            if (oldModal) oldModal.remove();
-            const modalHtml = `
-            <div class="access-modal-overlay" id="accessModalOverlay">
-                <div class="access-modal">
-                    <button class="access-modal-close" onclick="closeAccessModal()">&times;</button>
-                    <form id="accessPermissionsForm">
-                        <input type="hidden" id="accessUserId" value="${userId}">
-                        <div class="access-modal-section">
-                            <div class="access-modal-section-title">Inventory</div>
-                            <div class="permission-checkboxes">
-                                <label><input type="checkbox" name="inventory" value="edit" onchange="setPermissionCheckbox('inventory', 'edit', this, ${userId})"> Can Access</label>
-                                <label><input type="checkbox" name="inventory" value="none" onchange="setPermissionCheckbox('inventory', 'none', this, ${userId})"> No Access</label>
-                            </div>
-                        </div>
-                        <div class="access-modal-section">
-                            <div class="access-modal-section-title">Transactions</div>
-                            <div class="permission-checkboxes">
-                                <label><input type="checkbox" name="transactions" value="edit" onchange="setPermissionCheckbox('transactions', 'edit', this, ${userId})"> Can Access</label>
-                                <label><input type="checkbox" name="transactions" value="none" onchange="setPermissionCheckbox('transactions', 'none', this, ${userId})"> No Access</label>
-                            </div>
-                        </div>
-                        <div class="access-modal-section">
-                            <div class="access-modal-section-title">Manage Users</div>
-                            <div class="permission-checkboxes">
-                                <label><input type="checkbox" name="users" value="edit" onchange="setPermissionCheckbox('users', 'edit', this, ${userId})"> Can Access</label>
-                                <label><input type="checkbox" name="users" value="none" onchange="setPermissionCheckbox('users', 'none', this, ${userId})"> No Access</label>
-                            </div>
-                        </div>
-                        <div class="access-modal-section">
-                            <div class="access-modal-section-title">Chat Support</div>
-                            <div class="permission-checkboxes">
-                                <label><input type="checkbox" name="chat" value="edit" onchange="setPermissionCheckbox('chat', 'edit', this, ${userId})"> Can Access</label>
-                                <label><input type="checkbox" name="chat" value="none" onchange="setPermissionCheckbox('chat', 'none', this, ${userId})"> No Access</label>
-                            </div>
-                        </div>
-                        <div class="access-modal-section">
-                            <div class="access-modal-section-title">Content Management</div>
-                            <div class="permission-checkboxes">
-                                <label><input type="checkbox" name="content" value="edit" onchange="setPermissionCheckbox('content', 'edit', this, ${userId})"> Can Access</label>
-                                <label><input type="checkbox" name="content" value="none" onchange="setPermissionCheckbox('content', 'none', this, ${userId})"> No Access</label>
-                            </div>
-                        </div>
-                        <div class="access-modal-section">
-                            <div class="access-modal-section-title">Activity Logs</div>
-                            <div class="permission-checkboxes">
-                                <label><input type="checkbox" name="logs" value="edit" onchange="setPermissionCheckbox('logs', 'edit', this, ${userId})"> Can Access</label>
-                                <label><input type="checkbox" name="logs" value="none" onchange="setPermissionCheckbox('logs', 'none', this, ${userId})"> No Access</label>
-                            </div>
-                        </div>
-                        <button type="button" id="saveAccessPermissionsBtn" style="background-color:#007bff;color:white;border:none;padding:10px 22px;border-radius:5px;font-size:1em;font-weight:500;cursor:pointer;transition:background-color 0.2s;margin-top:18px;float:right;">Save Changes</button>
-                    </form>
-                </div>
-            </div>`;
-            document.body.insertAdjacentHTML('beforeend', modalHtml);
-            document.getElementById('accessModalOverlay').onclick = function(e) {
-                if (e.target === this) closeAccessModal();
-            };
-
-            // Fetch and set permissions
-            fetch(`/Employee/Admin/Users/GetPermissions/${userId}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        const sections = ['inventory', 'transactions', 'users', 'chat', 'content', 'logs'];
-                        sections.forEach(section => {
-                            const canAccess = data.permissions[section];
-                            const editCb = document.querySelector(`#accessModalOverlay input[name='${section}'][value='edit']`);
-                            const noneCb = document.querySelector(`#accessModalOverlay input[name='${section}'][value='none']`);
-                            if (editCb && noneCb) {
-                                editCb.checked = !!canAccess;
-                                noneCb.checked = !canAccess;
-                            }
-                        });
-                    }
-                });
-        }
-        function closeAccessModal() {
-            const modal = document.getElementById('accessModalOverlay');
-            if (modal) modal.remove();
-        }
-        function setPermissionCheckbox(section, permission, checkbox, userId) {
-            const checkboxes = document.querySelectorAll(`input[name='${section}']`);
-            checkboxes.forEach(cb => {
-                if (cb !== checkbox) cb.checked = false;
-            });
-            if (checkbox.checked) {
-                setPermission(section, permission, userId);
+        async function fetchUserPermissions(userId) {
+            try {
+                const response = await fetch(`/Employee/Admin/ManageUsers/GetPermissions/${userId}`);
+                const data = await response.json();
+                console.log('Fetched permissions from server:', data);
+                return data.success ? data.permissions : {};
+            } catch (error) {
+                console.error('Error fetching permissions:', error);
+                return {};
             }
+        }
+
+        async function showAccessModal(userId) {
+            console.log('Opening permission modal for user:', userId);
+            console.log('Available users data:', users);
+            
+            // Find the user data from the button
+            const userButton = document.querySelector(`button[data-userid="${userId}"]`);
+            if (!userButton) {
+                console.error('User button not found for userId:', userId);
+                return;
+            }
+            
+            const username = userButton.getAttribute('data-username');
+            const fullName = userButton.getAttribute('data-fullname');
+            
+            // Get current permissions for this user
+            let userData = users.find(u => u.UserID == userId || u.UserID == parseInt(userId));
+            let currentPermissions = userData ? userData.permissions : {};
+            
+            // Always fetch fresh permissions from server to ensure accuracy
+            console.log('Fetching fresh permissions from server...');
+            currentPermissions = await fetchUserPermissions(userId);
+            
+            console.log('User data found:', userData);
+            console.log('Current permissions:', currentPermissions);
+            console.log('All users data:', users);
+            console.log('Looking for userId:', userId, 'type:', typeof userId);
+            
+            // Build permission modal content
+            let permissionContent = `
+                <h4>Manage Permissions for ${fullName} (${username})</h4>
+                <form id="permissionForm">
+                    <input type="hidden" id="permissionUserId" value="${userId}">
+            `;
+            
+            // Add permission sections
+            const sections = [
+                { key: 'users', name: 'User Management' },
+                { key: 'inventory', name: 'Inventory Management' },
+                { key: 'transactions', name: 'Transaction Management' },
+                { key: 'orders', name: 'Order Management' },
+                { key: 'chat', name: 'Chat Support' },
+                { key: 'content', name: 'Content Management' }
+            ];
+            
+            sections.forEach(section => {
+                const permissionValue = currentPermissions[section.key];
+                const isChecked = (permissionValue === true || permissionValue === 1) ? 'checked' : '';
+                console.log(`Setting checkbox for ${section.key}: ${isChecked} (permission value: ${permissionValue}, type: ${typeof permissionValue})`);
+                permissionContent += `
+                    <div class="permission-section">
+                        <label>
+                            <input type="checkbox" name="${section.key}" value="1" ${isChecked}>
+                            ${section.name}
+                        </label>
+                    </div>
+                `;
+            });
+            
+            permissionContent += `
+                </form>
+                <div class="permission-actions">
+                    <button type="button" class="cancel-permissions" onclick="closePermissionModal()">Cancel</button>
+                    <button type="button" class="save-permissions" onclick="savePermissions()">Save Permissions</button>
+                </div>
+            `;
+            
+            // Show modal
+            document.getElementById('permissionModalBody').innerHTML = permissionContent;
+            document.getElementById('permissionModal').style.display = 'block';
+            
+            // Add click outside to close modal
+            document.getElementById('permissionModal').onclick = function(e) {
+                if (e.target === this) {
+                    closePermissionModal();
+                }
+            };
+        }
+        function closePermissionModal() {
+            document.getElementById('permissionModal').style.display = 'none';
+        }
+        function savePermissions() {
+            console.log('Saving permissions...');
+            const userId = document.getElementById('permissionUserId').value;
+            const form = document.getElementById('permissionForm');
+            
+            // Get all checkboxes and their states
+            const permissions = {};
+            const sections = ['users', 'inventory', 'transactions', 'orders', 'chat', 'content'];
+            
+            sections.forEach(section => {
+                const checkbox = form.querySelector(`input[name="${section}"]`);
+                permissions[section] = checkbox ? checkbox.checked : false;
+                console.log(`Section ${section}: ${permissions[section]} (checkbox exists: ${!!checkbox})`);
+            });
+            
+            console.log('User ID:', userId);
+            console.log('Permissions to save:', permissions);
+            
+            // Send permission update request
+            fetch('/Employee/Admin/ManageUsers/UpdatePermissions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    userId: parseInt(userId),
+                    permissions: permissions
+                })
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Response data:', data);
+                if (data.success) {
+                    closePermissionModal();
+                    alert('Permissions updated successfully!');
+                    // Reload the page to show updated permissions
+                    location.reload();
+                } else {
+                    alert('Failed to update permissions: ' + (data.message || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to update permissions: ' + error.message);
+            });
         }
 
         // Toggle user status function
@@ -613,5 +882,18 @@
             }
         });
     </script>
+
+    <!-- Permission Management Modal -->
+    <div id="permissionModal" class="permission-modal">
+        <div class="permission-modal-content">
+            <div class="permission-modal-header">
+                <h3>Manage User Permissions</h3>
+                <span class="close" onclick="closePermissionModal()">&times;</span>
+            </div>
+            <div id="permissionModalBody">
+                <!-- Permission content will be loaded here -->
+            </div>
+        </div>
+    </div>
 </body>
 </html> 

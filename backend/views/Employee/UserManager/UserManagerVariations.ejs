@@ -3,47 +3,258 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UserManager Variations - Design Excellence</title>
-    <div data-user-role="<%= user.roleName || user.RoleName %>" data-user-id="<%= user.UserID %>" style="display: none;"></div>
+    <title>Product Variations - User Manager</title>
     <link rel="stylesheet" href="/css/Employee/Admin/AdminIndexStyles.css">
     <style>
-        /* UserManager-specific styles */
-        .usermanager-header {
-            background: linear-gradient(135deg, #28a745, #20c997);
-            color: white;
+        .variations-container {
             padding: 20px;
-            border-radius: 8px;
+        }
+        
+        .variations-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e9ecef;
+        }
+        
+        .variations-header h2 {
+            margin: 0;
+            color: #333;
+        }
+        
+        .add-variation-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        
+        .add-variation-btn:hover {
+            background: #218838;
+        }
+        
+        .product-selector {
             margin-bottom: 20px;
         }
-
-        .usermanager-header h1 {
-            margin: 0;
-            font-size: 2em;
+        
+        .product-selector select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
         }
-
-        .usermanager-header p {
-            margin: 5px 0 0 0;
-            opacity: 0.9;
-        }
-
-        .variation-card {
+        
+        .variations-table {
+            width: 100%;
+            border-collapse: collapse;
             background: white;
             border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 15px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            border-left: 4px solid #28a745;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
-
-        .variation-name {
-            font-weight: bold;
+        
+        .variations-table th,
+        .variations-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .variations-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .variations-table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .variation-image {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+            border-radius: 5px;
+        }
+        
+        .variation-actions {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .btn-edit, .btn-delete {
+            padding: 5px 10px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+        
+        .btn-edit {
+            background: #007bff;
+            color: white;
+        }
+        
+        .btn-edit:hover {
+            background: #0056b3;
+        }
+        
+        .btn-delete {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .btn-delete:hover {
+            background: #c82333;
+        }
+        
+        .no-variations {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+            font-style: italic;
+        }
+        
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .modal-header h3 {
+            margin: 0;
             color: #333;
-            margin-bottom: 5px;
         }
-
-        .variation-details {
-            color: #666;
-            font-size: 0.9em;
+        
+        .close {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .close:hover {
+            color: #000;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+        }
+        
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #e9ecef;
+        }
+        
+        .btn-save, .btn-cancel {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .btn-save {
+            background: #28a745;
+            color: white;
+        }
+        
+        .btn-save:hover {
+            background: #218838;
+        }
+        
+        .btn-cancel {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-cancel:hover {
+            background: #5a6268;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #6c757d;
+        }
+        
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            border: 1px solid #c3e6cb;
         }
     </style>
 </head>
@@ -51,110 +262,369 @@
     <div class="dashboard-container">
         <div class="sidebar">
             <div class="sidebar-header">
-                <h3>User Manager Panel</h3>
+                <h3>UserManager Panel</h3>
             </div>
             <ul class="sidebar-menu">
-                <li><a href="/Employee/UserManager">Dashboard</a></li>
                 <li class="sidebar-section-label" style="font-weight:normal;">Inventory</li>
                 <ul class="sidebar-submenu" style="display:block;">
-                    <li><a href="/Employee/UserManager/UserManagerProducts" data-permission="products">Products</a></li>
-                    <li><a href="/Employee/UserManager/UserManagerVariations" data-permission="variations">Variations</a></li>
-                    <li><a href="/Employee/UserManager/UserManagerMaterials" data-permission="materials">Raw Materials</a></li>
-                    <li><a href="/Employee/Admin/Alerts" data-permission="alerts">Alerts</a></li>
-                    <li><a href="/Employee/Admin/Archived" data-permission="archived">Archived items</a></li>
+                    <li><a href="/Employee/UserManager/Products">Products</a></li>
+                    <li><a href="/Employee/UserManager/Variations" class="active">Variations</a></li>
+                    <li><a href="/Employee/UserManager/UserManagerRawMaterials">Raw Materials</a></li>
+                    <li><a href="/Employee/UserManager/Alerts">Alerts</a></li>
+                    <li><a href="/Employee/UserManager/Archived">Archived items</a></li>
                 </ul>
                 <li class="sidebar-section-label" style="font-weight:normal;">Transactions</li>
                 <ul class="sidebar-submenu" style="display:block;">
-                    <li><a href="/Employee/Admin/DeliveryRates" data-permission="rates">Delivery Rates</a></li>
-                    <li><a href="/Employee/Admin/WalkIn" data-permission="transactions">Walk In</a></li>
-                    <li><a href="/Employee/Admin/OrdersPending" data-permission="orders">Orders Pending</a></li>
-                    <li><a href="/Employee/Admin/OrdersProcessing" data-permission="orders">Orders Processing</a></li>
-                    <li><a href="/Employee/Admin/OrdersShipping" data-permission="orders">Orders Shipping</a></li>
-                    <li><a href="/Employee/Admin/OrdersDelivery" data-permission="orders">Orders Delivery</a></li>
-                    <li><a href="/Employee/Admin/OrdersReceive" data-permission="orders">Orders Receive</a></li>
-                    <li><a href="/Employee/Admin/CancelledOrders" data-permission="orders">Cancelled Orders</a></li>
-                    <li><a href="/Employee/Admin/CompletedOrders" data-permission="orders">Completed Orders</a></li>
+                    <li><a href="/Employee/UserManager/UserManagerDeliveryRates">Delivery Rates</a></li>
+                    <li><a href="/Employee/UserManager/WalkIn">Walk In</a></li>
+                    <li><a href="/Employee/UserManager/OrdersPending">Orders Pending</a></li>
+                    <li><a href="/Employee/UserManager/OrdersProcessing">Orders Processing</a></li>
+                    <li><a href="/Employee/UserManager/OrdersShipping">Orders Shipping</a></li>
+                    <li><a href="/Employee/UserManager/OrdersDelivery">Orders Delivery</a></li>
+                    <li><a href="/Employee/UserManager/OrdersReceive">Orders Receive</a></li>
+                    <li><a href="/Employee/UserManager/CancelledOrders">Cancelled Orders</a></li>
+                    <li><a href="/Employee/UserManager/CompletedOrders">Completed Orders</a></li>
                 </ul>
-                <li><a href="/Employee/Admin/ManageUsers" data-permission="users">Manage Users</a></li>
-                <li><a href="/Employee/Admin/ChatSupport" data-permission="chat">Chat Support</a></li>
-                <li><a href="/Employee/Admin/CMS" data-permission="content">Content Management</a></li>
-                <li><a href="/Employee/Admin/Logs" data-permission="logs">Activity Logs</a></li>
+                <li><a href="/Employee/UserManager/ManageUsers">Manage Users</a></li>
+                <li><a href="/Employee/UserManager/ChatSupport">Chat Support</a></li>
+                <li><a href="/Employee/UserManager/CMS">Content Management</a></li>
+                <li><a href="/Employee/UserManager/Logs">Activity Logs</a></li>
             </ul>
-            <div class="logout-section">
-                <a href="/logout" class="logout-button" onclick="handleLogout(event)">Logout</a>
-            </div>
         </div>
         <div class="main-content">
-            <div class="usermanager-header">
-                <h1>🎨 Product Variations</h1>
-                <p>Manage product variations for user management</p>
-            </div>
-            
-            <div class="content-area">
-                <div class="variations-section">
-                    <h2>Product Variations</h2>
-                    <p>View and manage product variations for user management</p>
-                    
-                    <!-- Variations will be loaded here -->
-                    <div id="variations-container">
-                        <p>Loading variations...</p>
+            <div class="variations-container">
+                <div class="variations-header">
+                    <h2>Product Variations Management</h2>
+                    <button class="add-variation-btn" onclick="openAddModal()">Add New Variation</button>
+                </div>
+                
+                <div class="product-selector">
+                    <label for="productSelect">Select Product:</label>
+                    <select id="productSelect" onchange="loadVariations()">
+                        <option value="">Choose a product...</option>
+                    </select>
+                </div>
+                
+                <div id="variationsContent">
+                    <div class="no-variations">
+                        Please select a product to view its variations.
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Add/Edit Variation Modal -->
+    <div id="variationModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Add New Variation</h3>
+                <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+            <div id="modalMessages"></div>
+            <form id="variationForm" enctype="multipart/form-data">
+                <input type="hidden" id="variationId" name="variationID">
+                <input type="hidden" id="productId" name="productID">
+                
+                <div class="form-group">
+                    <label for="variationName">Variation Name *</label>
+                    <input type="text" id="variationName" name="variationName" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="color">Color</label>
+                    <input type="text" id="color" name="color" placeholder="e.g., Red, Blue, Black">
+                </div>
+                
+                <div class="form-group">
+                    <label for="quantity">Quantity *</label>
+                    <input type="number" id="quantity" name="quantity" min="1" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="variationImage">Variation Image</label>
+                    <input type="file" id="variationImage" name="variationImage" accept="image/*">
+                    <div id="currentImage" style="margin-top: 10px;"></div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="isActive">Status</label>
+                    <select id="isActive" name="isActive">
+                        <option value="1">Active</option>
+                        <option value="0">Inactive</option>
+                    </select>
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn-save">Save Variation</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
+        let currentProductId = null;
+        let currentVariationId = null;
+
+        // Load products on page load
         document.addEventListener('DOMContentLoaded', function() {
-            window.userPermissions.updateUI();
-            }
-            
-            // Load variations for usermanager view
-            loadVariationsForUserManager();
+            loadProducts();
         });
-        
-        function loadVariationsForUserManager() {
-            fetch('/api/variations/usermanager')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        displayVariations(data.variations);
-                    } else {
-                        document.getElementById('variations-container').innerHTML = 
-                            '<p>Error loading variations: ' + data.message + '</p>';
-                    }
-                })
-                .catch(error => {
-                    console.error('Error loading variations:', error);
-                    document.getElementById('variations-container').innerHTML = 
-                        '<p>Error loading variations. Please try again.</p>';
-                });
+
+        // Load all products for the dropdown
+        async function loadProducts() {
+            try {
+                const response = await fetch('/api/products');
+                const data = await response.json();
+                
+                if (data.success && data.products) {
+                    const select = document.getElementById('productSelect');
+                    select.innerHTML = '<option value="">Choose a product...</option>';
+                    
+                    data.products.forEach(product => {
+                        const option = document.createElement('option');
+                        option.value = product.id;
+                        option.textContent = `${product.name} (ID: ${product.id})`;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading products:', error);
+                showMessage('Error loading products', 'error');
+            }
         }
-        
-        function displayVariations(variations) {
-            const container = document.getElementById('variations-container');
+
+        // Load variations for selected product
+        async function loadVariations() {
+            const productId = document.getElementById('productSelect').value;
+            currentProductId = productId;
             
-            if (variations.length === 0) {
-                container.innerHTML = '<p>No variations available.</p>';
+            if (!productId) {
+                document.getElementById('variationsContent').innerHTML = 
+                    '<div class="no-variations">Please select a product to view its variations.</div>';
                 return;
             }
+
+            try {
+                document.getElementById('variationsContent').innerHTML = 
+                    '<div class="loading">Loading variations...</div>';
+
+                const response = await fetch(`/Employee/UserManager/Variations/Get/${productId}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayVariations(data.variations);
+                } else {
+                    throw new Error(data.message || 'Failed to load variations');
+                }
+            } catch (error) {
+                console.error('Error loading variations:', error);
+                document.getElementById('variationsContent').innerHTML = 
+                    '<div class="error-message">Error loading variations: ' + error.message + '</div>';
+            }
+        }
+
+        // Display variations in table
+        function displayVariations(variations) {
+            const content = document.getElementById('variationsContent');
             
-            let html = '';
-            
+            if (!variations || variations.length === 0) {
+                content.innerHTML = '<div class="no-variations">No variations found for this product.</div>';
+                return;
+            }
+
+            let tableHTML = `
+                <table class="variations-table">
+                    <thead>
+                        <tr>
+                            <th>Image</th>
+                            <th>Name</th>
+                            <th>Color</th>
+                            <th>Quantity</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
             variations.forEach(variation => {
-                html += `
-                    <div class="variation-card">
-                        <div class="variation-name">${variation.VariationName}</div>
-                        <div class="variation-details">
-                            Product: ${variation.ProductName} | 
-                            Type: ${variation.VariationType} | 
-                            Status: ${variation.IsActive ? 'Active' : 'Inactive'}
-                        </div>
-                    </div>
+                const imageUrl = variation.VariationImageURL ? 
+                    `<img src="${variation.VariationImageURL}" class="variation-image" alt="${variation.VariationName}">` : 
+                    '<div class="variation-image" style="background: #f8f9fa; display: flex; align-items: center; justify-content: center; color: #6c757d;">No Image</div>';
+                
+                const status = variation.IsActive ? 
+                    '<span style="color: #28a745;">Active</span>' : 
+                    '<span style="color: #dc3545;">Inactive</span>';
+                
+                const createdDate = new Date(variation.CreatedAt).toLocaleDateString();
+
+                tableHTML += `
+                    <tr>
+                        <td>${imageUrl}</td>
+                        <td>${variation.VariationName}</td>
+                        <td>${variation.Color || 'N/A'}</td>
+                        <td>${variation.Quantity}</td>
+                        <td>${status}</td>
+                        <td>${createdDate}</td>
+                        <td>
+                            <div class="variation-actions">
+                                <button class="btn-edit" onclick="editVariation(${variation.VariationID})">Edit</button>
+                                <button class="btn-delete" onclick="deleteVariation(${variation.VariationID}, '${variation.VariationName}')">Delete</button>
+                            </div>
+                        </td>
+                    </tr>
                 `;
             });
+
+            tableHTML += '</tbody></table>';
+            content.innerHTML = tableHTML;
+        }
+
+        // Open add variation modal
+        function openAddModal() {
+            if (!currentProductId) {
+                showMessage('Please select a product first', 'error');
+                return;
+            }
+
+            document.getElementById('modalTitle').textContent = 'Add New Variation';
+            document.getElementById('variationForm').reset();
+            document.getElementById('variationId').value = '';
+            document.getElementById('productId').value = currentProductId;
+            document.getElementById('currentImage').innerHTML = '';
+            document.getElementById('modalMessages').innerHTML = '';
+            document.getElementById('variationModal').style.display = 'block';
+        }
+
+        // Edit variation
+        async function editVariation(variationId) {
+            try {
+                // Get variation data from the current table
+                const response = await fetch(`/Employee/UserManager/Variations/Get/${currentProductId}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const variation = data.variations.find(v => v.VariationID === variationId);
+                    if (variation) {
+                        document.getElementById('modalTitle').textContent = 'Edit Variation';
+                        document.getElementById('variationId').value = variation.VariationID;
+                        document.getElementById('productId').value = variation.ProductID;
+                        document.getElementById('variationName').value = variation.VariationName;
+                        document.getElementById('color').value = variation.Color || '';
+                        document.getElementById('quantity').value = variation.Quantity;
+                        document.getElementById('isActive').value = variation.IsActive ? '1' : '0';
+                        
+                        // Show current image if exists
+                        const currentImageDiv = document.getElementById('currentImage');
+                        if (variation.VariationImageURL) {
+                            currentImageDiv.innerHTML = `
+                                <p>Current Image:</p>
+                                <img src="${variation.VariationImageURL}" style="max-width: 100px; max-height: 100px; border-radius: 4px;">
+                            `;
+                        } else {
+                            currentImageDiv.innerHTML = '<p>No current image</p>';
+                        }
+                        
+                        document.getElementById('modalMessages').innerHTML = '';
+                        document.getElementById('variationModal').style.display = 'block';
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading variation for edit:', error);
+                showMessage('Error loading variation data', 'error');
+            }
+        }
+
+        // Delete variation
+        async function deleteVariation(variationId, variationName) {
+            if (!confirm(`Are you sure you want to delete the variation "${variationName}"?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/Employee/UserManager/Variations/Delete/${variationId}`, {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMessage('Variation deleted successfully', 'success');
+                    loadVariations(); // Reload the variations
+                } else {
+                    throw new Error(data.message || 'Failed to delete variation');
+                }
+            } catch (error) {
+                console.error('Error deleting variation:', error);
+                showMessage('Error deleting variation: ' + error.message, 'error');
+            }
+        }
+
+        // Close modal
+        function closeModal() {
+            document.getElementById('variationModal').style.display = 'none';
+        }
+
+        // Handle form submission
+        document.getElementById('variationForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
             
-            container.innerHTML = html;
+            const formData = new FormData(this);
+            const isEdit = document.getElementById('variationId').value !== '';
+            const url = isEdit ? '/Employee/UserManager/Variations/Edit' : '/Employee/UserManager/Variations/Add';
+            
+            // Debug: Log form data
+            console.log('AdminVariations - Form data being sent:');
+            for (let [key, value] of formData.entries()) {
+                console.log(key, value);
+            }
+            console.log('isEdit:', isEdit, 'url:', url);
+            
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                console.log('AdminVariations - Backend response:', data);
+                
+                if (data.success) {
+                    showMessage(data.message || (isEdit ? 'Variation updated successfully' : 'Variation added successfully'), 'success');
+                    closeModal();
+                    loadVariations(); // Reload the variations
+                } else {
+                    throw new Error(data.message || 'Failed to save variation');
+                }
+            } catch (error) {
+                console.error('Error saving variation:', error);
+                showMessage('Error saving variation: ' + error.message, 'error');
+            }
+        });
+
+        // Show message in modal
+        function showMessage(message, type) {
+            const messagesDiv = document.getElementById('modalMessages');
+            const messageClass = type === 'error' ? 'error-message' : 'success-message';
+            messagesDiv.innerHTML = `<div class="${messageClass}">${message}</div>`;
+            
+            // Auto-hide success messages
+            if (type === 'success') {
+                setTimeout(() => {
+                    messagesDiv.innerHTML = '';
+                }, 3000);
+            }
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('variationModal');
+            if (event.target === modal) {
+                closeModal();
+            }
         }
     </script>
 </body>
