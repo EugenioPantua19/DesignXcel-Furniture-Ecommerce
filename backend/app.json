@@ -1,0 +1,61 @@
+{
+  "name": "DesignXcel Backend",
+  "description": "DesignXcel Backend API Server",
+  "repository": "https://github.com/EugenioPantua19/DesignXcel-Furniture-Ecommerce",
+  "logo": "https://raw.githubusercontent.com/EugenioPantua19/DesignXcel-Furniture-Ecommerce/main/backend/public/img/logo.png",
+  "keywords": ["node", "express", "api", "furniture", "ecommerce"],
+  "image": "heroku/nodejs",
+  "buildpacks": [
+    {
+      "url": "heroku/nodejs"
+    }
+  ],
+  "env": {
+    "NODE_ENV": {
+      "description": "Node environment",
+      "value": "production"
+    },
+    "DB_SERVER": {
+      "description": "Azure SQL Server",
+      "required": true
+    },
+    "DB_USERNAME": {
+      "description": "Azure SQL Username",
+      "required": true
+    },
+    "DB_PASSWORD": {
+      "description": "Azure SQL Password",
+      "required": true
+    },
+    "DB_DATABASE": {
+      "description": "Azure SQL Database Name",
+      "required": true
+    },
+    "SESSION_SECRET": {
+      "description": "Session Secret Key",
+      "required": true
+    },
+    "STRIPE_SECRET_KEY": {
+      "description": "Stripe Secret Key",
+      "required": true
+    },
+    "STRIPE_WEBHOOK_SECRET": {
+      "description": "Stripe Webhook Secret",
+      "required": true
+    },
+    "OTP_EMAIL_USER": {
+      "description": "Email for OTP",
+      "required": true
+    },
+    "OTP_EMAIL_PASS": {
+      "description": "Email Password for OTP",
+      "required": true
+    }
+  },
+  "formation": {
+    "web": {
+      "quantity": 1,
+      "size": "basic"
+    }
+  }
+}
