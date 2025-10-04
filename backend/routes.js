@@ -5099,6 +5099,11 @@ module.exports = function(sql, pool) {
         res.render('Employee/Admin/AdminCMS', { user: req.session.user });
     });
 
+    // Admin: Review Management page
+    router.get('/Employee/Admin/Reviews', isAuthenticated, hasRole('Admin'), (req, res) => {
+        res.render('Employee/Admin/AdminReviews', { user: req.session.user });
+    });
+
     // Admin: Delivery Rates page
     router.get('/Employee/Admin/DeliveryRates', isAuthenticated, hasRole('Admin'), (req, res) => {
         res.render('Employee/Admin/AdminRates', { user: req.session.user });

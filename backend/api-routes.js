@@ -39,6 +39,36 @@ module.exports = function(sql, pool) {
         }
     });
 
+    // Configure multer for theme uploads
+    const themeUploadsDir = path.join(__dirname, 'public', 'uploads', 'theme');
+    if (!fs.existsSync(themeUploadsDir)) {
+        fs.mkdirSync(themeUploadsDir, { recursive: true });
+    }
+
+    const themeStorage = multer.diskStorage({
+        destination: function (req, file, cb) {
+            cb(null, themeUploadsDir);
+        },
+        filename: function (req, file, cb) {
+            const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+            cb(null, 'theme-bg-' + uniqueSuffix + path.extname(file.originalname));
+        }
+    });
+
+    const upload = multer({
+        storage: themeStorage,
+        limits: {
+            fileSize: 10 * 1024 * 1024, // 10MB limit for background images
+        },
+        fileFilter: function (req, file, cb) {
+            if (file.mimetype.startsWith('image/')) {
+                cb(null, true);
+            } else {
+                cb(new Error('Only image files are allowed!'), false);
+            }
+        }
+    });
+
     // --- Order Management API Endpoints ---
     // Cash on Delivery Order Creation
     router.post('/api/orders/cash-on-delivery', async (req, res) => {
@@ -511,24 +541,66 @@ module.exports = function(sql, pool) {
     // Get all reviews for admin management
     router.get('/api/admin/reviews', async (req, res) => {
         try {
-            const filter = req.query.filter || 'all';
-            let whereClause = '';
+            // First check if ProductReviews table exists
+            const tableCheck = await pool.request().query(`
+                SELECT TABLE_NAME 
+                FROM INFORMATION_SCHEMA.TABLES 
+                WHERE TABLE_NAME = 'ProductReviews'
+            `);
             
+            if (tableCheck.recordset.length === 0) {
+                return res.json({
+                    success: true,
+                    reviews: [],
+                    pagination: {
+                        currentPage: 1,
+                        totalPages: 0,
+                        totalItems: 0,
+                        itemsPerPage: 10
+                    }
+                });
+            }
+            
+            const filter = req.query.filter || 'all';
+            const rating = req.query.rating || 'all';
+            const search = req.query.search || '';
+            const showRejected = req.query.showRejected === 'true';
+            const page = parseInt(req.query.page) || 1;
+            const limit = 10;
+            const offset = (page - 1) * limit;
+            
+            let whereConditions = [];
+            
+            // Status filter
             switch (filter) {
                 case 'pending':
-                    whereClause = 'WHERE pr.IsActive = 0';
+                    whereConditions.push('pr.IsActive = 0');
                     break;
                 case 'approved':
-                    whereClause = 'WHERE pr.IsActive = 1';
+                    whereConditions.push('pr.IsActive = 1');
                     break;
-                case 'flagged':
-                    whereClause = 'WHERE pr.IsFlagged = 1';
+                case 'rejected':
+                    whereConditions.push('pr.IsActive = 0');
                     break;
                 case 'all':
                 default:
-                    whereClause = '';
+                    if (!showRejected) {
+                        whereConditions.push('pr.IsActive = 1');
+                    }
                     break;
             }
+            
+            // Rating filter
+            if (rating !== 'all') {
+                whereConditions.push(`pr.Rating = ${parseInt(rating)}`);
+            }
+            
+            // Search filter
+            if (search) {
+                whereConditions.push(`(pr.ReviewerName LIKE '%${search}%' OR p.Name LIKE '%${search}%' OR pr.Comment LIKE '%${search}%')`);
+            }
+            
+            const whereClause = whereConditions.length > 0 ? 'WHERE ' + whereConditions.join(' AND ') : '';
             
             // Check if ProductReviews table has extended columns
             const columnCheck = await pool.request().query(`
@@ -537,6 +609,18 @@ module.exports = function(sql, pool) {
                 WHERE TABLE_NAME = 'ProductReviews' 
                 AND COLUMN_NAME IN ('ReviewerName', 'ReviewerEmail', 'Title')
             `);
+            
+            // First get total count
+            const countQuery = `
+                SELECT COUNT(*) as total
+                FROM ProductReviews pr
+                LEFT JOIN Products p ON pr.ProductID = p.ProductID
+                ${whereClause}
+            `;
+            
+            const countResult = await pool.request().query(countQuery);
+            const total = countResult.recordset[0].total;
+            const totalPages = Math.ceil(total / limit);
             
             let query;
             if (columnCheck.recordset.length >= 3) {
@@ -551,14 +635,16 @@ module.exports = function(sql, pool) {
                         pr.Rating,
                         pr.Title,
                         pr.Comment,
-                        pr.ReviewDate,
+                        pr.CreatedAt as ReviewDate,
                         pr.IsActive,
-                        COALESCE(pr.IsFlagged, 0) as IsFlagged,
+                        0 as IsFlagged,
                         p.Name as ProductName
                     FROM ProductReviews pr
                     LEFT JOIN Products p ON pr.ProductID = p.ProductID
                     ${whereClause}
-                    ORDER BY pr.ReviewDate DESC
+                    ORDER BY pr.CreatedAt DESC
+                    OFFSET ${offset} ROWS
+                    FETCH NEXT ${limit} ROWS ONLY
                 `;
             } else {
                 // Basic table structure
@@ -572,14 +658,16 @@ module.exports = function(sql, pool) {
                         pr.Rating,
                         'Review' as Title,
                         pr.Comment,
-                        pr.ReviewDate,
+                        pr.CreatedAt as ReviewDate,
                         pr.IsActive,
                         0 as IsFlagged,
                         p.Name as ProductName
                     FROM ProductReviews pr
                     LEFT JOIN Products p ON pr.ProductID = p.ProductID
                     ${whereClause}
-                    ORDER BY pr.ReviewDate DESC
+                    ORDER BY pr.CreatedAt DESC
+                    OFFSET ${offset} ROWS
+                    FETCH NEXT ${limit} ROWS ONLY
                 `;
             }
             
@@ -587,7 +675,13 @@ module.exports = function(sql, pool) {
             
             res.json({
                 success: true,
-                reviews: result.recordset
+                reviews: result.recordset,
+                pagination: {
+                    currentPage: page,
+                    totalPages: totalPages,
+                    totalItems: total,
+                    itemsPerPage: limit
+                }
             });
         } catch (error) {
             console.error('Error fetching admin reviews:', error);
@@ -1906,6 +2000,359 @@ module.exports = function(sql, pool) {
                 success: false, 
                 error: 'Failed to test sold quantities', 
                 details: err.message 
+            });
+        }
+    });
+
+    // --- Contact Messages Management Endpoints ---
+    // GET /api/admin/contact-messages - Fetch all contact messages
+    router.get('/api/admin/contact-messages', async (req, res) => {
+        try {
+            const filter = req.query.filter || 'all';
+            const page = parseInt(req.query.page) || 1;
+            const limit = 10;
+            const offset = (page - 1) * limit;
+            
+            let whereClause = '';
+            // Since there's no Status column, we'll return all messages for now
+            // TODO: Add Status column to ContactSubmissions table if needed
+            whereClause = '';
+            
+            // First get total count
+            const countQuery = `
+                SELECT COUNT(*) as total
+                FROM ContactSubmissions
+                ${whereClause}
+            `;
+            
+            const countResult = await pool.request().query(countQuery);
+            const total = countResult.recordset[0].total;
+            const totalPages = Math.ceil(total / limit);
+            
+            // Get messages with pagination
+            const query = `
+                SELECT 
+                    Id as id,
+                    Name as name,
+                    Email as email,
+                    Message as message,
+                    SubmittedAt as submissionDate,
+                    'New' as status,
+                    SubmittedAt as createdAt,
+                    SubmittedAt as updatedAt
+                FROM ContactSubmissions
+                ${whereClause}
+                ORDER BY SubmittedAt DESC
+                OFFSET ${offset} ROWS
+                FETCH NEXT ${limit} ROWS ONLY
+            `;
+            
+            const result = await pool.request().query(query);
+            
+            res.json({
+                success: true,
+                messages: result.recordset,
+                pagination: {
+                    currentPage: page,
+                    totalPages: totalPages,
+                    totalItems: total,
+                    itemsPerPage: limit
+                }
+            });
+        } catch (error) {
+            console.error('Error fetching contact messages:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to fetch contact messages',
+                details: error.message
+            });
+        }
+    });
+    
+    // PUT /api/admin/contact-messages/:id/status - Update message status
+    router.put('/api/admin/contact-messages/:id/status', async (req, res) => {
+        try {
+            const messageId = parseInt(req.params.id);
+            const { status } = req.body;
+            
+            // Since there's no Status column, we'll just return success for now
+            // TODO: Add Status column to ContactSubmissions table if needed
+            
+            res.json({
+                success: true,
+                message: `Message status would be updated to ${status} (Status column not available)`
+            });
+        } catch (error) {
+            console.error('Error updating message status:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to update message status',
+                details: error.message
+            });
+        }
+    });
+    
+    // DELETE /api/admin/contact-messages/:id - Delete message
+    router.delete('/api/admin/contact-messages/:id', async (req, res) => {
+        try {
+            const messageId = parseInt(req.params.id);
+            
+            await pool.request()
+                .input('messageId', sql.Int, messageId)
+                .query(`
+                    DELETE FROM ContactSubmissions 
+                    WHERE Id = @messageId
+                `);
+            
+            res.json({
+                success: true,
+                message: 'Message deleted successfully'
+            });
+        } catch (error) {
+            console.error('Error deleting message:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to delete message',
+                details: error.message
+            });
+        }
+    });
+
+    // --- Contact Form Submission Endpoint ---
+    // POST /api/contact/submit - Handle contact form submissions
+    router.post('/api/contact/submit', async (req, res) => {
+        try {
+            const { name, email, message } = req.body;
+            
+            // Validate required fields
+            if (!name || !email || !message) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'All fields are required'
+                });
+            }
+            
+            // Validate email format
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Please enter a valid email address'
+                });
+            }
+            
+            // Check if ContactSubmissions table exists
+            const tableCheck = await pool.request().query(`
+                SELECT TABLE_NAME 
+                FROM INFORMATION_SCHEMA.TABLES 
+                WHERE TABLE_NAME = 'ContactSubmissions'
+            `);
+            
+            if (tableCheck.recordset.length === 0) {
+                // Create the table if it doesn't exist
+                await pool.request().query(`
+                    CREATE TABLE ContactSubmissions (
+                        Id INT IDENTITY(1,1) PRIMARY KEY,
+                        Name NVARCHAR(100) NOT NULL,
+                        Email NVARCHAR(255) NOT NULL,
+                        Message NVARCHAR(MAX) NOT NULL,
+                        SubmittedAt DATETIME NOT NULL DEFAULT GETDATE()
+                    );
+                `);
+            }
+            
+            // Insert the contact submission
+            const result = await pool.request()
+                .input('name', sql.NVarChar, name.trim())
+                .input('email', sql.NVarChar, email.trim())
+                .input('message', sql.NVarChar, message.trim())
+                .query(`
+                    INSERT INTO ContactSubmissions (Name, Email, Message)
+                    OUTPUT INSERTED.Id
+                    VALUES (@name, @email, @message)
+                `);
+            
+            const submissionId = result.recordset[0].Id;
+            
+            console.log(`New contact submission received: ID ${submissionId} from ${name} (${email})`);
+            
+            res.json({
+                success: true,
+                message: 'Thank you for your message! We will get back to you soon.',
+                submissionId: submissionId
+            });
+            
+        } catch (error) {
+            console.error('Error processing contact submission:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Failed to submit your message. Please try again later.'
+            });
+        }
+    });
+
+    // --- Theme Management Endpoints ---
+    // GET /api/theme/active - Get current active theme
+    router.get('/api/theme/active', async (req, res) => {
+        try {
+            // Check if ThemeSettings table exists
+            const tableCheck = await pool.request().query(`
+                SELECT TABLE_NAME 
+                FROM INFORMATION_SCHEMA.TABLES 
+                WHERE TABLE_NAME = 'ThemeSettings'
+            `);
+            
+            if (tableCheck.recordset.length === 0) {
+                // Create the table if it doesn't exist
+                await pool.request().query(`
+                    CREATE TABLE ThemeSettings (
+                        Id INT IDENTITY(1,1) PRIMARY KEY,
+                        ActiveTheme NVARCHAR(50) NOT NULL DEFAULT 'default',
+                        BackgroundImage NVARCHAR(500) NULL,
+                        CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+                        UpdatedAt DATETIME NOT NULL DEFAULT GETDATE()
+                    );
+                `);
+                
+                // Insert default theme settings
+                await pool.request().query(`
+                    INSERT INTO ThemeSettings (ActiveTheme) VALUES ('default')
+                `);
+            }
+            
+            // Get current theme settings
+            const result = await pool.request().query(`
+                SELECT TOP 1 ActiveTheme, BackgroundImage 
+                FROM ThemeSettings
+            `);
+            
+            if (result.recordset.length > 0) {
+                const settings = result.recordset[0];
+                res.json({
+                    success: true,
+                    activeTheme: settings.ActiveTheme || 'default',
+                    backgroundImage: settings.BackgroundImage || null
+                });
+            } else {
+                res.json({
+                    success: true,
+                    activeTheme: 'default',
+                    backgroundImage: null
+                });
+            }
+            
+        } catch (error) {
+            console.error('Error fetching theme settings:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Failed to fetch theme settings'
+            });
+        }
+    });
+
+    // POST /api/theme/active - Update active theme
+    router.post('/api/theme/active', async (req, res) => {
+        try {
+            const { activeTheme, backgroundImage } = req.body;
+            
+            // Validate theme value
+            const validThemes = ['default', 'dark', 'christmas'];
+            if (activeTheme && !validThemes.includes(activeTheme)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid theme value'
+                });
+            }
+            
+            // Check if ThemeSettings table exists
+            const tableCheck = await pool.request().query(`
+                SELECT TABLE_NAME 
+                FROM INFORMATION_SCHEMA.TABLES 
+                WHERE TABLE_NAME = 'ThemeSettings'
+            `);
+            
+            if (tableCheck.recordset.length === 0) {
+                // Create the table if it doesn't exist
+                await pool.request().query(`
+                    CREATE TABLE ThemeSettings (
+                        Id INT IDENTITY(1,1) PRIMARY KEY,
+                        ActiveTheme NVARCHAR(50) NOT NULL DEFAULT 'default',
+                        BackgroundImage NVARCHAR(500) NULL,
+                        CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+                        UpdatedAt DATETIME NOT NULL DEFAULT GETDATE()
+                    );
+                `);
+            }
+            
+            // Update or insert theme settings
+            if (activeTheme !== undefined) {
+                await pool.request()
+                    .input('activeTheme', sql.NVarChar, activeTheme)
+                    .input('backgroundImage', sql.NVarChar, backgroundImage || null)
+                    .query(`
+                        IF EXISTS (SELECT 1 FROM ThemeSettings)
+                            UPDATE ThemeSettings 
+                            SET ActiveTheme = @activeTheme, 
+                                BackgroundImage = @backgroundImage
+                        ELSE
+                            INSERT INTO ThemeSettings (ActiveTheme, BackgroundImage) 
+                            VALUES (@activeTheme, @backgroundImage)
+                    `);
+            }
+            
+            console.log(`Theme settings updated: ${activeTheme || 'unchanged'}, background: ${backgroundImage ? 'updated' : 'unchanged'}`);
+            
+            res.json({
+                success: true,
+                message: 'Theme settings updated successfully'
+            });
+            
+        } catch (error) {
+            console.error('Error updating theme settings:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Failed to update theme settings'
+            });
+        }
+    });
+
+    // POST /api/theme/background-image - Upload background image
+    router.post('/api/theme/background-image', upload.single('backgroundImage'), async (req, res) => {
+        try {
+            if (!req.file) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'No background image file provided'
+                });
+            }
+            
+            const backgroundImagePath = `/uploads/theme/${req.file.filename}`;
+            
+            // Update theme settings with new background image
+            await pool.request()
+                .input('backgroundImage', sql.NVarChar, backgroundImagePath)
+                .query(`
+                    IF EXISTS (SELECT 1 FROM ThemeSettings)
+                        UPDATE ThemeSettings 
+                        SET BackgroundImage = @backgroundImage
+                    ELSE
+                        INSERT INTO ThemeSettings (ActiveTheme, BackgroundImage) 
+                        VALUES ('default', @backgroundImage)
+                `);
+            
+            console.log(`Background image uploaded: ${backgroundImagePath}`);
+            
+            res.json({
+                success: true,
+                message: 'Background image uploaded successfully',
+                backgroundImage: backgroundImagePath
+            });
+            
+        } catch (error) {
+            console.error('Error uploading background image:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Failed to upload background image'
             });
         }
     });

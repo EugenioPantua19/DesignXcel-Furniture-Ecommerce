@@ -1707,7 +1707,12 @@
                     function updateStats() {
                         const stats = messages.reduce((acc, msg) => {
                             acc.total++;
-                            acc[msg.Status.toLowerCase()]++;
+                            const status = (msg.status || 'new').toLowerCase();
+                            if (acc.hasOwnProperty(status)) {
+                                acc[status]++;
+                            } else {
+                                acc.new++; // Default to 'new' if status is unknown
+                            }
                             return acc;
                         }, { total: 0, new: 0, read: 0, replied: 0, closed: 0 });
                         
@@ -1731,30 +1736,30 @@
                         }
                         
                         messagesList.innerHTML = messages.map(message => `
-                            <div style="border-bottom: 1px solid #e9ecef; padding: 1.5rem; margin-bottom: 1rem; background: #f8f9fa; border-radius: 6px;" data-id="${message.SubmissionID}">
+                            <div style="border-bottom: 1px solid #e9ecef; padding: 1.5rem; margin-bottom: 1rem; background: #f8f9fa; border-radius: 6px;" data-id="${message.id}">
                                 <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
                                     <div style="flex: 1;">
-                                        <h5 style="font-weight: 600; color: #333; margin: 0 0 0.25rem 0; font-size: 1.1rem;">${message.Name}</h5>
-                                        <a href="mailto:${message.Email}" style="color: #007bff; margin: 0 0 0.25rem 0; text-decoration: none; font-size: 0.9rem;">${message.Email}</a>
-                                        <p style="color: #6c757d; font-size: 0.85rem; margin: 0;">${new Date(message.SubmissionDate).toLocaleString()}</p>
+                                        <h5 style="font-weight: 600; color: #333; margin: 0 0 0.25rem 0; font-size: 1.1rem;">${message.name}</h5>
+                                        <a href="mailto:${message.email}" style="color: #007bff; margin: 0 0 0.25rem 0; text-decoration: none; font-size: 0.9rem;">${message.email}</a>
+                                        <p style="color: #6c757d; font-size: 0.85rem; margin: 0;">${new Date(message.submissionDate).toLocaleString()}</p>
                                     </div>
-                                    <span style="padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; ${getStatusStyle(message.Status)}">${message.Status}</span>
+                                    <span style="padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; ${getStatusStyle(message.status)}">${message.status}</span>
                                 </div>
                                 <div style="background: white; padding: 1rem; border-radius: 6px; border: 1px solid #dee2e6; margin-bottom: 1rem;">
-                                    <p style="margin: 0; color: #495057; line-height: 1.5;">${message.Message}</p>
+                                    <p style="margin: 0; color: #495057; line-height: 1.5;">${message.message}</p>
                                 </div>
                                 <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                                    <button onclick="replyToMessage('${message.Email}')" style="background: #007bff; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: 500;">📧 Reply</button>
-                                    ${message.Status !== 'Read' ? `
-                                        <button onclick="updateMessageStatus(${message.SubmissionID}, 'Read')" style="background: #28a745; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: 500;">✓ Mark as Read</button>
+                                    <button onclick="replyToMessage('${message.email}')" style="background: #007bff; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: 500;">📧 Reply</button>
+                                    ${message.status !== 'read' ? `
+                                        <button onclick="updateMessageStatus(${message.id}, 'read')" style="background: #28a745; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: 500;">✓ Mark as Read</button>
                                     ` : ''}
-                                    ${message.Status !== 'Replied' ? `
-                                        <button onclick="updateMessageStatus(${message.SubmissionID}, 'Replied')" style="background: #ffc107; color: #212529; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: 500;">✓ Mark as Replied</button>
+                                    ${message.status !== 'replied' ? `
+                                        <button onclick="updateMessageStatus(${message.id}, 'replied')" style="background: #ffc107; color: #212529; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: 500;">✓ Mark as Replied</button>
                                     ` : ''}
-                                    ${message.Status !== 'Closed' ? `
-                                        <button onclick="updateMessageStatus(${message.SubmissionID}, 'Closed')" style="background: #6c757d; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: 500;">🔒 Close</button>
+                                    ${message.status !== 'closed' ? `
+                                        <button onclick="updateMessageStatus(${message.id}, 'closed')" style="background: #6c757d; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: 500;">🔒 Close</button>
                                     ` : ''}
-                                    <button onclick="deleteMessage(${message.SubmissionID})" style="background: #dc3545; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: 500;">🗑️ Delete</button>
+                                    <button onclick="deleteMessage(${message.id})" style="background: #dc3545; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: 500;">🗑️ Delete</button>
                                 </div>
                             </div>
                         `).join('');
@@ -1784,9 +1789,9 @@
                             
                             if (data.success) {
                                 // Update the local messages array
-                                const messageIndex = messages.findIndex(msg => msg.SubmissionID === id);
+                                const messageIndex = messages.findIndex(msg => msg.id === id);
                                 if (messageIndex !== -1) {
-                                    messages[messageIndex].Status = status;
+                                    messages[messageIndex].status = status;
                                     renderMessages();
                                     updateStats();
                                 }
