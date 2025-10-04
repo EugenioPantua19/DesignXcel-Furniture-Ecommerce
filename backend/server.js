@@ -284,53 +284,13 @@ const allowedOrigins = [
     process.env.FRONTEND_URL || 'https://designxcel-frontend.railway.app'
 ];
 
-// CORS configuration - temporarily permissive for production debugging
+// CORS configuration - permissive for all environments
 console.log('CORS: Setting up permissive CORS for all environments');
 app.use(cors({
-    origin: function (origin, callback) {
-        console.log('CORS Request from origin:', origin);
-        console.log('NODE_ENV:', process.env.NODE_ENV);
-        console.log('FRONTEND_URL:', process.env.FRONTEND_URL);
-        
-        // TEMPORARY: Allow all origins for debugging
-        console.log('CORS: TEMPORARILY ALLOWING ALL ORIGINS FOR DEBUGGING');
-        return callback(null, true);
-        
-        // Allow requests with no origin (like mobile apps or curl requests)
-        if (!origin) {
-            console.log('CORS: Allowing request with no origin');
-            return callback(null, true);
-        }
-        
-        // In development or if no specific frontend URL is set, allow all origins
-        if (process.env.NODE_ENV === 'development' || !process.env.FRONTEND_URL) {
-            console.log('CORS: Allowing origin (permissive mode):', origin);
-            return callback(null, true);
-        }
-        
-        // For production, also allow common deployment patterns
-        if (origin && (
-            origin.includes('railway.app') ||
-            origin.includes('vercel.app') ||
-            origin.includes('netlify.app') ||
-            origin.includes('localhost') ||
-            origin.includes('127.0.0.1')
-        )) {
-            console.log('CORS: Allowing origin (common deployment):', origin);
-            return callback(null, true);
-        }
-        
-        // In production, check against allowed origins
-        if (allowedOrigins.indexOf(origin) !== -1) {
-            console.log('CORS: Allowing origin:', origin);
-            callback(null, true);
-        } else {
-            console.log('CORS: Rejecting origin:', origin);
-            console.log('CORS: Allowed origins:', allowedOrigins);
-            callback(new Error('Not allowed by CORS'));
-        }
-    },
-    credentials: true
+    origin: true, // Allow all origins
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

@@ -19,8 +19,15 @@ module.exports = function(sql, pool) {
      * Supports both session-based and token-based authentication
      */
     function isAuthenticated(req, res, next) {
+        console.log('=== AUTHENTICATION CHECK ===');
+        console.log('Session ID:', req.sessionID);
+        console.log('Session exists:', !!req.session);
+        console.log('User in session:', req.session?.user);
+        console.log('============================');
+        
         // Check session-based authentication first
         if (req.session && req.session.user) {
+            console.log('Authentication: PASSED');
             return next();
         }
 
@@ -115,9 +122,12 @@ module.exports = function(sql, pool) {
      */
     function hasRole(role) {
         return function(req, res, next) {
-            console.log('hasRole middleware called for route:', req.path);
+            console.log('=== HAS ROLE CHECK ===');
+            console.log('Route:', req.path);
+            console.log('Required role:', role);
             console.log('Session exists:', !!req.session);
             console.log('User exists:', !!req.session?.user);
+            console.log('User object:', req.session?.user);
             
             if (!req.session || !req.session.user) {
                 console.log('No session or user - redirecting to login');
@@ -684,6 +694,12 @@ module.exports = function(sql, pool) {
 
     // Admin route
     router.get('/Employee/AdminIndex', isAuthenticated, hasRole('Admin'), (req, res) => {
+        console.log('=== ADMIN INDEX ROUTE ACCESSED ===');
+        console.log('Session ID:', req.sessionID);
+        console.log('Session exists:', !!req.session);
+        console.log('User in session:', req.session?.user);
+        console.log('User role:', req.session?.user?.role);
+        console.log('================================');
         res.render('Employee/Admin/AdminIndex', { user: req.session.user });
     });
 
@@ -10713,6 +10729,7 @@ router.get('/api/hero-banner', async (req, res) => {
             // Redirect based on role
             switch (user.RoleName) {
                 case 'Admin':
+                    console.log('Redirecting to /Employee/AdminIndex');
                     res.redirect('/Employee/AdminIndex');
                     break;
                 case 'TransactionManager':
