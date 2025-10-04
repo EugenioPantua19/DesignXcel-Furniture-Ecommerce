@@ -10,6 +10,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Setup event listeners
     setupEventListeners();
+    
+    // Initialize real-time updates
+    initializeRealTimeUpdates();
 });
 
 function initializeTransactionManager() {
@@ -332,6 +335,389 @@ function showNotification(message, type = 'success') {
     }, 3000);
 }
 
+function initializeRealTimeUpdates() {
+    console.log('Real-time updates initialized');
+    
+    // Setup WebSocket connection for real-time updates
+    if (window.WebSocket) {
+        const ws = new WebSocket('ws://localhost:3000/transaction-updates');
+        
+        ws.onmessage = function(event) {
+            const update = JSON.parse(event.data);
+            handleRealTimeUpdate(update);
+        };
+        
+        ws.onclose = function() {
+            console.log('WebSocket connection closed');
+        };
+    }
+    
+    // Setup polling for updates every 30 seconds
+    setInterval(() => {
+        loadTransactionMetrics();
+        loadRecentOrders();
+        loadPendingTransactions();
+    }, 30000);
+}
+
+function handleRealTimeUpdate(update) {
+    switch (update.type) {
+        case 'new_order':
+            addNewOrder(update.data);
+            break;
+        case 'order_status_change':
+            updateOrderStatusInUI(update.data);
+            break;
+        case 'payment_received':
+            handlePaymentReceived(update.data);
+            break;
+        case 'delivery_update':
+            handleDeliveryUpdate(update.data);
+            break;
+        default:
+            console.log('Unknown update type:', update.type);
+    }
+}
+
+function addNewOrder(order) {
+    // Add new order to the recent orders list
+    const ordersContainer = document.getElementById('recentOrders');
+    if (ordersContainer) {
+        const orderElement = document.createElement('div');
+        orderElement.className = 'order-item new-order';
+        orderElement.innerHTML = `
+            <div class="order-info">
+                <div class="order-id">Order #${order.id}</div>
+                <div class="order-customer">${order.customerName}</div>
+                <div class="order-status status-${order.status.toLowerCase()}">${order.status}</div>
+                <div class="order-amount">$${order.amount}</div>
+            </div>
+        `;
+        
+        ordersContainer.insertBefore(orderElement, ordersContainer.firstChild);
+        
+        // Show notification
+        if (window.EmployeeUtils) {
+            window.EmployeeUtils.showNotification(`New order received: #${order.id}`, 'success');
+        }
+        
+        // Remove the "new-order" class after 5 seconds
+        setTimeout(() => {
+            orderElement.classList.remove('new-order');
+        }, 5000);
+    }
+}
+
+function updateOrderStatusInUI(orderData) {
+    // Update order status in the UI
+    const orderElement = document.querySelector(`[data-order-id="${orderData.id}"]`);
+    if (orderElement) {
+        const statusElement = orderElement.querySelector('.order-status');
+        if (statusElement) {
+            statusElement.textContent = orderData.status;
+            statusElement.className = `order-status status-${orderData.status.toLowerCase()}`;
+        }
+    }
+}
+
+function handlePaymentReceived(paymentData) {
+    // Handle payment received notification
+    if (window.EmployeeUtils) {
+        window.EmployeeUtils.showNotification(`Payment received: $${paymentData.amount}`, 'success');
+    }
+    
+    // Update transaction metrics
+    loadTransactionMetrics();
+}
+
+function handleDeliveryUpdate(deliveryData) {
+    // Handle delivery update
+    if (window.EmployeeUtils) {
+        window.EmployeeUtils.showNotification(`Delivery update: ${deliveryData.status}`, 'info');
+    }
+}
+
+// Enhanced order management functions
+function loadOrderDetails(orderId) {
+    fetch(`/api/transactions/orders/${orderId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayOrderDetails(data.order);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading order details:', error);
+        });
+}
+
+function displayOrderDetails(order) {
+    // Display order details in a modal or dedicated page
+    const modal = document.getElementById('orderDetailsModal');
+    if (modal) {
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Order #${order.id}</h3>
+                    <span class="close" onclick="closeOrderDetailsModal()">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div class="order-details">
+                        <div class="customer-info">
+                            <h4>Customer Information</h4>
+                            <p><strong>Name:</strong> ${order.customerName}</p>
+                            <p><strong>Email:</strong> ${order.customerEmail}</p>
+                            <p><strong>Phone:</strong> ${order.customerPhone}</p>
+                        </div>
+                        <div class="order-items">
+                            <h4>Order Items</h4>
+                            ${order.items.map(item => `
+                                <div class="order-item">
+                                    <div class="item-name">${item.name}</div>
+                                    <div class="item-quantity">Qty: ${item.quantity}</div>
+                                    <div class="item-price">$${item.price}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="order-summary">
+                            <h4>Order Summary</h4>
+                            <p><strong>Subtotal:</strong> $${order.subtotal}</p>
+                            <p><strong>Tax:</strong> $${order.tax}</p>
+                            <p><strong>Shipping:</strong> $${order.shipping}</p>
+                            <p><strong>Total:</strong> $${order.total}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-close" onclick="closeOrderDetailsModal()">Close</button>
+                    <button class="btn-edit" onclick="editOrder(${order.id})">Edit Order</button>
+                </div>
+            </div>
+        `;
+        modal.style.display = 'block';
+    }
+}
+
+function closeOrderDetailsModal() {
+    const modal = document.getElementById('orderDetailsModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+function editOrder(orderId) {
+    window.location.href = `/Employee/Transaction/EditOrder/${orderId}`;
+}
+
+// Enhanced delivery management
+function loadDeliveryRates() {
+    fetch('/api/transactions/delivery-rates')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayDeliveryRates(data.rates);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading delivery rates:', error);
+        });
+}
+
+function displayDeliveryRates(rates) {
+    const container = document.getElementById('deliveryRatesList');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    rates.forEach(rate => {
+        const rateElement = document.createElement('div');
+        rateElement.className = 'delivery-rate-item';
+        rateElement.innerHTML = `
+            <div class="rate-header">
+                <div class="rate-name">${rate.name}</div>
+                <div class="rate-price">$${rate.price}</div>
+            </div>
+            <div class="rate-details">
+                <div class="rate-description">${rate.description}</div>
+                <div class="rate-delivery-time">${rate.deliveryTime}</div>
+            </div>
+            <div class="rate-actions">
+                <button class="btn-edit-rate" data-rate-id="${rate.id}">Edit</button>
+                <button class="btn-delete-rate" data-rate-id="${rate.id}">Delete</button>
+            </div>
+        `;
+        container.appendChild(rateElement);
+    });
+    
+    // Add event listeners
+    setupDeliveryRateActions();
+}
+
+function setupDeliveryRateActions() {
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('btn-edit-rate')) {
+            const rateId = e.target.getAttribute('data-rate-id');
+            editDeliveryRate(rateId);
+        }
+        
+        if (e.target.classList.contains('btn-delete-rate')) {
+            const rateId = e.target.getAttribute('data-rate-id');
+            deleteDeliveryRate(rateId);
+        }
+    });
+}
+
+function editDeliveryRate(rateId) {
+    window.location.href = `/Employee/Transaction/EditDeliveryRate/${rateId}`;
+}
+
+function deleteDeliveryRate(rateId) {
+    if (window.EmployeeUtils) {
+        window.EmployeeUtils.confirm('Are you sure you want to delete this delivery rate?', 'Delete Delivery Rate')
+            .then(confirmed => {
+                if (confirmed) {
+                    fetch(`/api/transactions/delivery-rates/${rateId}`, {
+                        method: 'DELETE'
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            window.EmployeeUtils.showNotification('Delivery rate deleted successfully!');
+                            loadDeliveryRates(); // Refresh rates list
+                        } else {
+                            window.EmployeeUtils.showNotification('Failed to delete delivery rate', 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error deleting delivery rate:', error);
+                        window.EmployeeUtils.showNotification('Error deleting delivery rate', 'error');
+                    });
+                }
+            });
+    }
+}
+
+// Enhanced walk-in orders management
+function loadWalkInOrders() {
+    fetch('/api/transactions/walk-in-orders')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayWalkInOrders(data.orders);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading walk-in orders:', error);
+        });
+}
+
+function displayWalkInOrders(orders) {
+    const container = document.getElementById('walkInOrdersList');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    orders.forEach(order => {
+        const orderElement = document.createElement('div');
+        orderElement.className = 'walk-in-order-item';
+        orderElement.innerHTML = `
+            <div class="order-header">
+                <div class="order-id">Walk-in Order #${order.id}</div>
+                <div class="order-status status-${order.status}">${order.status}</div>
+            </div>
+            <div class="order-details">
+                <div class="order-customer">Customer: ${order.customerName}</div>
+                <div class="order-items">Items: ${order.itemCount}</div>
+                <div class="order-total">Total: $${order.total}</div>
+                <div class="order-date">Date: ${formatDate(order.createdAt)}</div>
+            </div>
+            <div class="order-actions">
+                <button class="btn-view" data-order-id="${order.id}">View</button>
+                <button class="btn-process" data-order-id="${order.id}">Process</button>
+                <button class="btn-complete" data-order-id="${order.id}">Complete</button>
+            </div>
+        `;
+        container.appendChild(orderElement);
+    });
+    
+    // Add event listeners
+    setupWalkInOrderActions();
+}
+
+function setupWalkInOrderActions() {
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('btn-view')) {
+            const orderId = e.target.getAttribute('data-order-id');
+            viewWalkInOrder(orderId);
+        }
+        
+        if (e.target.classList.contains('btn-process')) {
+            const orderId = e.target.getAttribute('data-order-id');
+            processWalkInOrder(orderId);
+        }
+        
+        if (e.target.classList.contains('btn-complete')) {
+            const orderId = e.target.getAttribute('data-order-id');
+            completeWalkInOrder(orderId);
+        }
+    });
+}
+
+function viewWalkInOrder(orderId) {
+    window.location.href = `/Employee/Transaction/WalkInOrder/${orderId}`;
+}
+
+function processWalkInOrder(orderId) {
+    fetch(`/api/transactions/walk-in-orders/${orderId}/process`, {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            if (window.EmployeeUtils) {
+                window.EmployeeUtils.showNotification('Walk-in order processed successfully!');
+            }
+            loadWalkInOrders(); // Refresh orders list
+        } else {
+            if (window.EmployeeUtils) {
+                window.EmployeeUtils.showNotification('Failed to process walk-in order', 'error');
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error processing walk-in order:', error);
+        if (window.EmployeeUtils) {
+            window.EmployeeUtils.showNotification('Error processing walk-in order', 'error');
+        }
+    });
+}
+
+function completeWalkInOrder(orderId) {
+    if (window.EmployeeUtils) {
+        window.EmployeeUtils.confirm('Are you sure you want to complete this walk-in order?', 'Complete Walk-in Order')
+            .then(confirmed => {
+                if (confirmed) {
+                    fetch(`/api/transactions/walk-in-orders/${orderId}/complete`, {
+                        method: 'POST'
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            window.EmployeeUtils.showNotification('Walk-in order completed successfully!');
+                            loadWalkInOrders(); // Refresh orders list
+                        } else {
+                            window.EmployeeUtils.showNotification('Failed to complete walk-in order', 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error completing walk-in order:', error);
+                        window.EmployeeUtils.showNotification('Error completing walk-in order', 'error');
+                    });
+                }
+            });
+    }
+}
+
 // Export functions for use in other modules
 window.TransactionManager = {
     loadDashboardData,
@@ -339,5 +725,14 @@ window.TransactionManager = {
     loadRecentOrders,
     loadPendingTransactions,
     updateOrderStatus,
-    initializeTransactionManager
+    initializeTransactionManager,
+    initializeRealTimeUpdates,
+    loadOrderDetails,
+    displayOrderDetails,
+    loadDeliveryRates,
+    displayDeliveryRates,
+    loadWalkInOrders,
+    displayWalkInOrders,
+    processWalkInOrder,
+    completeWalkInOrder
 };
