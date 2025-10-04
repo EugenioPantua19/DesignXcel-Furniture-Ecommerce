@@ -22,7 +22,7 @@
     "start": "react-scripts start",
     "start:dev": "set REACT_APP_ENVIRONMENT=development && react-scripts start",
     "start:prod": "set REACT_APP_ENVIRONMENT=production && react-scripts start",
-    "build": "react-scripts build",
+    "build": "npm install && react-scripts build",
     "build:dev": "set REACT_APP_ENVIRONMENT=development && react-scripts build",
     "build:prod": "set REACT_APP_ENVIRONMENT=production && react-scripts build",
     "test": "react-scripts test",
