@@ -261,8 +261,26 @@ app.post('/api/stripe/webhook', bodyParser.raw({ type: 'application/json' }), as
 });
 
 // --- All other middleware/routes ---
+// CORS configuration for Railway deployment
+const allowedOrigins = [
+    'http://localhost:3000', 
+    'http://localhost:3001', 
+    'http://localhost:3002', 
+    'http://localhost:5000',
+    process.env.FRONTEND_URL || 'https://designxcel-frontend.railway.app'
+];
+
 app.use(cors({
-    origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://localhost:5000'],
+    origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+        
+        if (allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true
 }));
 app.use(express.json());
@@ -272,7 +290,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// Session configuration
+// Session configuration for Railway deployment
 app.use(session({
     secret: process.env.SESSION_SECRET || 'your_session_secret_key_here',
     resave: false,
@@ -281,7 +299,7 @@ app.use(session({
     cookie: {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
-        sameSite: 'lax', // Can be 'strict', 'lax', or 'none'
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // 'none' for cross-origin in production
         maxAge: 24 * 60 * 60 * 1000 // 24 hours session timeout
     }
 }));
@@ -294,16 +312,24 @@ app.use((req, res, next) => {
     next();
 });
 
-// Database configuration
+// Database configuration for Azure SQL
 const dbConfig = {
     server: process.env.DB_SERVER,
     user: process.env.DB_USERNAME,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_DATABASE,
     options: {
-        encrypt: false,
-        trustServerCertificate: true
-    }
+        encrypt: true, // Required for Azure SQL
+        trustServerCertificate: false, // Required for Azure SQL
+        enableArithAbort: true
+    },
+    pool: {
+        max: 10,
+        min: 0,
+        idleTimeoutMillis: 30000
+    },
+    requestTimeout: 30000,
+    connectionTimeout: 30000
 };
 
 // Helper function to get Manila timezone date
