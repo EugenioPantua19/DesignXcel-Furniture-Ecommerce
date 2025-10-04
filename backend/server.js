@@ -1,4 +1,11 @@
 require('dotenv').config();
+
+// Debug: Check if .env file is being loaded
+console.log('Current working directory:', process.cwd());
+console.log('Environment file check:');
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('PORT:', process.env.PORT);
+console.log('DB_SERVER:', process.env.DB_SERVER);
 const express = require('express');
 const session = require('express-session');
 const flash = require('connect-flash');
@@ -267,17 +274,42 @@ const allowedOrigins = [
     'http://localhost:3001', 
     'http://localhost:3002', 
     'http://localhost:5000',
+    'https://localhost:3000',
+    'https://localhost:3001',
+    'https://localhost:3002',
+    'https://designxcel-frontend.railway.app',
+    'https://designxcel-frontend.up.railway.app',
+    'https://designxcel-frontend.vercel.app',
+    'https://designxcel-frontend.netlify.app',
     process.env.FRONTEND_URL || 'https://designxcel-frontend.railway.app'
 ];
 
+// CORS configuration - more permissive for both development and production
+console.log('CORS: Setting up permissive CORS for all environments');
 app.use(cors({
     origin: function (origin, callback) {
-        // Allow requests with no origin (like mobile apps or curl requests)
-        if (!origin) return callback(null, true);
+        console.log('CORS Request from origin:', origin);
+        console.log('NODE_ENV:', process.env.NODE_ENV);
         
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) {
+            console.log('CORS: Allowing request with no origin');
+            return callback(null, true);
+        }
+        
+        // In development or if no specific frontend URL is set, allow all origins
+        if (process.env.NODE_ENV === 'development' || !process.env.FRONTEND_URL) {
+            console.log('CORS: Allowing origin (permissive mode):', origin);
+            return callback(null, true);
+        }
+        
+        // In production, check against allowed origins
         if (allowedOrigins.indexOf(origin) !== -1) {
+            console.log('CORS: Allowing origin:', origin);
             callback(null, true);
         } else {
+            console.log('CORS: Rejecting origin:', origin);
+            console.log('CORS: Allowed origins:', allowedOrigins);
             callback(new Error('Not allowed by CORS'));
         }
     },
@@ -312,15 +344,84 @@ app.use((req, res, next) => {
     next();
 });
 
-// Database configuration for Azure SQL
+// Parse Azure SQL Server connection string
+function parseConnectionString(connectionString) {
+    const config = {};
+    const pairs = connectionString.split(';');
+    
+    for (const pair of pairs) {
+        const [key, value] = pair.split('=');
+        if (key && value) {
+            const cleanKey = key.trim().toLowerCase();
+            const cleanValue = value.trim();
+            
+            switch (cleanKey) {
+                case 'server':
+                    // Remove tcp: prefix and handle port properly
+                    let serverValue = cleanValue;
+                    if (serverValue.startsWith('tcp:')) {
+                        serverValue = serverValue.substring(4); // Remove 'tcp:' prefix
+                    }
+                    // Remove port from server name if it exists
+                    if (serverValue.includes(',')) {
+                        serverValue = serverValue.split(',')[0];
+                    }
+                    config.server = serverValue;
+                    break;
+                case 'initial catalog':
+                    config.database = cleanValue;
+                    break;
+                case 'user id':
+                    config.user = cleanValue;
+                    break;
+                case 'password':
+                    config.password = cleanValue;
+                    break;
+                case 'encrypt':
+                    config.options = config.options || {};
+                    config.options.encrypt = cleanValue.toLowerCase() === 'true';
+                    break;
+                case 'trustservercertificate':
+                    config.options = config.options || {};
+                    config.options.trustServerCertificate = cleanValue.toLowerCase() === 'true';
+                    break;
+                case 'connection timeout':
+                    config.connectionTimeout = parseInt(cleanValue) * 1000; // Convert to milliseconds
+                    break;
+            }
+        }
+    }
+    
+    return config;
+}
+
+// Database configuration for Azure SQL Server
+const connectionString = process.env.DB_CONNECTION_STRING;
+
+console.log('Environment check:');
+console.log('DB_CONNECTION_STRING exists:', !!process.env.DB_CONNECTION_STRING);
+console.log('DB_CONNECTION_STRING value:', process.env.DB_CONNECTION_STRING ? 'Set (hidden for security)' : 'Not set');
+
+if (!connectionString) {
+    console.error('DB_CONNECTION_STRING environment variable is not set!');
+    console.error('Please check your .env file and ensure DB_CONNECTION_STRING is properly configured.');
+    console.error('Available environment variables:', Object.keys(process.env).filter(key => key.includes('DB')));
+    process.exit(1);
+}
+
+const parsedConfig = parseConnectionString(connectionString);
+console.log('Parsed database config:', {
+    server: parsedConfig.server,
+    database: parsedConfig.database,
+    user: parsedConfig.user,
+    hasPassword: !!parsedConfig.password
+});
+
 const dbConfig = {
-    server: process.env.DB_SERVER,
-    user: process.env.DB_USERNAME,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_DATABASE,
+    ...parsedConfig,
     options: {
-        encrypt: true, // Required for Azure SQL
-        trustServerCertificate: false, // Required for Azure SQL
+        encrypt: true, // Required for Azure SQL Server
+        trustServerCertificate: false, // Azure SQL Server uses proper certificates
         enableArithAbort: true
     },
     pool: {
@@ -1106,6 +1207,22 @@ const apiRoutes = require('./api-routes')(sql, pool);
 app.use('/', employeeRoutes);
 app.use('/', apiRoutes);
 
+// Global error handler
+app.use((err, req, res, next) => {
+    console.error('Global Error Handler:', err);
+    console.error('Error Stack:', err.stack);
+    console.error('Request URL:', req.url);
+    console.error('Request Method:', req.method);
+    console.error('Request Headers:', req.headers);
+    
+    res.status(500).json({
+        success: false,
+        error: 'Internal Server Error',
+        message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong',
+        ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+    });
+});
+
 // Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
@@ -1116,7 +1233,10 @@ app.listen(PORT, () => {
 // Get all products
 app.get('/api/products', async (req, res) => {
     try {
+        console.log('Products API: Starting request');
         await poolConnect;
+        console.log('Products API: Database connected');
+        
         const result = await pool.request().query(`
             SELECT 
                 ProductID as id,
@@ -1135,6 +1255,8 @@ app.get('/api/products', async (req, res) => {
             ORDER BY IsFeatured DESC, DateAdded DESC
         `);
         
+        console.log('Products API: Query executed, found', result.recordset.length, 'products');
+        
         // Process images - convert single image URL to array
         const products = result.recordset.map(product => ({
             ...product,
@@ -1142,12 +1264,14 @@ app.get('/api/products', async (req, res) => {
             specifications: product.specifications ? JSON.parse(product.specifications) : {}
         }));
         
+        console.log('Products API: Returning', products.length, 'products');
         res.json({
             success: true,
             products: products
         });
     } catch (err) {
-        console.error('Error fetching products:', err);
+        console.error('Products API Error:', err);
+        console.error('Products API Error Stack:', err.stack);
         res.status(500).json({ 
             success: false, 
             error: 'Failed to fetch products', 
