@@ -4,11 +4,14 @@ FROM node:18-alpine
 # Set working directory
 WORKDIR /app
 
-# Copy package.json and package-lock.json (if exists)
-COPY package*.json ./
+# Remove any existing package-lock.json to force npm install
+RUN rm -f package-lock.json
 
-# Install dependencies using npm install (not npm ci)
-RUN npm install --production
+# Copy package.json only
+COPY package.json ./
+
+# Install dependencies using npm install (explicitly avoid npm ci)
+RUN npm install --production --no-package-lock
 
 # Copy the rest of the application
 COPY . .
