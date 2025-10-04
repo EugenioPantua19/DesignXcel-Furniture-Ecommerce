@@ -12,8 +12,7 @@
     "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install",
     "test": "cd frontend && npm test",
     "lint": "cd frontend && npm run lint",
-    "clean": "rimraf node_modules frontend/node_modules backend/node_modules frontend/build",
-    "postinstall": "npm run install:all"
+    "clean": "rimraf node_modules frontend/node_modules backend/node_modules frontend/build"
   },
   "keywords": [
     "ecommerce",
