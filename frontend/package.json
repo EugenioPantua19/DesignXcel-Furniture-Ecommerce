@@ -29,7 +29,7 @@
     "test": "react-scripts test",
     "test:coverage": "react-scripts test --coverage --watchAll=false",
     "eject": "react-scripts eject",
-    "serve": "npx serve -s build -l 3000",
+    "serve": "node start-railway.js",
     "serve:prod": "node start-railway.js",
     "analyze": "npx source-map-explorer 'build/static/js/*.js'",
     "lint": "eslint src --ext .js,.jsx,.ts,.tsx",
