@@ -15,7 +15,6 @@ const PageLoader = ({
       size="large" 
       text={text} 
       fullScreen={true}
-      color="#F0B21B"
     />
   );
 };

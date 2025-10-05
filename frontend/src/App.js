@@ -22,7 +22,11 @@ if (process.env.NODE_ENV === 'development') {
 // Global styles
 import './styles/base/globals.css';
 import './styles/themes/custom.css';
+import './styles/themes/christmas.css';
 import './shared/components/ui/components.css';
+
+// Theme management
+import ThemeManager from './shared/utils/themeManager';
 
 // Background Image Handler Component
 function BackgroundImageHandler() {
@@ -32,7 +36,7 @@ function BackgroundImageHandler() {
                 let imageData = backgroundImageData;
                 
                 if (!imageData) {
-                    const response = await fetch('/api/background-image');
+                    const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/background-image`);
                     if (response.ok) {
                         imageData = await response.json();
                     }
@@ -56,6 +60,44 @@ function BackgroundImageHandler() {
     return null;
 }
 
+// Theme Handler Component
+function ThemeHandler() {
+    useEffect(() => {
+        // Initialize theme manager
+        if (window.themeManager) {
+            window.themeManager.setupThemeListeners();
+            
+            // Add Christmas decorations if needed
+            const checkTheme = () => {
+                if (window.themeManager.getCurrentTheme() === 'christmas') {
+                    window.themeManager.addChristmasDecorations();
+                } else {
+                    window.themeManager.removeChristmasDecorations();
+                }
+            };
+            
+            // Check theme on mount
+            checkTheme();
+            
+            // Check theme when it changes
+            const observer = new MutationObserver(() => {
+                checkTheme();
+            });
+            
+            observer.observe(document.body, {
+                attributes: true,
+                attributeFilter: ['class']
+            });
+            
+            return () => {
+                observer.disconnect();
+            };
+        }
+    }, []);
+
+    return null;
+}
+
 // Layout component
 const Layout = ({ children }) => {
     const { user } = useAuth();
@@ -63,6 +105,7 @@ const Layout = ({ children }) => {
     return (
         <div className="app">
             <BackgroundImageHandler />
+            <ThemeHandler />
             <Header />
             <main className="main-content">
                 {children}

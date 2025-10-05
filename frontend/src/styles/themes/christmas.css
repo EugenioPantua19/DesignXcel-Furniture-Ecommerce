@@ -1,0 +1,1655 @@
+/* Christmas Theme - Clean and Festive Design */
+
+/* Christmas Theme Variables - Simplified */
+:root {
+  /* Simple Christmas Colors */
+  --christmas-red: #dc2626;
+  --christmas-green: #059669;
+  --christmas-gold: #fbbf24;
+  --christmas-white: #ffffff;
+  --christmas-dark-green: #064e3b;
+  --christmas-snow: #f8f9fa;
+  
+  /* Simple Solid Backgrounds */
+  --christmas-bg: #064e3b;
+  --christmas-header: #dc2626;
+  --christmas-card: rgba(255, 255, 255, 0.1);
+  --christmas-border: #fbbf24;
+  
+  /* Simple Shadows */
+  --christmas-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  --christmas-shadow-gold: 0 4px 15px rgba(251, 191, 36, 0.3);
+  
+  /* Christmas Animations */
+  --christmas-sparkle: christmas-sparkle 2s ease-in-out infinite;
+  --christmas-glow: christmas-glow 3s ease-in-out infinite alternate;
+}
+
+/* Christmas Theme Base Styles - Simplified */
+body.theme-christmas {
+  background: var(--christmas-bg);
+  color: var(--christmas-white);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  position: relative;
+  min-height: 100vh;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* Ensure content is visible with better contrast */
+body.theme-christmas * {
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+}
+
+/* Enhanced text visibility */
+body.theme-christmas h1,
+body.theme-christmas h2,
+body.theme-christmas h3,
+body.theme-christmas h4,
+body.theme-christmas h5,
+body.theme-christmas h6 {
+  color: var(--christmas-white) !important;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  font-weight: bold;
+}
+
+body.theme-christmas p,
+body.theme-christmas span,
+body.theme-christmas div {
+  color: var(--christmas-white) !important;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+/* Simple Christmas Buttons */
+body.theme-christmas .btn,
+body.theme-christmas .cta-button,
+body.theme-christmas button {
+  background: var(--christmas-red) !important;
+  color: var(--christmas-white) !important;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  font-weight: bold;
+  border: 2px solid var(--christmas-border) !important;
+  border-radius: 8px;
+  padding: 12px 24px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+body.theme-christmas .btn:hover,
+body.theme-christmas .cta-button:hover,
+body.theme-christmas button:hover {
+  background: var(--christmas-gold) !important;
+  color: var(--christmas-dark-green) !important;
+  transform: translateY(-2px);
+  box-shadow: var(--christmas-shadow-gold);
+}
+
+/* Enhanced link visibility */
+body.theme-christmas a {
+  color: var(--christmas-gold) !important;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  font-weight: 600;
+}
+
+body.theme-christmas a:hover {
+  color: var(--christmas-white) !important;
+  text-shadow: 0 0 10px var(--christmas-gold);
+}
+
+/* Main content area - match default layout structure */
+body.theme-christmas .main-content {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  position: relative;
+  z-index: 2;
+  background: transparent;
+}
+
+/* Match default body structure */
+body.theme-christmas {
+  background: var(--christmas-bg-gradient);
+  background-attachment: fixed;
+  color: var(--christmas-white);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+      'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+      sans-serif;
+  position: relative;
+  min-height: 100vh;
+  line-height: 1.6;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  font-variant-numeric: tabular-nums;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Override background color when background image is set - match default behavior */
+body.theme-christmas[style*="background-image"] {
+  background-color: transparent !important;
+}
+
+/* Simple Snow Effect */
+body.theme-christmas::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="1" fill="%23f8f9fa" opacity="0.8"/><circle cx="80" cy="40" r="1" fill="%23f8f9fa" opacity="0.6"/><circle cx="40" cy="60" r="1" fill="%23f8f9fa" opacity="0.7"/><circle cx="90" cy="80" r="1" fill="%23f8f9fa" opacity="0.5"/><circle cx="10" cy="90" r="1" fill="%23f8f9fa" opacity="0.9"/></svg>') repeat;
+  animation: snowfall 15s linear infinite;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.7;
+}
+
+/* Additional Snow Layer */
+body.theme-christmas::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="10" r="0.8" fill="%23f8f9fa" opacity="0.6"/><circle cx="30" cy="30" r="0.8" fill="%23f8f9fa" opacity="0.8"/><circle cx="70" cy="50" r="0.8" fill="%23f8f9fa" opacity="0.5"/><circle cx="10" cy="70" r="0.8" fill="%23f8f9fa" opacity="0.7"/><circle cx="90" cy="90" r="0.8" fill="%23f8f9fa" opacity="0.6"/></svg>') repeat;
+  animation: snowfall 12s linear infinite reverse;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.5;
+}
+
+@keyframes snowfall {
+  0% { 
+    transform: translateY(-100vh) translateX(0px); 
+    opacity: 0;
+  }
+  10% { 
+    opacity: 1;
+  }
+  90% { 
+    opacity: 1;
+  }
+  100% { 
+    transform: translateY(100vh) translateX(50px); 
+    opacity: 0;
+  }
+}
+
+/* Additional Snow Animation */
+@keyframes snowflake-float {
+  0% { 
+    transform: translateY(-100vh) rotate(0deg); 
+    opacity: 0;
+  }
+  10% { 
+    opacity: 1;
+  }
+  90% { 
+    opacity: 1;
+  }
+  100% { 
+    transform: translateY(100vh) rotate(360deg); 
+    opacity: 0;
+  }
+}
+
+/* Simple Christmas Container Styles */
+body.theme-christmas .container {
+  background: var(--christmas-card);
+  border-radius: 12px;
+  padding: 20px;
+  margin: 20px 0;
+  border: 2px solid var(--christmas-border);
+  box-shadow: var(--christmas-shadow);
+  position: relative;
+  z-index: 2;
+}
+
+/* Match default section structure */
+body.theme-christmas .section {
+  width: 100%;
+  padding: 60px 0;
+  position: relative;
+  z-index: 2;
+}
+
+/* Match default hero structure */
+body.theme-christmas .hero {
+  width: 100%;
+  position: relative;
+  z-index: 2;
+  padding: 80px 0;
+}
+
+/* Match default grid structures */
+body.theme-christmas .products-grid,
+body.theme-christmas .categories-grid {
+  width: 100%;
+  padding: 0;
+  margin: 0;
+}
+
+/* Match default content wrapper */
+body.theme-christmas .content-wrapper {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Simple Christmas Header */
+body.theme-christmas .header-main {
+  background: var(--christmas-header) !important;
+  border-bottom: 3px solid var(--christmas-border);
+  box-shadow: var(--christmas-shadow);
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  font-family: 'Segoe UI', Arial, sans-serif;
+}
+
+/* Match default header offer bar */
+body.theme-christmas .header-offer-bar {
+  background: var(--christmas-gold);
+  color: var(--christmas-dark-green);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 0.5rem 0.5rem 1.5rem;
+  position: relative;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+/* Match default header main row */
+body.theme-christmas .header-main-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.1rem 1.5vw 0.05rem 1.5vw;
+  background: var(--christmas-header-gradient);
+  position: sticky;
+  top: 0;
+  z-index: 101;
+  will-change: transform;
+  backface-visibility: hidden;
+  min-height: 8px;
+  font-family: 'Neue Helvetica', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+/* Simple Christmas Icons */
+body.theme-christmas .header-main::before {
+  content: '';
+  position: absolute;
+  top: 15px;
+  left: 20px;
+  width: 24px;
+  height: 24px;
+  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23fbbf24"><path d="M12 2L13.5 8.5H20L15 12.5L16.5 19L12 15L7.5 19L9 12.5L4 8.5H10.5L12 2Z"/></svg>') no-repeat center;
+  background-size: contain;
+  animation: var(--christmas-sparkle);
+}
+
+body.theme-christmas .header-main::after {
+  content: '';
+  position: absolute;
+  top: 15px;
+  right: 20px;
+  width: 20px;
+  height: 20px;
+  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23f8f9fa"><path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 1H9L3 7V9H21ZM12 8C13.1 8 14 8.9 14 10C14 11.1 13.1 12 12 12C10.9 12 10 11.1 10 10C10 8.9 10.9 8 12 8Z"/></svg>') no-repeat center;
+  background-size: contain;
+  animation: var(--christmas-sparkle);
+}
+
+/* Simple Christmas Navigation */
+body.theme-christmas .header-nav-bar {
+  background: var(--christmas-card) !important;
+  border: 2px solid var(--christmas-border);
+  border-radius: 20px;
+  box-shadow: var(--christmas-shadow-gold);
+  margin: 10px 20px;
+  width: calc(100% - 40px);
+  box-sizing: border-box;
+}
+
+/* Simple Navigation Menu */
+body.theme-christmas .nav-menu {
+  background: var(--christmas-card);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  border: 1px solid var(--christmas-border);
+}
+
+/* Match default navigation links */
+body.theme-christmas .nav-link {
+  color: var(--christmas-white) !important;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+  text-decoration: none;
+  padding: 12px 20px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  font-size: 1rem;
+}
+
+body.theme-christmas .nav-link:hover {
+  color: var(--christmas-gold) !important;
+  text-shadow: 0 0 10px rgba(255, 217, 61, 0.5);
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+body.theme-christmas .header-nav-link {
+  color: var(--christmas-white) !important;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  font-weight: 600;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+body.theme-christmas .header-nav-link:hover {
+  color: var(--christmas-gold) !important;
+  text-shadow: 0 0 10px var(--christmas-gold);
+  transform: translateY(-2px);
+}
+
+body.theme-christmas .header-nav-link::before {
+  content: '✨';
+  position: absolute;
+  left: -20px;
+  opacity: 0;
+  transition: all 0.3s ease;
+}
+
+body.theme-christmas .header-nav-link:hover::before {
+  opacity: 1;
+  animation: var(--christmas-sparkle);
+}
+
+/* Christmas Logo Styles */
+body.theme-christmas .header-logo-img {
+  filter: drop-shadow(0 0 10px var(--christmas-gold));
+  transition: all 0.3s ease;
+}
+
+body.theme-christmas .header-logo:hover .header-logo-img {
+  transform: scale(1.05);
+  filter: drop-shadow(0 0 15px var(--christmas-gold));
+}
+
+/* Christmas Search Bar */
+body.theme-christmas .header-search-container {
+  background: var(--christmas-card-gradient);
+  backdrop-filter: blur(15px);
+  border: 2px solid var(--christmas-gold);
+  border-radius: 25px;
+  box-shadow: var(--christmas-shadow-gold);
+}
+
+body.theme-christmas .header-search-input {
+  background: transparent !important;
+  color: var(--christmas-white) !important;
+  border: none !important;
+}
+
+body.theme-christmas .header-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+body.theme-christmas .header-search-btn {
+  color: var(--christmas-gold) !important;
+  transition: all 0.3s ease;
+}
+
+body.theme-christmas .header-search-btn:hover {
+  color: var(--christmas-white) !important;
+  text-shadow: 0 0 10px var(--christmas-gold);
+  transform: scale(1.1);
+}
+
+/* Christmas Hero Section */
+body.theme-christmas .hero {
+  background: var(--christmas-bg-gradient);
+  position: relative;
+  overflow: hidden;
+}
+
+body.theme-christmas .hero::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M50 10 L60 40 L90 40 L70 60 L80 90 L50 70 L20 90 L30 60 L10 40 L40 40 Z" fill="rgba(251,191,36,0.1)"/></svg>') repeat;
+  animation: var(--christmas-glow);
+}
+
+body.theme-christmas .hero h1 {
+  color: var(--christmas-white);
+  text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.5);
+  position: relative;
+  z-index: 2;
+}
+
+body.theme-christmas .hero p {
+  color: var(--christmas-white);
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  position: relative;
+  z-index: 2;
+}
+
+/* Christmas Buttons */
+body.theme-christmas .btn,
+body.theme-christmas .cta-button {
+  background: var(--christmas-button-gradient) !important;
+  border: 2px solid var(--christmas-gold) !important;
+  color: var(--christmas-white) !important;
+  box-shadow: var(--christmas-shadow-gold) !important;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+body.theme-christmas .btn::before,
+body.theme-christmas .cta-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s ease;
+}
+
+body.theme-christmas .btn:hover::before,
+body.theme-christmas .cta-button:hover::before {
+  left: 100%;
+}
+
+body.theme-christmas .btn:hover,
+body.theme-christmas .cta-button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 40px rgba(220, 38, 38, 0.3);
+}
+
+/* Simple Christmas Product Cards */
+body.theme-christmas .product-card {
+  background: var(--christmas-card) !important;
+  border: 2px solid var(--christmas-border);
+  border-radius: 16px;
+  box-shadow: var(--christmas-shadow);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+/* Match default product grid structure */
+body.theme-christmas .product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+  padding: 20px;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Center Featured Products Section */
+body.theme-christmas .featured-products {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+body.theme-christmas .featured-products .section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 30px;
+  padding: 0 20px;
+}
+
+body.theme-christmas .featured-products .section-title {
+  color: var(--christmas-white);
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  font-size: 2.5rem;
+  font-weight: bold;
+  margin: 0;
+}
+
+body.theme-christmas .featured-products .view-all-link {
+  color: var(--christmas-gold);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 1.1rem;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  transition: all 0.3s ease;
+}
+
+body.theme-christmas .featured-products .view-all-link:hover {
+  color: var(--christmas-white);
+  text-shadow: 0 0 10px var(--christmas-gold);
+  transform: translateY(-2px);
+}
+
+/* Center Product Carousel */
+body.theme-christmas .product-carousel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  position: relative;
+}
+
+body.theme-christmas .product-carousel-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  overflow: hidden;
+  position: relative;
+}
+
+body.theme-christmas .product-carousel-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  transition: transform 0.3s ease;
+}
+
+/* Center Product Cards in Carousel */
+body.theme-christmas .product-carousel .product-card {
+  flex: 0 0 auto;
+  width: 280px;
+  margin: 0 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+/* Center Carousel Navigation */
+body.theme-christmas .carousel-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin: 20px 0;
+}
+
+body.theme-christmas .carousel-nav-button {
+  background: var(--christmas-gold);
+  color: var(--christmas-dark-green);
+  border: 2px solid var(--christmas-white);
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 1.2rem;
+  font-weight: bold;
+  box-shadow: var(--christmas-shadow-gold);
+}
+
+body.theme-christmas .carousel-nav-button:hover {
+  background: var(--christmas-white);
+  color: var(--christmas-red);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(251, 191, 36, 0.4);
+}
+
+body.theme-christmas .carousel-nav-button:disabled {
+  background: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.5);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Center Carousel Pagination */
+body.theme-christmas .carousel-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 20px 0;
+}
+
+body.theme-christmas .carousel-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  border: 2px solid var(--christmas-gold);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+body.theme-christmas .carousel-dot.active {
+  background: var(--christmas-gold);
+  border-color: var(--christmas-white);
+  box-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
+}
+
+body.theme-christmas .carousel-dot:hover {
+  background: var(--christmas-white);
+  border-color: var(--christmas-gold);
+  transform: scale(1.1);
+}
+
+/* Center Product Catalog */
+body.theme-christmas .product-catalog {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+body.theme-christmas .product-catalog .catalog-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin-bottom: 40px;
+  text-align: center;
+}
+
+body.theme-christmas .product-catalog .catalog-title {
+  color: var(--christmas-white);
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  font-size: 2.5rem;
+  font-weight: bold;
+  margin: 0 0 20px 0;
+}
+
+body.theme-christmas .product-catalog .catalog-description {
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+  font-size: 1.2rem;
+  max-width: 600px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+/* Center Product Grid in Catalog */
+body.theme-christmas .product-catalog .products-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 30px;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  justify-items: center;
+  align-items: start;
+}
+
+body.theme-christmas .product-catalog .product-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+  max-width: 300px;
+  margin: 0;
+}
+
+/* Simple Product Info */
+body.theme-christmas .product-info {
+  background: var(--christmas-card);
+  border-radius: 8px;
+  padding: 15px;
+  margin: 10px 0;
+  text-align: center;
+  width: 100%;
+  border: 1px solid var(--christmas-border);
+}
+
+/* Center Product Card Content */
+body.theme-christmas .product-card .product-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin-bottom: 15px;
+}
+
+body.theme-christmas .product-card .product-image img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+body.theme-christmas .product-card .product-details {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+  padding: 0 10px;
+}
+
+body.theme-christmas .product-card .product-name {
+  color: var(--christmas-white);
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  font-weight: bold;
+  font-size: 1.2rem;
+  margin: 0 0 8px 0;
+  text-align: center;
+}
+
+body.theme-christmas .product-card .product-model {
+  color: rgba(255, 255, 255, 0.8);
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+  font-size: 0.9rem;
+  margin: 0 0 10px 0;
+  text-align: center;
+}
+
+body.theme-christmas .product-card .product-price {
+  color: var(--christmas-gold);
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  font-weight: bold;
+  font-size: 1.4rem;
+  margin: 0 0 10px 0;
+  text-align: center;
+}
+
+body.theme-christmas .product-card .product-stock {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  margin: 0 0 8px 0;
+  text-align: center;
+}
+
+body.theme-christmas .product-card .stock-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+body.theme-christmas .product-card .stock-dot.in-stock {
+  background: var(--christmas-green);
+  box-shadow: 0 0 8px rgba(5, 150, 105, 0.5);
+}
+
+body.theme-christmas .product-card .stock-dot.limited {
+  background: var(--christmas-gold);
+  box-shadow: 0 0 8px rgba(251, 191, 36, 0.5);
+}
+
+body.theme-christmas .product-card .stock-dot.out-of-stock {
+  background: var(--christmas-red);
+  box-shadow: 0 0 8px rgba(220, 38, 38, 0.5);
+}
+
+body.theme-christmas .product-card .product-sold {
+  color: rgba(255, 255, 255, 0.7);
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+  font-size: 0.9rem;
+  margin: 0 0 8px 0;
+  text-align: center;
+}
+
+body.theme-christmas .product-card .product-rating {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  margin: 0 0 15px 0;
+  text-align: center;
+}
+
+body.theme-christmas .product-card .rating-star {
+  color: var(--christmas-gold);
+  font-size: 1rem;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+}
+
+body.theme-christmas .product-card .rating-value {
+  color: rgba(255, 255, 255, 0.8);
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* Center Product Badges */
+body.theme-christmas .product-badge {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: var(--christmas-red);
+  color: var(--christmas-white);
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  z-index: 10;
+}
+
+body.theme-christmas .product-badge.featured {
+  background: var(--christmas-gold);
+  color: var(--christmas-dark-green);
+  text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.3);
+}
+
+body.theme-christmas .product-card::before {
+  content: '';
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  width: 20px;
+  height: 20px;
+  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23fbbf24"><path d="M12 2L13.5 8.5H20L15 12.5L16.5 19L12 15L7.5 19L9 12.5L4 8.5H10.5L12 2Z"/></svg>') no-repeat center;
+  background-size: contain;
+  opacity: 0.7;
+  animation: var(--christmas-sparkle);
+}
+
+body.theme-christmas .product-card:hover {
+  transform: translateY(-8px);
+  box-shadow: var(--christmas-shadow-gold);
+  border-color: var(--christmas-white);
+}
+
+body.theme-christmas .product-title {
+  color: var(--christmas-white) !important;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+body.theme-christmas .product-description {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+body.theme-christmas .product-price {
+  color: var(--christmas-gold) !important;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+  font-weight: bold;
+}
+
+/* Simple Christmas Forms */
+body.theme-christmas .contact-form,
+body.theme-christmas .contact-form-column {
+  background: var(--christmas-card) !important;
+  border: 2px solid var(--christmas-border);
+  border-radius: 16px;
+  box-shadow: var(--christmas-shadow);
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 30px;
+  box-sizing: border-box;
+}
+
+/* Match default form group structure */
+body.theme-christmas .form-group {
+  margin-bottom: 20px;
+  width: 100%;
+}
+
+body.theme-christmas .form-group input,
+body.theme-christmas .form-group textarea {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid var(--christmas-border);
+  border-radius: 8px;
+  background: var(--christmas-card);
+  color: var(--christmas-white);
+  font-size: 1rem;
+  font-family: inherit;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+}
+
+body.theme-christmas .form-group input:focus,
+body.theme-christmas .form-group textarea:focus {
+  outline: none;
+  border-color: var(--christmas-white);
+  box-shadow: 0 0 15px rgba(251, 191, 36, 0.5);
+  background: rgba(0, 0, 0, 0.3);
+}
+
+body.theme-christmas .contact-form-header {
+  background: var(--christmas-header-gradient) !important;
+  color: var(--christmas-white) !important;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+body.theme-christmas .form-group input,
+body.theme-christmas .form-group textarea {
+  background: rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(10px);
+  border: 2px solid var(--christmas-gold) !important;
+  color: var(--christmas-white) !important;
+  border-radius: 15px;
+  transition: all 0.3s ease;
+}
+
+body.theme-christmas .form-group input:focus,
+body.theme-christmas .form-group textarea:focus {
+  border-color: var(--christmas-white) !important;
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.5);
+  background: rgba(255, 255, 255, 0.15) !important;
+}
+
+body.theme-christmas .form-group input::placeholder,
+body.theme-christmas .form-group textarea::placeholder {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Simple Christmas Footer */
+body.theme-christmas .footer-main {
+  background: var(--christmas-header) !important;
+  border-top: 3px solid var(--christmas-border);
+  position: relative;
+  width: 100%;
+  margin: 0;
+  padding: 40px 0;
+  box-sizing: border-box;
+}
+
+/* Simple Footer Content */
+body.theme-christmas .footer-content {
+  background: var(--christmas-card);
+  border-radius: 12px;
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--christmas-border);
+}
+
+/* Match default footer grid structure */
+body.theme-christmas .footer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 30px;
+  padding: 20px 0;
+}
+
+/* Match default footer section structure */
+body.theme-christmas .footer-section {
+  width: 100%;
+  padding: 0;
+  margin: 0;
+}
+
+body.theme-christmas .footer-main::before {
+  content: '';
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 30px;
+  height: 30px;
+  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23fbbf24"><path d="M12 2L13.5 8.5H20L15 12.5L16.5 19L12 15L7.5 19L9 12.5L4 8.5H10.5L12 2Z"/></svg>') no-repeat center;
+  background-size: contain;
+  animation: var(--christmas-sparkle);
+}
+
+body.theme-christmas .footer-subtitle {
+  color: var(--christmas-gold) !important;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+body.theme-christmas .footer-link {
+  color: var(--christmas-white) !important;
+  transition: all 0.3s ease;
+}
+
+body.theme-christmas .footer-link:hover {
+  color: var(--christmas-gold) !important;
+  text-shadow: 0 0 10px var(--christmas-gold);
+  transform: translateX(5px);
+}
+
+body.theme-christmas .contact-value {
+  color: var(--christmas-white) !important;
+}
+
+body.theme-christmas .social-link {
+  background: var(--christmas-card-gradient) !important;
+  border: 2px solid var(--christmas-gold) !important;
+  color: var(--christmas-white) !important;
+  transition: all 0.3s ease;
+}
+
+body.theme-christmas .social-link:hover {
+  background: var(--christmas-button-gradient) !important;
+  transform: translateY(-3px);
+  box-shadow: var(--christmas-shadow-gold);
+}
+
+/* Christmas Animations */
+@keyframes christmas-sparkle {
+  0%, 100% { 
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  50% { 
+    transform: scale(1.2) rotate(180deg);
+    opacity: 0.7;
+  }
+}
+
+@keyframes christmas-glow {
+  0% { 
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  100% { 
+    opacity: 0.6;
+    transform: scale(1.05);
+  }
+}
+
+/* Christmas Special Effects */
+body.theme-christmas .christmas-ornament {
+  position: relative;
+  display: inline-block;
+}
+
+body.theme-christmas .christmas-ornament::before {
+  content: '🎄';
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  font-size: 16px;
+  animation: var(--christmas-sparkle);
+}
+
+/* Christmas Responsive Design - Match default responsive patterns */
+@media (max-width: 768px) {
+  /* Match default mobile container structure */
+  body.theme-christmas .container {
+    padding: 20px;
+    margin: 20px 0;
+    border-radius: 16px;
+    width: 100%;
+    max-width: 100%;
+  }
+  
+  /* Match default mobile main content */
+  body.theme-christmas .main-content {
+    width: 100%;
+    padding: 0;
+    margin: 0;
+  }
+  
+  /* Match default mobile section structure */
+  body.theme-christmas .section {
+    padding: 40px 0;
+    width: 100%;
+    margin: 0;
+  }
+  
+  /* Match default mobile header */
+  body.theme-christmas .header-main {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+  
+  body.theme-christmas .header-main::before,
+  body.theme-christmas .header-main::after {
+    font-size: 18px;
+  }
+  
+  /* Match default mobile navigation */
+  body.theme-christmas .header-nav-bar {
+    margin: 10px 20px;
+    border-radius: 20px;
+    width: calc(100% - 40px);
+  }
+  
+  /* Match default mobile product cards */
+  body.theme-christmas .product-card {
+    width: 100%;
+    margin: 0 0 20px 0;
+    padding: 15px;
+  }
+  
+  body.theme-christmas .product-card::before {
+    font-size: 16px;
+  }
+  
+  /* Match default mobile grids */
+  body.theme-christmas .products-grid,
+  body.theme-christmas .categories-grid {
+    padding: 0 20px;
+    width: 100%;
+    margin: 0;
+  }
+  
+  /* Center Featured Products on Mobile */
+  body.theme-christmas .featured-products {
+    padding: 30px 10px;
+    text-align: center;
+  }
+  
+  body.theme-christmas .featured-products .section-header {
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    padding: 0 10px;
+  }
+  
+  body.theme-christmas .featured-products .section-title {
+    font-size: 2rem;
+    text-align: center;
+  }
+  
+  /* Center Product Carousel on Mobile */
+  body.theme-christmas .product-carousel {
+    padding: 0 10px;
+  }
+  
+  body.theme-christmas .product-carousel .product-card {
+    width: 250px;
+    margin: 0 5px;
+  }
+  
+  /* Center Product Catalog on Mobile */
+  body.theme-christmas .product-catalog {
+    padding: 30px 10px;
+    text-align: center;
+  }
+  
+  body.theme-christmas .product-catalog .catalog-title {
+    font-size: 2rem;
+    text-align: center;
+  }
+  
+  body.theme-christmas .product-catalog .catalog-description {
+    font-size: 1rem;
+    text-align: center;
+  }
+  
+  body.theme-christmas .product-catalog .products-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    padding: 0 10px;
+  }
+  
+  /* Match default mobile forms */
+  body.theme-christmas .contact-form,
+  body.theme-christmas .contact-form-column {
+    width: 100%;
+    margin: 0;
+    padding: 20px;
+  }
+  
+  /* Match default mobile footer */
+  body.theme-christmas .footer-main {
+    width: 100%;
+    margin: 0;
+    padding: 30px 0;
+  }
+  
+  body.theme-christmas .footer-content {
+    padding: 15px;
+    margin: 0 20px;
+    width: calc(100% - 40px);
+  }
+}
+
+@media (max-width: 480px) {
+  /* Match default small mobile container structure */
+  body.theme-christmas .container {
+    padding: 15px;
+    margin: 10px 0;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 100%;
+  }
+  
+  /* Match default small mobile main content */
+  body.theme-christmas .main-content {
+    width: 100%;
+    padding: 0;
+    margin: 0;
+  }
+  
+  /* Match default small mobile section structure */
+  body.theme-christmas .section {
+    padding: 30px 0;
+    width: 100%;
+    margin: 0;
+  }
+  
+  /* Match default small mobile header */
+  body.theme-christmas .header-main {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+  
+  body.theme-christmas .header-main::before,
+  body.theme-christmas .header-main::after {
+    font-size: 14px;
+  }
+  
+  /* Match default small mobile navigation */
+  body.theme-christmas .header-nav-bar {
+    margin: 5px 10px;
+    width: calc(100% - 20px);
+    border-radius: 15px;
+  }
+  
+  body.theme-christmas .header-nav-link::before {
+    display: none;
+  }
+  
+  /* Match default small mobile product cards */
+  body.theme-christmas .product-card {
+    width: 100%;
+    margin: 0 0 15px 0;
+    padding: 12px;
+  }
+  
+  /* Match default small mobile forms */
+  body.theme-christmas .contact-form,
+  body.theme-christmas .contact-form-column {
+    width: 100%;
+    margin: 0;
+    padding: 15px;
+  }
+  
+  /* Match default small mobile footer */
+  body.theme-christmas .footer-main {
+    width: 100%;
+    margin: 0;
+    padding: 20px 0;
+  }
+  
+  body.theme-christmas .footer-content {
+    padding: 10px;
+    margin: 0 10px;
+    width: calc(100% - 20px);
+  }
+  
+  /* Enhanced text visibility on small mobile - match default typography */
+  body.theme-christmas h1,
+  body.theme-christmas h2,
+  body.theme-christmas h3 {
+    font-size: 1.5rem;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
+    line-height: 1.3;
+  }
+  
+  body.theme-christmas p,
+  body.theme-christmas span {
+    font-size: 0.9rem;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    line-height: 1.5;
+  }
+  
+  /* Match default small mobile grid structure */
+  body.theme-christmas .product-grid {
+    grid-template-columns: 1fr;
+    gap: 15px;
+    padding: 10px;
+  }
+  
+  body.theme-christmas .footer-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    padding: 10px 0;
+  }
+  
+  /* Center Featured Products on Small Mobile */
+  body.theme-christmas .featured-products {
+    padding: 20px 5px;
+    text-align: center;
+  }
+  
+  body.theme-christmas .featured-products .section-header {
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 0 5px;
+  }
+  
+  body.theme-christmas .featured-products .section-title {
+    font-size: 1.8rem;
+    text-align: center;
+  }
+  
+  body.theme-christmas .featured-products .view-all-link {
+    font-size: 1rem;
+  }
+  
+  /* Center Product Carousel on Small Mobile */
+  body.theme-christmas .product-carousel {
+    padding: 0 5px;
+  }
+  
+  body.theme-christmas .product-carousel .product-card {
+    width: 220px;
+    margin: 0 3px;
+  }
+  
+  /* Center Product Catalog on Small Mobile */
+  body.theme-christmas .product-catalog {
+    padding: 20px 5px;
+    text-align: center;
+  }
+  
+  body.theme-christmas .product-catalog .catalog-title {
+    font-size: 1.8rem;
+    text-align: center;
+  }
+  
+  body.theme-christmas .product-catalog .catalog-description {
+    font-size: 0.9rem;
+    text-align: center;
+    padding: 0 10px;
+  }
+  
+  body.theme-christmas .product-catalog .products-grid {
+    grid-template-columns: 1fr;
+    gap: 15px;
+    padding: 0 5px;
+  }
+}
+
+/* Christmas Loading States */
+body.theme-christmas .loading {
+  color: var(--christmas-gold) !important;
+}
+
+body.theme-christmas .spinner {
+  border-top-color: var(--christmas-gold) !important;
+  border-color: rgba(251, 191, 36, 0.3) !important;
+}
+
+/* Christmas Success Messages */
+body.theme-christmas .form-message-success {
+  background: linear-gradient(45deg, var(--christmas-green), var(--christmas-gold)) !important;
+  color: var(--christmas-white) !important;
+  border: 2px solid var(--christmas-gold) !important;
+  border-radius: 15px;
+  box-shadow: var(--christmas-shadow-green);
+}
+
+/* Christmas Error Messages */
+body.theme-christmas .form-message-error {
+  background: linear-gradient(45deg, var(--christmas-red), var(--christmas-dark-red)) !important;
+  color: var(--christmas-white) !important;
+  border: 2px solid var(--christmas-red) !important;
+  border-radius: 15px;
+  box-shadow: var(--christmas-shadow);
+}
+
+/* Christmas Floating Elements */
+body.theme-christmas .floating-message-icon {
+  background: var(--christmas-button-gradient) !important;
+  border: 3px solid var(--christmas-gold) !important;
+  box-shadow: var(--christmas-shadow-gold) !important;
+}
+
+body.theme-christmas .floating-message-icon:hover {
+  transform: scale(1.1);
+  box-shadow: 0 12px 40px rgba(220, 38, 38, 0.4);
+}
+
+/* Christmas Chat Window */
+body.theme-christmas .floating-chat-window {
+  background: var(--christmas-card-gradient) !important;
+  border: 2px solid var(--christmas-gold) !important;
+  box-shadow: var(--christmas-shadow-gold) !important;
+}
+
+body.theme-christmas .chat-header {
+  background: var(--christmas-header-gradient) !important;
+  color: var(--christmas-white) !important;
+  border-bottom: 2px solid var(--christmas-gold) !important;
+}
+
+body.theme-christmas .chat-message.support {
+  background: var(--christmas-card-gradient) !important;
+  color: var(--christmas-white) !important;
+  border: 1px solid var(--christmas-gold) !important;
+}
+
+body.theme-christmas .chat-message.user {
+  background: var(--christmas-button-gradient) !important;
+  color: var(--christmas-white) !important;
+  border: 1px solid var(--christmas-gold) !important;
+}
+
+body.theme-christmas .chat-input {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 2px solid var(--christmas-gold) !important;
+  color: var(--christmas-white) !important;
+}
+
+body.theme-christmas .chat-input:focus {
+  border-color: var(--christmas-white) !important;
+  box-shadow: 0 0 15px rgba(251, 191, 36, 0.5);
+}
+
+body.theme-christmas .chat-send-btn {
+  background: var(--christmas-button-gradient) !important;
+  color: var(--christmas-white) !important;
+  border: 2px solid var(--christmas-gold) !important;
+}
+
+body.theme-christmas .chat-send-btn:hover {
+  background: linear-gradient(45deg, var(--christmas-dark-red), var(--christmas-gold)) !important;
+  transform: translateY(-2px);
+  box-shadow: var(--christmas-shadow-gold);
+}
+
+/* Theme Switcher Styles */
+.theme-switcher {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  backdrop-filter: blur(10px);
+}
+
+.theme-switcher-label {
+  color: var(--christmas-white);
+  font-weight: 600;
+  font-size: 14px;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.theme-switcher-select {
+  background: var(--christmas-card-gradient);
+  color: var(--christmas-white);
+  border: 2px solid var(--christmas-gold);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.theme-switcher-select:focus {
+  outline: none;
+  border-color: var(--christmas-white);
+  box-shadow: 0 0 15px rgba(251, 191, 36, 0.5);
+}
+
+.theme-switcher-select:hover {
+  border-color: var(--christmas-white);
+  transform: translateY(-1px);
+}
+
+.theme-switcher-select option {
+  background: var(--christmas-dark-green);
+  color: var(--christmas-white);
+  padding: 8px;
+}
+
+.theme-switcher-loading {
+  animation: spin 1s linear infinite;
+  font-size: 16px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Additional visibility enhancements */
+body.theme-christmas .section-header h2 {
+  color: var(--christmas-white) !important;
+  text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.8);
+  font-weight: bold;
+  font-size: 2.5rem;
+}
+
+body.theme-christmas .section-header p {
+  color: var(--christmas-white) !important;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+  font-size: 1.2rem;
+}
+
+/* Enhanced product card content visibility */
+body.theme-christmas .product-info {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 15px;
+  padding: 20px;
+  margin: 10px;
+}
+
+body.theme-christmas .product-title {
+  color: var(--christmas-white) !important;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  font-weight: bold;
+  font-size: 1.3rem;
+}
+
+body.theme-christmas .product-description {
+  color: rgba(255, 255, 255, 0.9) !important;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+  line-height: 1.6;
+}
+
+body.theme-christmas .product-price {
+  color: var(--christmas-gold) !important;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  font-weight: bold;
+  font-size: 1.4rem;
+}
+
+/* Enhanced form visibility */
+body.theme-christmas .form-group label {
+  color: var(--christmas-white) !important;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+/* Enhanced navigation visibility */
+body.theme-christmas .header-nav-link {
+  color: var(--christmas-white) !important;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  font-weight: 600;
+  font-size: 1rem;
+  padding: 12px 20px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+body.theme-christmas .header-nav-link:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--christmas-gold) !important;
+  text-shadow: 0 0 10px var(--christmas-gold);
+  transform: translateY(-2px);
+}
+
+/* Enhanced footer content visibility */
+body.theme-christmas .footer-subtitle {
+  color: var(--christmas-gold) !important;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  font-weight: bold;
+  font-size: 1.2rem;
+}
+
+body.theme-christmas .footer-link {
+  color: var(--christmas-white) !important;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  font-weight: 500;
+  font-size: 1rem;
+}
+
+body.theme-christmas .contact-value {
+  color: var(--christmas-white) !important;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  font-weight: 500;
+}
+
+/* Enhanced search bar visibility */
+body.theme-christmas .header-search-input {
+  background: rgba(0, 0, 0, 0.3) !important;
+  color: var(--christmas-white) !important;
+  border: 2px solid var(--christmas-gold) !important;
+  border-radius: 25px;
+  padding: 12px 20px;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+body.theme-christmas .header-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.7) !important;
+  font-weight: 500;
+}
+
+body.theme-christmas .header-search-input:focus {
+  border-color: var(--christmas-white) !important;
+  box-shadow: 0 0 15px rgba(251, 191, 36, 0.5);
+  background: rgba(0, 0, 0, 0.4) !important;
+}

@@ -12,7 +12,9 @@ root.render(
 
 
 // Theme loader
-fetch('http://localhost:5000/api/theme/active')
+import { API_ENDPOINTS } from './config/api';
+
+fetch(API_ENDPOINTS.THEME_ACTIVE)
   .then(res => res.json())
   .then(data => {
     if (data.activeTheme && data.activeTheme !== 'default') {

@@ -14,8 +14,7 @@ const InlineLoader = ({
   return (
     <LoadingSpinner 
       size={size} 
-      text={text} 
-      color="#F0B21B"
+      text={text}
     />
   );
 };

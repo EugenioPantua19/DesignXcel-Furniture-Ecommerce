@@ -1,0 +1,18 @@
+[phases.setup]
+nixPkgs = ["nodejs"]
+
+[phases.install]
+cmds = ["npm ci"]
+
+[phases.build]
+cmds = ["npm run build"]
+
+[start]
+cmd = "npm run serve:prod"
+
+[variables]
+CI = "false"
+DISABLE_ESLINT_PLUGIN = "true"
+GENERATE_SOURCEMAP = "false"
+NODE_ENV = "production"
+PORT = "3000"
