@@ -8,6 +8,7 @@ console.log('PORT:', process.env.PORT);
 console.log('DB_SERVER:', process.env.DB_SERVER);
 const express = require('express');
 const session = require('express-session');
+const MSSqlStore = require('connect-mssql-v2');
 const flash = require('connect-flash');
 const sql = require('mssql');
 const path = require('path');
@@ -299,19 +300,80 @@ app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// Session configuration for Railway deployment
-app.use(session({
+// Session configuration with MSSQL store
+const sessionConfig = {
     secret: process.env.SESSION_SECRET || 'your_session_secret_key_here',
     resave: false,
     saveUninitialized: false, // Set to false for best practice
-    rolling: true, // Reset expiration on each request
+    rolling: false, // Disable rolling expiration to prevent session regeneration
     cookie: {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // 'none' for cross-origin in production
+        secure: false, // Set to false for local development
+        sameSite: 'lax', // Use 'lax' for local development
         maxAge: 24 * 60 * 60 * 1000 // 24 hours session timeout
     }
-}));
+};
+
+// Configure MSSQL session store with fallback to memory store
+let sessionStore;
+try {
+    // Use the same database configuration as the main app
+    // Check if we have a connection string (production) or individual settings (local)
+    let dbConfig;
+    
+    if (process.env.DB_CONNECTION_STRING) {
+        // Use Azure SQL connection string (production)
+        const parsedConfig = parseConnectionString(process.env.DB_CONNECTION_STRING);
+        dbConfig = {
+            ...parsedConfig,
+            options: {
+                encrypt: true,
+                trustServerCertificate: false, // Use false for Azure SQL
+                enableArithAbort: true,
+                requestTimeout: 30000,
+                connectionTimeout: 30000
+            }
+        };
+        console.log('Using Azure SQL connection for session store');
+    } else {
+        // Use local database settings (development)
+        dbConfig = {
+            user: process.env.DB_USERNAME || process.env.DB_USER || 'DesignXcel',
+            password: process.env.DB_PASSWORD || 'Azwrathfrozen22@',
+            server: process.env.DB_SERVER || 'DESKTOP-F4OI6BT\\SQLEXPRESS',
+            database: process.env.DB_DATABASE || process.env.DB_NAME || 'DesignXcellDB',
+            options: {
+                encrypt: true,
+                trustServerCertificate: true,
+                enableArithAbort: true,
+                requestTimeout: 30000,
+                connectionTimeout: 30000
+            }
+        };
+        console.log('Using local database connection for session store');
+    }
+    
+    sessionStore = new MSSqlStore({
+        ...dbConfig,
+        table: 'sessions' // Table name for storing sessions
+    });
+    
+    console.log('✅ MSSQL session store configured successfully');
+    console.log('Session store config:', {
+        server: dbConfig.server,
+        database: dbConfig.database,
+        user: dbConfig.user,
+        table: 'sessions'
+    });
+    sessionConfig.store = sessionStore;
+} catch (error) {
+    console.error('❌ Failed to configure MSSQL session store:', error.message);
+    console.log('⚠️  Falling back to memory store (sessions will not persist across restarts)');
+    console.log('💡 This is normal for local development');
+    // Continue without store - will use memory store
+}
+
+app.use(session(sessionConfig));
 
 app.use(flash());
 
