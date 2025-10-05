@@ -335,8 +335,14 @@ try {
             }
         };
         console.log('Using Azure SQL connection for session store');
+        console.log('Azure SQL server:', parsedConfig.server);
+        console.log('Azure SQL database:', parsedConfig.database);
+    } else if (process.env.NODE_ENV === 'production') {
+        // In production, we must have DB_CONNECTION_STRING
+        console.error('❌ DB_CONNECTION_STRING is required in production!');
+        throw new Error('DB_CONNECTION_STRING is required in production environment');
     } else {
-        // Use local database settings (development)
+        // Use local database settings (development only)
         dbConfig = {
             user: process.env.DB_USERNAME || process.env.DB_USER || 'DesignXcel',
             password: process.env.DB_PASSWORD || 'Azwrathfrozen22@',
@@ -350,7 +356,7 @@ try {
                 connectionTimeout: 30000
             }
         };
-        console.log('Using local database connection for session store');
+        console.log('Using local database connection for session store (development)');
     }
     
     sessionStore = new MSSqlStore({
