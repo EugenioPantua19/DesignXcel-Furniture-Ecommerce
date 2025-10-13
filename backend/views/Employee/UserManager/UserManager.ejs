@@ -10,15 +10,18 @@
             display: flex;
             flex-direction: column;
             height: 100vh;
+            overflow-y: auto;
         }
         .sidebar-menu {
-            flex-grow: 1;
+            flex: 1;
+            overflow-y: auto;
         }
         .logout-section {
-            padding: 40px;
+            padding: 20px;
             border-top: 1px solid #ddd;
-            margin-top: auto;
+            margin-top: 20px;
             text-align: center;
+            position: relative;
         }
         .logout-button {
             display: inline-block;
@@ -148,16 +151,16 @@
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
         }
 
-        .metric-card.users {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-
         .metric-card.products {
             background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
         }
 
         .metric-card.materials {
             background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        }
+
+        .metric-card.alerts {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
         }
 
         .metric-card.logs {
@@ -235,6 +238,21 @@
         .alert-item.warning {
             background: #fef5e7;
             border-color: #ed8936;
+        }
+
+        .alert-item.out {
+            background: #dc3545 !important;
+            border-color: #b71c1c !important;
+            color: #fff !important;
+            font-weight: bold;
+            box-shadow: 0 2px 8px rgba(220,53,69,0.10);
+        }
+
+        .alert-item.out .alert-title,
+        .alert-item.out .alert-description {
+            color: #fff !important;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.18);
+            font-weight: bold;
         }
 
         .alert-title {
@@ -339,6 +357,140 @@
                 grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             }
         }
+
+        #alertsDropdown {
+            font-size: 0.97em;
+        }
+        #alertsDropdownContent div {
+            font-size: 0.97em;
+        }
+        #alertsDropdown .alerts-section-header {
+            font-weight: 600;
+            color: #333;
+            font-size: 1em;
+            padding: 8px 0 4px 0;
+        }
+        #alertsDropdown .alerts-product-header,
+        #alertsDropdown .alerts-material-header {
+            color: #333;
+            font-weight: 600;
+            margin-top: 8px;
+            margin-bottom: 2px;
+            font-size: 0.98em;
+            padding-left: 10px;
+        }
+        #alertsDropdown .alerts-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 18px 6px 10px;
+        }
+        #alertsDropdown .alerts-status-low {
+            color: #FFC107 !important;
+            font-weight: 600;
+            margin-left: 18px;
+        }
+        #alertsDropdown .alerts-status-critical {
+            color: #FF9800 !important;
+            font-weight: 600;
+            margin-left: 18px;
+        }
+        #alertsDropdown .alerts-status-out {
+            color: #dc3545 !important;
+            font-weight: 600;
+            margin-left: 18px;
+        }
+        #alertsDropdownFooter:hover {
+            background: #f5f5f5;
+            text-decoration: underline;
+        }
+        #alertsBellContainer {
+            position: relative;
+        }
+        #alertsBellDot {
+            display: none;
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            width: 11px;
+            height: 11px;
+            background: #dc3545;
+            border-radius: 50%;
+            border: 2px solid #fff;
+            z-index: 10;
+        }
+
+        /* Dashboard Container Styles */
+        .dashboard-container {
+            display: flex;
+            min-height: 100vh;
+            background-color: #f5f5f5;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 20px;
+            margin-left: 250px;
+        }
+
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .content-area {
+            background: transparent;
+        }
+
+        /* Sidebar Styles */
+        .sidebar-header {
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .sidebar-header h3 {
+            margin: 0;
+            font-size: 1.2em;
+        }
+
+        .sidebar-section-label {
+            padding: 10px 20px;
+            background-color: #f8f9fa;
+            color: #495057;
+            font-weight: bold;
+            border-bottom: 1px solid #dee2e6;
+            margin: 0;
+        }
+
+        .sidebar-submenu {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .sidebar-submenu li {
+            margin: 0;
+        }
+
+        .sidebar-submenu a {
+            display: block;
+            padding: 12px 20px;
+            color: #495057;
+            text-decoration: none;
+            border-bottom: 1px solid #f1f3f4;
+            transition: background-color 0.3s;
+        }
+
+        .sidebar-submenu a:hover {
+            background-color: #e9ecef;
+            color: #212529;
+        }
     </style>
 </head>
 <body>
@@ -348,73 +500,138 @@
                 <h3>User Manager Panel</h3>
             </div>
             <ul class="sidebar-menu">
-                <li class="sidebar-section-label" style="font-weight:normal;">Inventory</li>
-                <ul class="sidebar-submenu" style="display:block;">
-                    <li><a href="/Employee/UserManager/Products">Products</a></li>
-                    <li><a href="/Employee/UserManager/Variations">Variations</a></li>
-                    <li><a href="/Employee/UserManager/RawMaterials">Raw Materials</a></li>
-                    <li><a href="/Employee/UserManager/Alerts">Alerts</a></li>
-                    <li><a href="/Employee/UserManager/Archived">Archived items</a></li>
-                </ul>
-                <li class="sidebar-section-label" style="font-weight:normal;">Transactions</li>
-                <ul class="sidebar-submenu" style="display:block;">
-                    <li><a href="/Employee/UserManager/DeliveryRates">Delivery Rates</a></li>
-                    <li><a href="/Employee/UserManager/WalkIn">Walk In</a></li>
-                    <li><a href="/Employee/UserManager/OrdersPending">Orders Pending</a></li>
-                    <li><a href="/Employee/UserManager/OrdersProcessing">Orders Processing</a></li>
-                    <li><a href="/Employee/UserManager/OrdersShipping">Orders Shipping</a></li>
-                    <li><a href="/Employee/UserManager/OrdersDelivery">Orders Delivery</a></li>
-                    <li><a href="/Employee/UserManager/OrdersReceive">Orders Receive</a></li>
-                    <li><a href="/Employee/UserManager/CancelledOrders">Cancelled Orders</a></li>
-                    <li><a href="/Employee/UserManager/CompletedOrders">Completed Orders</a></li>
-                </ul>
-                <li><a href="/Employee/UserManager/ManageUsers">Manage Users</a></li>
-                <li><a href="/Employee/UserManager/ChatSupport">Chat Support</a></li>
-                <li><a href="/Employee/UserManager/CMS">Content Management</a></li>
-                <li><a href="/Employee/UserManager/Logs">Activity Logs</a></li>
+                <li><a href="/Employee/UserManager">Dashboard</a></li>
+                
+                <!-- User Section -->
+                <li>
+                    <div class="sidebar-section-label">User</div>
+                    <ul class="sidebar-submenu" style="display:block;">
+                        <li><a href="/Employee/UserManager/UserProducts">Products</a></li>
+                        <li><a href="/Employee/UserManager/UserVariations">Variations</a></li>
+                        <li><a href="/Employee/UserManager/UserMaterials">Raw Materials</a></li>
+                        <li><a href="/Employee/UserManager/UserAlerts">Alerts</a></li>
+                        <li><a href="/Employee/UserManager/UserArchived">Archived Items</a></li>
+                    </ul>
+                </li>
+                
+                <!-- Transactions Section -->
+                <li>
+                    <div class="sidebar-section-label">Transactions</div>
+                    <ul class="sidebar-submenu" style="display:block;">
+                        <li><a href="/Employee/UserManager/UserRates">Delivery Rates</a></li>
+                        <li><a href="/Employee/UserManager/UserWalkIn">Walk In</a></li>
+                        <li><a href="/Employee/UserManager/UserOrdersPending">Orders Pending</a></li>
+                        <li><a href="/Employee/UserManager/UserOrdersProcessing">Orders Processing</a></li>
+                        <li><a href="/Employee/UserManager/UserOrdersShipping">Orders Shipping</a></li>
+                        <li><a href="/Employee/UserManager/UserOrdersDelivery">Orders Delivery</a></li>
+                        <li><a href="/Employee/UserManager/UserOrdersReceive">Orders Receive</a></li>
+                        <li><a href="/Employee/UserManager/UserCancelledOrders">Cancelled Orders</a></li>
+                        <li><a href="/Employee/UserManager/UserCompletedOrders">Completed Orders</a></li>
+                    </ul>
+                </li>
+                
+                <!-- User Management Section -->
+                <li>
+                    <div class="sidebar-section-label">User Management</div>
+                    <ul class="sidebar-submenu" style="display:block;">
+                        <li><a href="/Employee/UserManager/UserManageUsers">Manage Users</a></li>
+                    </ul>
+                </li>
+                
+                <!-- Customer Reviews Section -->
+                <li>
+                    <div class="sidebar-section-label">Customer Reviews</div>
+                    <ul class="sidebar-submenu" style="display:block;">
+                        <li><a href="/Employee/UserManager/UserReviews">Reviews</a></li>
+                    </ul>
+                </li>
+                
+                <!-- Support & Communication Section -->
+                <li>
+                    <div class="sidebar-section-label">Support & Communication</div>
+                    <ul class="sidebar-submenu" style="display:block;">
+                        <li><a href="/Employee/UserManager/UserChatSupport">Chat Support</a></li>
+                    </ul>
+                </li>
+                
+                <!-- Content & System Section -->
+                <li>
+                    <div class="sidebar-section-label">Content & System</div>
+                    <ul class="sidebar-submenu" style="display:block;">
+                        <li><a href="/Employee/UserManager/UserCMS">Content Management</a></li>
+                        <li><a href="/Employee/UserManager/UserLogs">Activity Logs</a></li>
+                    </ul>
+                </li>
             </ul>
             <div class="logout-section">
                 <a href="/logout" class="logout-button" onclick="handleLogout(event)">Logout</a>
             </div>
         </div>
         <div class="main-content">
-            <div class="header">
+            <div class="header" style="display: flex; align-items: center; justify-content: space-between;">
                 <h2>Dashboard Overview</h2>
+                <!-- Bell Icon for Alerts -->
+                <div id="alertsBellContainer" style="position: relative;">
+                    <button id="alertsBellBtn" style="background: none; border: none; cursor: pointer; position: relative;">
+                        <span style="font-size: 1.8em; color: #333;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 2C8.13 2 5 5.13 5 9v4.28c0 .41-.16.8-.44 1.09L3.29 16.29A1 1 0 0 0 4 18h16a1 1 0 0 0 .71-1.71l-1.27-1.27c-.28-.29-.44-.68-.44-1.09V9c0-3.87-3.13-7-7-7zm0 20c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2z"/>
+                            </svg>
+                        </span>
+                        <span id="alertsBellDot"></span>
+                    </button>
+                    <div id="alertsDropdown" style="display: none; position: absolute; right: 0; top: 38px; background: #fff; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.13); min-width: 320px; max-width: 400px; z-index: 3000;">
+                        <div style="padding: 14px 18px; border-bottom: 1px solid #eee; font-weight: bold; color: #333;">Low & Out of Stock Alerts</div>
+                        <div id="alertsDropdownContent" style="max-height: 320px; overflow-y: auto;"></div>
+                        <a href="/Employee/UserManager/UserAlerts" id="alertsDropdownFooter" style="display:block;text-align:center;padding:12px 0 10px 0;font-size:0.98em;font-weight:600;color:#2196F3;text-decoration:none;border-top:1px solid #eee;transition:background 0.18s;cursor:pointer;">Go to Alerts</a>
+                    </div>
+                </div>
             </div>
             <div class="content-area">
+                <!-- Welcome Section -->
                 <div class="welcome-section">
                     <h2>Welcome back, <%= user.fullName %>!</h2>
                     <p>Here's what's happening in your system today</p>
                 </div>
+
+                <!-- Metrics Grid -->
                 <div class="dashboard-grid">
-                    <div class="metric-card users">
-                        <span class="metric-number" id="totalUsers">-</span>
-                        <div class="metric-label">Total Users</div>
-                        <div class="metric-description">Active users in system</div>
-                    </div>
                     <div class="metric-card products">
                         <span class="metric-number" id="totalProducts">-</span>
                         <div class="metric-label">Total Products</div>
-                        <div class="metric-description">Active products in inventory</div>
+                        <div class="metric-description">Active products in system</div>
                     </div>
+                    
                     <div class="metric-card materials">
                         <span class="metric-number" id="totalMaterials">-</span>
                         <div class="metric-label">Raw Materials</div>
                         <div class="metric-description">Available materials</div>
                     </div>
+                    
+                    <div class="metric-card alerts">
+                        <span class="metric-number" id="totalAlerts">-</span>
+                        <div class="metric-label">Active Alerts</div>
+                        <div class="metric-description">Requires attention</div>
+                    </div>
+                    
                     <div class="metric-card logs">
                         <span class="metric-number" id="recentLogs">-</span>
                         <div class="metric-label">Recent Activities</div>
                         <div class="metric-description">Last 24 hours</div>
                     </div>
                 </div>
+
+                <!-- Dashboard Sections -->
                 <div class="dashboard-sections">
+                    <!-- Alerts Section -->
                     <div class="alerts-section">
                         <h3>Priority Alerts</h3>
                         <div id="alertsContainer">
                             <div class="no-alerts">Loading alerts...</div>
                         </div>
                     </div>
+
+                    <!-- Recent Logs Section -->
                     <div class="recent-logs-section">
                         <h3>Recent Activity Logs</h3>
                         <div id="recentLogsContainer">
@@ -425,6 +642,8 @@
             </div>
         </div>
     </div>
+
+    <!-- Custom Confirmation Modal -->
     <div id="logoutConfirmModal" class="modal-overlay">
         <div class="modal-content">
             <h3>Confirm Logout</h3>
@@ -435,6 +654,336 @@
             </div>
         </div>
     </div>
-    <script src="/js/Employee/UserManager/UserManager.js"></script>
+
+
+    <script>
+        // Improved dropdown functionality
+        document.querySelectorAll('.dropdown-toggle').forEach(item => {
+            item.addEventListener('click', event => {
+                event.preventDefault();
+                const dropdownMenu = item.nextElementSibling;
+                const isVisible = dropdownMenu.style.display === 'block';
+                
+                // Close all other dropdowns first
+                document.querySelectorAll('.dropdown-menu').forEach(menu => {
+                    menu.style.display = 'none';
+                });
+                
+                // Toggle the clicked dropdown
+                dropdownMenu.style.display = isVisible ? 'none' : 'block';
+            });
+        });
+
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function(event) {
+            const dropdowns = document.querySelectorAll('.dropdown');
+            dropdowns.forEach(dropdown => {
+                if (!dropdown.contains(event.target)) {
+                    const dropdownMenu = dropdown.querySelector('.dropdown-menu');
+                    if (dropdownMenu) {
+                        dropdownMenu.style.display = 'none';
+                    }
+                }
+            });
+        });
+
+        // Handle regular link clicks (non-dropdown toggles)
+        document.querySelectorAll('.sidebar-menu a:not(.dropdown-toggle)').forEach(link => {
+            link.addEventListener('click', event => {
+                // Allow the default link behavior
+                return true;
+            });
+        });
+
+        // Dashboard Data Loading Functions
+        async function loadDashboardData() {
+            try {
+                // Load metrics
+                await Promise.all([
+                    loadMetrics(),
+                    loadAlerts(),
+                    loadRecentLogs()
+                ]);
+            } catch (error) {
+                console.error('Error loading dashboard data:', error);
+            }
+        }
+
+        async function loadMetrics() {
+            try {
+                // Fetch total products
+                const productsResponse = await fetch('/api/dashboard/products-count');
+                const productsData = await productsResponse.json();
+                document.getElementById('totalProducts').textContent = productsData.count || 0;
+
+                // Fetch total materials
+                const materialsResponse = await fetch('/api/dashboard/materials-count');
+                const materialsData = await materialsResponse.json();
+                document.getElementById('totalMaterials').textContent = materialsData.count || 0;
+
+                // Fetch alerts count
+                const alertsResponse = await fetch('/Employee/UserManager/Alerts/Data');
+                const alertsData = await alertsResponse.json();
+                const totalAlerts = (alertsData.products?.length || 0) + (alertsData.rawMaterials?.length || 0);
+                document.getElementById('totalAlerts').textContent = totalAlerts;
+
+                // Fetch recent logs count
+                const logsResponse = await fetch('/Employee/UserManager/Logs/Data');
+                const logsData = await logsResponse.json();
+                const recentLogsCount = logsData.logs?.slice(0, 5).length || 0;
+                document.getElementById('recentLogs').textContent = recentLogsCount;
+
+            } catch (error) {
+                console.error('Error loading metrics:', error);
+                // Set default values on error
+                document.getElementById('totalProducts').textContent = '0';
+                document.getElementById('totalMaterials').textContent = '0';
+                document.getElementById('totalAlerts').textContent = '0';
+                document.getElementById('recentLogs').textContent = '0';
+            }
+        }
+
+        async function getSafetyStockValue() {
+            const res = await fetch('/api/safety-stock-value');
+            const data = await res.json();
+            return data.value || 10;
+        }
+
+        function getStockStatus(quantity, safetyStock) {
+            if (quantity === 0) return { label: 'Out of Stock', class: 'alerts-status-out' };
+            if (quantity > 0 && quantity <= safetyStock) return { label: 'Critical Stock', class: 'alerts-status-critical' };
+            if (quantity > safetyStock && quantity <= safetyStock * 2) return { label: 'Low Stock', class: 'alerts-status-low' };
+            return { label: '', class: '' };
+        }
+
+        async function loadAlerts() {
+            try {
+                const [alertsRes, safetyRes] = await Promise.all([
+                    fetch('/Employee/UserManager/Alerts/Data'),
+                    fetch('/api/safety-stock-value')
+                ]);
+                const data = await alertsRes.json();
+                const safetyStock = (await safetyRes.json()).value || 10;
+                const alertsContainer = document.getElementById('alertsContainer');
+                if (data.success && (data.products?.length > 0 || data.rawMaterials?.length > 0)) {
+                    let alertsHTML = '';
+                    // Add product alerts
+                    if (data.products && data.products.length > 0) {
+                        data.products.forEach(product => {
+                            const status = getStockStatus(product.StockQuantity, safetyStock);
+                            if (!status.label) return;
+                            alertsHTML += `
+                                <div class="alert-item ${status.class.replace('alerts-status-', '')}">
+                                    <div class="alert-title">${status.label}: ${product.Name}</div>
+                                    <div class="alert-description">Product ID: ${product.ProductID} | Current Stock: ${product.StockQuantity}</div>
+                                </div>
+                            `;
+                        });
+                    }
+                    // Add material alerts
+                    if (data.rawMaterials && data.rawMaterials.length > 0) {
+                        data.rawMaterials.forEach(material => {
+                            const status = getStockStatus(material.QuantityAvailable, safetyStock);
+                            if (!status.label) return;
+                            alertsHTML += `
+                                <div class="alert-item ${status.class.replace('alerts-status-', '')}">
+                                    <div class="alert-title">${status.label}: ${material.Name}</div>
+                                    <div class="alert-description">Material ID: ${material.MaterialID} | Available: ${material.QuantityAvailable} ${material.Unit}</div>
+                                </div>
+                            `;
+                        });
+                    }
+                    alertsContainer.innerHTML = alertsHTML;
+                } else {
+                    alertsContainer.innerHTML = '<div class="no-alerts">No active alerts at the moment. All systems are running smoothly!</div>';
+                }
+            } catch (error) {
+                console.error('Error loading alerts:', error);
+                document.getElementById('alertsContainer').innerHTML = '<div class="no-alerts">Unable to load alerts at the moment.</div>';
+            }
+        }
+
+        function formatTimeWithAMPM(timeString) {
+            const [hours, minutes, seconds] = timeString.split(':');
+            const formattedTime = `${hours % 12 || 12}:${minutes}:${seconds} ${hours >= 12 ? 'PM' : 'AM'}`;
+            return formattedTime;
+        }
+
+        async function loadRecentLogs() {
+            try {
+                const response = await fetch('/Employee/UserManager/Logs/Data');
+                const data = await response.json();
+                
+                const logsContainer = document.getElementById('recentLogsContainer');
+                
+                if (data.success && data.logs && data.logs.length > 0) {
+                    const recentLogs = data.logs.slice(0, 5); // Get top 5 logs
+                    let logsHTML = '';
+                    
+                    recentLogs.forEach(log => {
+                        const dbTimestamp = new Date(log.Timestamp);
+                        // Display the time exactly as it appears in the database
+                        const timeString = dbTimestamp.toLocaleTimeString('en-US', { 
+                            hour12: false 
+                        });
+                        const formattedTime = formatTimeWithAMPM(timeString);
+                        logsHTML += `
+                            <div class="log-item">
+                                <div class="log-info">
+                                    <div class="log-action">${log.Action} - ${log.TableAffected}</div>
+                                    <div class="log-user">${log.FullName} (${log.RoleName})</div>
+                                </div>
+                                <div class="log-time">${formattedTime}</div>
+                            </div>
+                        `;
+                    });
+                    
+                    logsContainer.innerHTML = logsHTML;
+                } else {
+                    logsContainer.innerHTML = '<div class="no-logs">No recent activity logs found.</div>';
+                }
+            } catch (error) {
+                console.error('Error loading recent logs:', error);
+                document.getElementById('recentLogsContainer').innerHTML = '<div class="no-logs">Unable to load recent logs at the moment.</div>';
+            }
+        }
+
+        // Load dashboard data when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDashboardData();
+        });
+
+        // Custom Logout Modal Logic
+        const logoutConfirmModal = document.getElementById('logoutConfirmModal');
+        const confirmLogoutBtn = document.getElementById('confirmLogoutBtn');
+        const cancelLogoutBtn = document.getElementById('cancelLogoutBtn');
+
+        async function handleLogout(event) {
+            event.preventDefault();
+            logoutConfirmModal.classList.add('show');
+        }
+
+        confirmLogoutBtn.addEventListener('click', async () => {
+            logoutConfirmModal.classList.remove('show');
+            try {
+                const response = await fetch('/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    window.location.href = '/login';
+                } else {
+                    console.error('Logout failed');
+                    alert('Failed to logout. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error during logout:', error);
+                alert('An error occurred during logout. Please try again.');
+            }
+        });
+
+        cancelLogoutBtn.addEventListener('click', () => {
+            logoutConfirmModal.classList.remove('show');
+        });
+
+        // Close modal if clicked outside content
+        logoutConfirmModal.addEventListener('click', (event) => {
+            if (event.target === logoutConfirmModal) {
+                logoutConfirmModal.classList.remove('show');
+            }
+        });
+
+        // Bell icon dropdown for alerts
+        const alertsBellBtn = document.getElementById('alertsBellBtn');
+        const alertsDropdown = document.getElementById('alertsDropdown');
+        const alertsDropdownContent = document.getElementById('alertsDropdownContent');
+        const alertsBellDot = document.getElementById('alertsBellDot');
+        let alertsDropdownLoaded = false;
+
+        // Function to update bell dot indicator
+        async function updateAlertsBellDot() {
+            try {
+                const response = await fetch('/Employee/UserManager/Alerts/Data');
+                const data = await response.json();
+                if ((data.products && data.products.length > 0) || (data.rawMaterials && data.rawMaterials.length > 0)) {
+                    alertsBellDot.style.display = 'block';
+                } else {
+                    alertsBellDot.style.display = 'none';
+                }
+            } catch (err) {
+                alertsBellDot.style.display = 'none';
+            }
+        }
+        // Update on page load
+        document.addEventListener('DOMContentLoaded', updateAlertsBellDot);
+        // Also update when bell is clicked (in case alerts change)
+        alertsBellBtn.addEventListener('click', updateAlertsBellDot);
+
+        alertsBellBtn.addEventListener('click', async function(e) {
+            e.stopPropagation();
+            if (alertsDropdown.style.display === 'block') {
+                alertsDropdown.style.display = 'none';
+                return;
+            }
+            alertsDropdown.style.display = 'block';
+            alertsDropdownLoaded = false;
+            alertsDropdownContent.innerHTML = '<div style="color:#888;text-align:center;padding:18px 0;">Loading...</div>';
+            try {
+                const [alertsRes, safetyRes] = await Promise.all([
+                    fetch('/Employee/UserManager/Alerts/Data'),
+                    fetch('/api/safety-stock-value')
+                ]);
+                const alertsData = await alertsRes.json();
+                const safetyStock = (await safetyRes.json()).value || 10;
+                let html = '';
+                if ((alertsData.products && alertsData.products.length > 0) || (alertsData.rawMaterials && alertsData.rawMaterials.length > 0)) {
+                    if (alertsData.products && alertsData.products.length > 0) {
+                        html += '<div class="alerts-product-header">Products</div>';
+                        alertsData.products.forEach(product => {
+                            const status = getStockStatus(product.StockQuantity, safetyStock);
+                            if (!status.label) return;
+                            html += `<div class="alerts-row"><span style="flex:1;">${product.Name}</span><span class="${status.class}">${status.label}</span></div>`;
+                        });
+                    }
+                    if (alertsData.rawMaterials && alertsData.rawMaterials.length > 0) {
+                        html += '<div class="alerts-material-header">Raw Materials</div>';
+                        alertsData.rawMaterials.forEach(material => {
+                            const status = getStockStatus(material.QuantityAvailable, safetyStock);
+                            if (!status.label) return;
+                            html += `<div class="alerts-row"><span style="flex:1;">${material.Name}</span><span class="${status.class}">${status.label}</span></div>`;
+                        });
+                    }
+                } else {
+                    html = '<div style="color:#888;text-align:center;padding:18px 0;">No low, critical, or out of stock alerts.</div>';
+                }
+                alertsDropdownContent.innerHTML = html;
+                alertsDropdownLoaded = true;
+            } catch (err) {
+                alertsDropdownContent.innerHTML = '<div style="color:#c00;text-align:center;padding:18px 0;">Failed to load alerts.</div>';
+            }
+        });
+        // Hide dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!alertsDropdown.contains(e.target) && e.target !== alertsBellBtn) {
+                alertsDropdown.style.display = 'none';
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            
+        });
+    </script>
+    
+    <!-- Include AdminAlerts.js for popup alerts -->
+    
+    <!-- Admin Session Handler -->
 </body>
 </html>
+
+
+
+
+
