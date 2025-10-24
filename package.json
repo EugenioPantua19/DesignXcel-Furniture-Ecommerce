@@ -33,8 +33,8 @@
   },
   "scripts": {
     "start": "caddy run --config /Caddyfile --adapter caddyfile",
-    "build": "react-scripts build",
-    "build:production": "react-scripts build",
+    "build": "cross-env DISABLE_ESLINT_PLUGIN=true GENERATE_SOURCEMAP=false react-scripts build",
+    "build:production": "cross-env DISABLE_ESLINT_PLUGIN=true GENERATE_SOURCEMAP=false react-scripts build",
     "test": "craco test",
     "eject": "react-scripts eject",
     "dev": "react-scripts start",
