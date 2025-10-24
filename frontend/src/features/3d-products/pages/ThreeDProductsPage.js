@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Bars } from 'react-loader-spinner';
 import { 
   OrbitControls, 
   useGLTF, 
@@ -345,7 +344,6 @@ const CustomizableModel = ({ modelPath, customizations, isRotating360 }) => {
         <LoadingBox />
         <Html center position={[0, 2, 0]}>
           <div className="model-placeholder">
-            <Bars color="#F0B21B" height={40} width={40} />
             <h3>Loading 3D Preview...</h3>
             <p className="placeholder-subtitle">Please wait while we load the 3D model</p>
             <p className="placeholder-note">Loading: {modelPath}</p>
@@ -966,7 +964,6 @@ const ThreeDProducts = () => {
                     justifyContent: 'center',
                     gap: '1rem'
                   }}>
-                    <Bars color="#F0B21B" height={40} width={40} />
                     <p>Loading 3D Model...</p>
                   </div>
                 </Html>

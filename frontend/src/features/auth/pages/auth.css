@@ -11,15 +11,16 @@
 }
 
 .auth-container-new {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     min-height: 100vh;
     width: 100%;
     max-width: 1200px;
     margin: 0 auto;
 }
 
-/* Left Side - Form Section */
+/* Form Section - Centered */
 .auth-form-section {
     display: flex;
     align-items: center;
@@ -27,6 +28,7 @@
     padding: 2rem;
     background: #ffffff;
     color: #111827;
+    width: 100%;
 }
 
 .auth-form-wrapper {
@@ -337,15 +339,9 @@
     color: #F0B21B;
 }
 
-/* Right Side - Visual Section */
+/* Right Side - Visual Section (Hidden for centered layout) */
 .auth-visual-section {
-    background: linear-gradient(135deg, #4D5157 0%, #36454f 100%);
-    position: relative;
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background-image 0.8s ease-in-out;
+    display: none;
 }
 
 .auth-visual-section::before {
