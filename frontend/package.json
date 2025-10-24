@@ -32,12 +32,12 @@
     "util": "^0.12.5"
   },
   "scripts": {
-    "start": "craco start",
+    "start": "serve -s build -l 3000",
+    "dev": "craco start",
     "build": "react-scripts build",
     "build:production": "react-scripts build",
     "test": "craco test",
     "eject": "react-scripts eject",
-    "dev": "react-scripts start",
     "test:watch": "react-scripts test --watchAll",
     "test:coverage": "react-scripts test --coverage --watchAll=false",
     "lint": "echo \"No linter configured\" && exit 0",
