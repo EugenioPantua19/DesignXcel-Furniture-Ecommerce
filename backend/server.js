@@ -509,8 +509,8 @@ if (connectionString) {
     dbConfig = {
         ...parsedConfig,
         options: {
-            encrypt: false, // Disable encryption for local development
-            trustServerCertificate: true, // Trust server certificate for local development
+            encrypt: parsedConfig.options?.encrypt ?? (process.env.NODE_ENV === 'production'), // Use parsed value or default based on environment
+            trustServerCertificate: parsedConfig.options?.trustServerCertificate ?? (process.env.NODE_ENV !== 'production'), // Trust cert for non-production
             enableArithAbort: true
         },
         pool: {
@@ -530,8 +530,8 @@ if (connectionString) {
         password: process.env.DB_PASSWORD || 'Azwrathfrozen22@',
         database: process.env.DB_DATABASE || 'DesignXcellDB',
         options: {
-            encrypt: false, // Disable encryption for local development
-            trustServerCertificate: true, // Trust server certificate for local development
+            encrypt: process.env.DB_ENCRYPT === 'true' || process.env.NODE_ENV === 'production', // Use env var or default based on environment
+            trustServerCertificate: process.env.DB_TRUST_SERVER_CERTIFICATE === 'true' || process.env.NODE_ENV !== 'production', // Use env var or default based on environment
             enableArithAbort: true
         },
         pool: {
