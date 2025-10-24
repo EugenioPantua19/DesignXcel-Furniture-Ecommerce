@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import apiClient from '../../../shared/services/api/apiClient';
-import { LoadingSpinner, InlineLoader } from '../../../shared/components/ui';
+import { Bars } from 'react-loader-spinner';
 import { EyeIcon, EyeOffIcon, LockIcon, CheckCircleIcon } from '../../../shared/components/ui/SvgIcons';
 
 const SecuritySettings = () => {
@@ -370,32 +370,32 @@ const SecuritySettings = () => {
         </div>
 
         <div className="form-actions" style={{ marginTop: '24px' }}>
-          <InlineLoader 
-            isLoading={loading} 
-            text="Updating password..."
-            size="small"
+          <button 
+            type="submit" 
+            className="btn-primary" 
+            disabled={loading}
+            style={{
+              width: '100%',
+              padding: window.innerWidth < 768 ? '14px 20px' : '12px 24px',
+              backgroundColor: '#F0B21B',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: window.innerWidth < 768 ? '15px' : '16px',
+              fontWeight: '600',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.7 : 1,
+              transition: 'all 0.2s ease',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: window.innerWidth < 768 ? '6px' : '8px',
+              minHeight: window.innerWidth < 768 ? '48px' : '44px'
+            }}
           >
-            <button 
-              type="submit" 
-              className="btn-primary" 
-              disabled={loading}
-              style={{
-                width: '100%',
-                padding: '12px 24px',
-                backgroundColor: '#F0B21B',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '16px',
-                fontWeight: '600',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                opacity: loading ? 0.7 : 1,
-                transition: 'all 0.2s ease'
-              }}
-            >
-              Update Password
-            </button>
-          </InlineLoader>
+            {loading && <Bars color="#ffffff" height={window.innerWidth < 768 ? 14 : 16} width={window.innerWidth < 768 ? 14 : 16} />}
+            {loading ? 'Updating password...' : 'Update Password'}
+          </button>
         </div>
       </form>
     </div>

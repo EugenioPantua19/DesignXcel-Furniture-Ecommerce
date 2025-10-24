@@ -7,6 +7,7 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirm
   const getConfirmButtonClass = () => {
     switch (type) {
       case 'warning':
+        return 'confirmation-btn confirmation-btn-warning';
       case 'danger':
         return 'confirmation-btn confirmation-btn-danger';
       case 'success':
@@ -42,17 +43,19 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirm
   };
 
   return (
-    <div className="confirmation-modal-overlay">
-      <div className="confirmation-modal">
+    <div className="confirmation-modal-overlay" onClick={onClose}>
+      <div className="confirmation-modal" onClick={(e) => e.stopPropagation()}>
         <button className="confirmation-modal-close" onClick={onClose}>
-          ×
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
         </button>
         
-        <div className="confirmation-modal-icon">
-          {getIcon()}
-        </div>
-        
         <div className="confirmation-modal-content">
+          <div className="confirmation-modal-icon">
+            {getIcon()}
+          </div>
           <h3 className="confirmation-modal-title">{title || 'Confirm Action'}</h3>
           <p className="confirmation-modal-message">{message || 'Are you sure you want to proceed?'}</p>
         </div>

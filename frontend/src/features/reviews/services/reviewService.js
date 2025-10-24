@@ -92,9 +92,7 @@ export const reviewsService = {
     async getProductReviews(productId) {
         try {
             // Try to fetch from backend first
-            console.log('Fetching reviews for product:', productId);
             const response = await apiClient.get(`/api/products/${productId}/reviews`);
-            console.log('Backend reviews response:', response);
             
             if (response.success) {
                 // Transform backend data to match frontend expectations
@@ -109,21 +107,18 @@ export const reviewsService = {
                     helpful: review.HelpfulCount || 0
                 }));
                 
-                console.log('Transformed reviews:', transformedReviews);
-                
                 return {
                     success: true,
                     reviews: transformedReviews
                 };
             }
         } catch (error) {
-            console.log('Backend not available, using mock data. Error:', error.message);
+            // Backend not available, using mock data
         }
 
         // Fallback to mock data
         await delay(300);
         const productReviews = mockReviews.filter(review => review.productId === parseInt(productId));
-        console.log('Using mock reviews for product:', productId, 'Count:', productReviews.length);
         
         return {
             success: true,
@@ -135,9 +130,7 @@ export const reviewsService = {
     async addProductReview(productId, reviewData) {
         try {
             // Try to send to backend first
-            console.log('Submitting review to backend:', { productId, reviewData });
             const response = await apiClient.post(`/api/products/${productId}/reviews`, reviewData);
-            console.log('Backend review submission response:', response);
             
             if (response.success) {
                 // Transform backend response to match frontend expectations
@@ -152,15 +145,13 @@ export const reviewsService = {
                     helpful: response.review.HelpfulCount || 0
                 };
                 
-                console.log('Transformed review:', transformedReview);
-                
                 return {
                     success: true,
                     review: transformedReview
                 };
             }
         } catch (error) {
-            console.log('Backend not available, using mock data. Error:', error.message);
+            // Backend not available, using mock data
         }
 
         // Fallback to mock data
@@ -179,11 +170,34 @@ export const reviewsService = {
 
         // Add to mock data
         mockReviews.push(newReview);
-        console.log('Added review to mock data:', newReview);
 
         return {
             success: true,
             review: newReview
+        };
+    },
+
+    // Check if user can review a product (has completed purchase)
+    async canUserReviewProduct(productId, customerId) {
+        try {
+            const response = await apiClient.get(`/api/products/${productId}/reviews/can-review?customerId=${customerId}`);
+            if (response.success) {
+                return {
+                    success: true,
+                    canReview: response.canReview,
+                    reason: response.reason
+                };
+            }
+        } catch (error) {
+            // Backend not available for purchase verification
+        }
+
+        // Fallback: If backend is not available, assume user cannot review for security
+        await delay(200);
+        return {
+            success: true,
+            canReview: false,
+            reason: 'Purchase verification unavailable - please try again later'
         };
     },
 
@@ -198,7 +212,7 @@ export const reviewsService = {
                 };
             }
         } catch (error) {
-            console.log('Backend not available, using mock data');
+            // Backend not available, using mock data
         }
 
         // Fallback to mock data
@@ -238,4 +252,5 @@ export const reviewsService = {
 // Export individual functions for easier imports
 export const getProductReviews = reviewsService.getProductReviews;
 export const addProductReview = reviewsService.addProductReview;
+export const canUserReviewProduct = reviewsService.canUserReviewProduct;
 export const getProductReviewStats = reviewsService.getProductReviewStats; 

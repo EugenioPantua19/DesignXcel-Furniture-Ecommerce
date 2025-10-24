@@ -15,13 +15,13 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [token, setToken] = useState(localStorage.getItem('token'));
+    const [token, setToken] = useState(localStorage.getItem('accessToken'));
 
     // Initialize auth on mount only
     useEffect(() => {
         const initializeAuth = async () => {
             try {
-                const savedToken = localStorage.getItem('token');
+                const savedToken = localStorage.getItem('accessToken');
                 const savedUser = localStorage.getItem('user');
                 const lastValidation = localStorage.getItem('lastValidation');
                 
@@ -137,13 +137,22 @@ export const AuthProvider = ({ children }) => {
             if (response.success) {
                 const userData = response.user;
                 
-                // Store authentication data
-                localStorage.setItem('token', response.token || 'customer-token');
+                // Store JWT tokens
+                if (response.tokens) {
+                    localStorage.setItem('accessToken', response.tokens.accessToken);
+                    localStorage.setItem('refreshToken', response.tokens.refreshToken);
+                    setToken(response.tokens.accessToken);
+                }
+                
                 localStorage.setItem('user', JSON.stringify(userData));
                 localStorage.setItem('lastValidation', Date.now().toString());
                 
-                setToken(response.token || 'customer-token');
                 setUser(userData);
+
+                // Dispatch login success event for cart refresh
+                window.dispatchEvent(new CustomEvent('loginSuccess', { 
+                    detail: { user: userData } 
+                }));
 
                 return { success: true, user: userData };
             } else {
@@ -168,10 +177,20 @@ export const AuthProvider = ({ children }) => {
             if (response.success) {
                 const newUser = response.user;
                 
-                localStorage.setItem('token', response.token || 'customer-token');
+                // Store JWT tokens
+                if (response.tokens) {
+                    localStorage.setItem('accessToken', response.tokens.accessToken);
+                    localStorage.setItem('refreshToken', response.tokens.refreshToken);
+                    setToken(response.tokens.accessToken);
+                }
+                
                 localStorage.setItem('user', JSON.stringify(newUser));
-                setToken(response.token || 'customer-token');
                 setUser(newUser);
+
+                // Dispatch login success event for cart refresh
+                window.dispatchEvent(new CustomEvent('loginSuccess', { 
+                    detail: { user: newUser } 
+                }));
                 
                 return { success: true, user: newUser };
             } else {

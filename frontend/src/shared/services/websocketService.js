@@ -1,6 +1,6 @@
 // WebSocket service for real-time communication
 import { io } from 'socket.io-client';
-import apiConfig from '../api/apiConfig';
+import apiConfig from '../api/apiConfig.js';
 
 class WebSocketService {
   constructor() {

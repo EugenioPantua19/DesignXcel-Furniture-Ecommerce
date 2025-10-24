@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import apiClient from '../../../shared/services/api/apiClient';
+import { Bars } from 'react-loader-spinner';
 import { 
   PackageIcon, 
   ClockIcon, 
@@ -12,9 +14,11 @@ import {
   CalendarIcon,
   ArrowRightIcon,
   ShoppingBagIcon,
-  UserIcon
+  UserIcon,
+  StarIcon
 } from '../../../shared/components/ui/SvgIcons';
-import { LoadingSpinner, InlineLoader } from '../../../shared/components/ui';
+// LoadingSpinner and InlineLoader removed as requested
+import { getImageUrl } from '../../../shared/utils/imageUtils';
 import './account.css';
 
 const statusBadgeClass = (status) => {
@@ -58,11 +62,15 @@ const orderFlow = [
 const ConfirmModal = ({ open, onClose, onConfirm, countdown }) => {
   if (!open) return null;
   return (
-    <div className="modal-overlay" style={{position:'fixed',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,0.3)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center'}}>
-      <div className="modal-content" style={{background:'#fff',padding:'2rem',borderRadius:12,minWidth:320,boxShadow:'0 8px 32px rgba(0,0,0,0.18)',textAlign:'center'}}>
-        <h4 style={{marginBottom:16}}>Cancel Order?</h4>
-        <p style={{marginBottom:24}}>Are you sure you want to cancel this order? <br/>This action cannot be undone.</p>
-        <div style={{display:'flex',justifyContent:'center',gap:16}}>
+    <div className="modal-overlay">
+      <div className="modal-content confirm-modal">
+        <div className="modal-header">
+          <h3>Cancel Order?</h3>
+        </div>
+        <div className="modal-body">
+          <p className="confirm-message">Are you sure you want to cancel this order? <br/>This action cannot be undone.</p>
+        </div>
+        <div className="modal-footer">
           <button className="btn btn-secondary" onClick={onClose}>No, go back</button>
           <button className="btn btn-primary" onClick={onConfirm} disabled={countdown > 0}>
             {countdown > 0 ? `OK (${countdown})` : 'OK'}
@@ -80,263 +88,170 @@ const DetailsModal = ({ open, onClose, order }) => {
   const statusIndex = orderFlow.findIndex(s => s.key.toLowerCase() === Status.toLowerCase());
   
   return (
-    <div className="modal-overlay" style={{position:'fixed',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,0.3)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',padding:'20px'}}>
-      <div className="modal-content" style={{background:'#fff',padding:'2rem',borderRadius:16,minWidth:380,maxWidth:600,boxShadow:'0 8px 32px rgba(0,0,0,0.18)',textAlign:'left',overflowY:'auto',maxHeight:'90vh',marginTop:'60px'}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:24}}>
-          <div style={{display:'flex', alignItems:'center', gap:'12px'}}>
-            <div style={{
-              width: '48px',
-              height: '48px',
-              backgroundColor: '#F0B21B',
-              borderRadius: '12px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
+    <div className="modal-overlay">
+      <div className="modal-content">
+        <div className="modal-header">
+          <div className="modal-header-content">
+            <div className="modal-icon">
               <PackageIcon size={24} color="#ffffff" />
             </div>
             <div>
-              <h4 style={{margin:0, fontSize:'20px', fontWeight:'700'}}>Order #{OrderID}</h4>
-              <p style={{margin:0, fontSize:'14px', color:'#6b7280'}}>Order Details</p>
+              <h3>Order #{OrderID}</h3>
+              <p className="modal-subtitle">Order Details</p>
             </div>
           </div>
           <button 
-            className="btn btn-secondary" 
+            className="btn btn-secondary modal-close-btn" 
             onClick={onClose}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '8px',
-              border: '1px solid #e5e7eb',
-              background: '#ffffff',
-              color: '#374151',
-              cursor: 'pointer'
-            }}
           >
             Close
           </button>
         </div>
         
-        <div style={{marginBottom:24}}>
-          <div style={{display:'flex', alignItems:'center', gap:'8px', marginBottom:'8px'}}>
-            <CalendarIcon size={16} color="#6b7280" />
-            <span style={{fontWeight:600, color:'#374151'}}>Order Date</span>
-          </div>
-          <div style={{paddingLeft:'24px', color:'#6b7280'}}>
-            {new Date(OrderDate).toLocaleString('en-US', { 
-              year: 'numeric', 
-              month: 'long', 
-              day: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit'
-            })}
-          </div>
-        </div>
-        
-        <div style={{marginBottom:24}}>
-          <div style={{display:'flex', alignItems:'center', gap:'8px', marginBottom:'8px'}}>
-            <UserIcon size={16} color="#6b7280" />
-            <span style={{fontWeight:600, color:'#374151'}}>Customer Information</span>
-          </div>
-          <div style={{paddingLeft:'24px', color:'#6b7280', display:'flex', flexDirection:'column', gap:'4px'}}>
-            <div><strong>Name:</strong> {user?.fullName || '-'}</div>
-            <div><strong>Email:</strong> {user?.email || '-'}</div>
-            <div><strong>Phone:</strong> {user?.phoneNumber || '-'}</div>
-          </div>
-        </div>
-        
-        <div style={{marginBottom:24}}>
-          <div style={{display:'flex', alignItems:'center', gap:'8px', marginBottom:'8px'}}>
-            <MapPinIcon size={16} color="#6b7280" />
-            <span style={{fontWeight:600, color:'#374151'}}>Shipping Address</span>
-          </div>
-          <div style={{paddingLeft:'24px', color:'#6b7280'}}>
-            {address ? (
-              <div style={{
-                padding: '12px',
-                backgroundColor: '#f9fafb',
-                borderRadius: '8px',
-                border: '1px solid #e5e7eb'
-              }}>
-                {address.Label && <div style={{fontWeight:'600', color:'#374151', marginBottom:'4px'}}>{address.Label}</div>}
-                <div>{[address.HouseNumber, address.Street, address.Barangay, address.City, address.Province, address.Region, address.PostalCode, address.Country].filter(Boolean).join(', ')}</div>
-              </div>
-            ) : <div style={{color:'#9ca3af'}}>No shipping address provided</div>}
-          </div>
-        </div>
-        <div style={{marginBottom:24}}>
-          <div style={{display:'flex', alignItems:'center', gap:'8px', marginBottom:'12px'}}>
-            <ShoppingBagIcon size={16} color="#6b7280" />
-            <span style={{fontWeight:600, color:'#374151'}}>Products ({items?.length || 0})</span>
-          </div>
-          <div style={{display:'flex',flexDirection:'column',gap:12}}>
-            {items && items.length > 0 ? items.map((item, idx) => (
-              <div key={idx} style={{
-                display:'flex',
-                alignItems:'center',
-                gap:16,
-                background:'#ffffff',
-                borderRadius:12,
-                padding:'16px',
-                border: '1px solid #e5e7eb',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-              }}>
-                {item.image ? (
-                  <img src={item.image} alt={item.name} style={{
-                    width:64,
-                    height:64,
-                    objectFit:'cover',
-                    borderRadius:8,
-                    background:'#f3f4f6'
-                  }} />
-                ) : (
-                  <div style={{
-                    width:64,
-                    height:64,
-                    background:'#f3f4f6',
-                    borderRadius:8,
-                    display:'flex',
-                    alignItems:'center',
-                    justifyContent:'center',
-                    color:'#9ca3af'
-                  }}>
-                    <PackageIcon size={24} color="#9ca3af" />
-                  </div>
-                )}
-                <div style={{flex:1}}>
-                  <div style={{fontWeight:600, color:'#374151', marginBottom:'4px'}}>{item.name}</div>
-                  <div style={{fontSize:14,color:'#6b7280', display:'flex', alignItems:'center', gap:'4px'}}>
-                    <span>Quantity:</span>
-                    <span style={{fontWeight:'600', color:'#374151'}}>{item.quantity}</span>
-                  </div>
-                </div>
-                <div style={{
-                  fontWeight:700,
-                  color:'#374151',
-                  fontSize:'16px',
-                  padding:'8px 12px',
-                  backgroundColor:'#f9fafb',
-                  borderRadius:'8px',
-                  border:'1px solid #e5e7eb'
-                }}>
-                  ₱{Number(item.price).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                </div>
-              </div>
-            )) : (
-              <div style={{
-                padding:'24px',
-                textAlign:'center',
-                color:'#9ca3af',
-                backgroundColor:'#f9fafb',
-                borderRadius:'8px',
-                border:'1px solid #e5e7eb'
-              }}>
-                <PackageIcon size={32} color="#9ca3af" style={{marginBottom:'8px'}} />
-                <div>No products found</div>
-              </div>
-            )}
-          </div>
-        </div>
-        
-        <div style={{
-          backgroundColor:'#f9fafb',
-          borderRadius:'12px',
-          padding:'20px',
-          border:'1px solid #e5e7eb',
-          marginBottom:'24px'
-        }}>
-          <div style={{display:'flex', alignItems:'center', gap:'8px', marginBottom:'16px'}}>
-            <CreditCardIcon size={16} color="#6b7280" />
-            <span style={{fontWeight:600, color:'#374151'}}>Payment & Delivery Details</span>
-          </div>
-          
-          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'16px'}}>
-            <div>
-              <div style={{fontSize:'14px', color:'#6b7280', marginBottom:'4px'}}>Payment Method</div>
-              <div style={{fontWeight:600, color:'#374151'}}>{PaymentMethod || 'Not specified'}</div>
+        <div className="modal-body">
+          <div className="detail-section">
+            <div className="detail-section-header">
+              <CalendarIcon size={16} color="#6b7280" />
+              <span className="detail-section-title">Order Date</span>
             </div>
-            <div>
-              <div style={{fontSize:'14px', color:'#6b7280', marginBottom:'4px'}}>Delivery Method</div>
-              <div style={{fontWeight:600, color:'#374151'}}>{DeliveryTypeName || 'Pick up'}</div>
+            <div className="detail-section-content">
+              {new Date(OrderDate).toLocaleString('en-US', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })}
             </div>
           </div>
           
-          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'16px', paddingTop:'16px', borderTop:'1px solid #e5e7eb'}}>
-            <div>
-              <div style={{fontSize:'14px', color:'#6b7280', marginBottom:'4px'}}>Delivery Cost</div>
-              <div style={{fontWeight:600, color:'#374151'}}>₱{Number(DeliveryCost || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+          <div className="detail-section">
+            <div className="detail-section-header">
+              <UserIcon size={16} color="#6b7280" />
+              <span className="detail-section-title">Customer Information</span>
             </div>
-            <div style={{textAlign:'right'}}>
-              <div style={{fontSize:'14px', color:'#6b7280', marginBottom:'4px'}}>Order Total</div>
-              <div style={{fontWeight:700, color:'#374151', fontSize:'18px'}}>₱{Number(TotalAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+            <div className="detail-section-content customer-info">
+              <div className="detail-item">
+                <span className="detail-label">Name:</span>
+                <span className="detail-value">{user?.fullName || '-'}</span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">Email:</span>
+                <span className="detail-value">{user?.email || '-'}</span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">Phone:</span>
+                <span className="detail-value">{user?.phoneNumber || '-'}</span>
+              </div>
             </div>
           </div>
-        </div>
-        <div style={{marginBottom:24}}>
-          <div style={{display:'flex', alignItems:'center', gap:'8px', marginBottom:'16px'}}>
-            <ArrowRightIcon size={16} color="#6b7280" />
-            <span style={{fontWeight:600, color:'#374151'}}>Order Status Flow</span>
-          </div>
-          <div style={{
-            display:'flex',
-            alignItems:'center',
-            gap:12,
-            flexWrap:'wrap',
-            padding:'16px',
-            backgroundColor:'#ffffff',
-            borderRadius:'12px',
-            border:'1px solid #e5e7eb',
-            boxShadow:'0 1px 3px rgba(0,0,0,0.1)'
-          }}>
-            {orderFlow.map((step, idx) => (
-              <React.Fragment key={step.key}>
-                <div style={{
-                  display:'flex',
-                  flexDirection:'column',
-                  alignItems:'center',
-                  gap:'8px',
-                  minWidth:'80px'
-                }}>
-                  <div style={{
-                    width:'32px',
-                    height:'32px',
-                    borderRadius:'50%',
-                    backgroundColor: idx <= statusIndex ? '#F0B21B' : '#e5e7eb',
-                    display:'flex',
-                    alignItems:'center',
-                    justifyContent:'center',
-                    border: idx === statusIndex ? '3px solid #F0B21B' : '2px solid #e5e7eb',
-                    boxShadow: idx === statusIndex ? '0 2px 8px rgba(240, 178, 27, 0.3)' : 'none',
-                    transition:'all 0.3s ease'
-                  }}>
-                    {idx < statusIndex ? (
-                      <CheckCircleIcon size={16} color="#ffffff" />
-                    ) : idx === statusIndex ? (
-                      <ClockIcon size={16} color="#ffffff" />
-                    ) : (
-                      <div style={{width:'8px', height:'8px', backgroundColor:'#9ca3af', borderRadius:'50%'}} />
-                    )}
-                  </div>
-                  <div style={{
-                    fontSize:'12px',
-                    fontWeight: idx === statusIndex ? 700 : 500,
-                    color: idx === statusIndex ? '#F0B21B' : '#6b7280',
-                    textAlign:'center',
-                    transition:'all 0.3s ease'
-                  }}>
-                    {step.label}
+          
+          <div className="detail-section">
+            <div className="detail-section-header">
+              <MapPinIcon size={16} color="#6b7280" />
+              <span className="detail-section-title">Shipping Address</span>
+            </div>
+            <div className="detail-section-content">
+              {address ? (
+                <div className="address-details">
+                  {address.Label && <div className="address-label">{address.Label}</div>}
+                  <div className="address-text">
+                    {[address.HouseNumber, address.Street, address.Barangay, address.City, address.Province, address.Region, address.PostalCode, address.Country].filter(Boolean).join(', ')}
                   </div>
                 </div>
-                {idx < orderFlow.length-1 && (
-                  <div style={{
-                    width:'20px',
-                    height:'2px',
-                    backgroundColor: idx < statusIndex ? '#F0B21B' : '#e5e7eb',
-                    borderRadius:'1px',
-                    transition:'all 0.3s ease'
-                  }} />
-                )}
-              </React.Fragment>
-            ))}
+              ) : <div className="no-address">No shipping address provided</div>}
+            </div>
+          </div>
+          <div className="detail-section">
+            <div className="detail-section-header">
+              <ShoppingBagIcon size={16} color="#6b7280" />
+              <span className="detail-section-title">Products ({items?.length || 0})</span>
+            </div>
+            <div className="order-items-list">
+              {items && items.length > 0 ? items.map((item, idx) => (
+                <div key={idx} className="order-item-detail">
+                  {item.image ? (
+                    <img src={getImageUrl(item.image)} alt={item.name} className="item-image" />
+                  ) : (
+                    <div className="item-image-placeholder">
+                      <PackageIcon size={24} color="#9ca3af" />
+                    </div>
+                  )}
+                  <div className="item-info">
+                    <div className="item-name">{item.name}</div>
+                    <div className="item-details">
+                      <div className="item-quantity">Quantity: {item.quantity}</div>
+                    </div>
+                  </div>
+                  <div className="item-price">
+                    ₱{Number(item.price).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </div>
+                </div>
+              )) : (
+                <div className="no-items">
+                  <PackageIcon size={32} color="#9ca3af" />
+                  <div>No products found</div>
+                </div>
+              )}
+            </div>
+          </div>
+        
+          <div className="detail-section">
+            <div className="detail-section-header">
+              <CreditCardIcon size={16} color="#6b7280" />
+              <span className="detail-section-title">Payment & Delivery Details</span>
+            </div>
+            
+            <div className="payment-delivery-grid">
+              <div className="detail-item">
+                <span className="detail-label">Payment Method</span>
+                <span className="detail-value">{PaymentMethod || 'Not specified'}</span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">Delivery Method</span>
+                <span className="detail-value">{DeliveryTypeName || 'Pick up'}</span>
+              </div>
+            </div>
+            
+            <div className="order-totals">
+              <div className="detail-item">
+                <span className="detail-label">Delivery Cost</span>
+                <span className="detail-value">₱{Number(DeliveryCost || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">Order Total</span>
+                <span className="detail-value total-amount">₱{Number(TotalAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+              </div>
+            </div>
+          </div>
+          <div className="detail-section">
+            <div className="detail-section-header">
+              <ArrowRightIcon size={16} color="#6b7280" />
+              <span className="detail-section-title">Order Status Flow</span>
+            </div>
+            <div className="status-flow">
+              {orderFlow.map((step, idx) => (
+                <React.Fragment key={step.key}>
+                  <div className="status-step">
+                    <div className={`status-icon ${idx <= statusIndex ? 'completed' : ''} ${idx === statusIndex ? 'current' : ''}`}>
+                      {idx < statusIndex ? (
+                        <CheckCircleIcon size={16} color="#ffffff" />
+                      ) : idx === statusIndex ? (
+                        <ClockIcon size={16} color="#ffffff" />
+                      ) : (
+                        <div className="status-dot" />
+                      )}
+                    </div>
+                    <div className={`status-label ${idx === statusIndex ? 'current' : ''}`}>
+                      {step.label}
+                    </div>
+                  </div>
+                  {idx < orderFlow.length-1 && (
+                    <div className={`status-connector ${idx < statusIndex ? 'completed' : ''}`} />
+                  )}
+                </React.Fragment>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -353,17 +268,24 @@ const TABS = [
 const SuccessModal = ({ open, onClose, message }) => {
   if (!open) return null;
   return (
-    <div className="modal-overlay" style={{position:'fixed',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,0.3)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center'}}>
-      <div className="modal-content" style={{background:'#fff',padding:'2rem',borderRadius:12,minWidth:320,boxShadow:'0 8px 32px rgba(0,0,0,0.18)',textAlign:'center'}}>
-        <h4 style={{marginBottom:16}}>Order Received!</h4>
-        <p style={{marginBottom:24}}>{message || 'You have successfully received your order.'}</p>
-        <button className="btn btn-primary" onClick={onClose}>OK</button>
+    <div className="modal-overlay">
+      <div className="modal-content success-modal">
+        <div className="modal-header">
+          <h3>Order Received!</h3>
+        </div>
+        <div className="modal-body">
+          <p className="success-message">{message || 'You have successfully received your order.'}</p>
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-primary" onClick={onClose}>OK</button>
+        </div>
       </div>
     </div>
   );
 };
 
 const OrderHistory = () => {
+  const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -460,8 +382,30 @@ const OrderHistory = () => {
   }
 
   if (loading) return (
-    <div style={{ padding: '40px', textAlign: 'center' }}>
-      <LoadingSpinner size="large" text="Loading your orders..." color="#F0B21B" />
+    <div style={{ 
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '60px 20px',
+      minHeight: '400px',
+      textAlign: 'center'
+    }}>
+      <Bars 
+        color="#F0B21B" 
+        height={window.innerWidth < 768 ? 32 : 40} 
+        width={window.innerWidth < 768 ? 32 : 40} 
+      />
+      <div style={{ 
+        fontSize: window.innerWidth < 768 ? '14px' : '16px', 
+        color: '#6b7280', 
+        marginTop: '16px',
+        fontWeight: '500',
+        maxWidth: '280px',
+        lineHeight: '1.5'
+      }}>
+        Loading your orders...
+      </div>
     </div>
   );
   
@@ -704,7 +648,7 @@ const OrderHistory = () => {
                     border: '1px solid #e5e7eb'
                   }}>
                     {item.image ? (
-                      <img src={item.image} alt={item.name} style={{
+                      <img src={getImageUrl(item.image)} alt={item.name} style={{
                         width: '40px',
                         height: '40px',
                         objectFit: 'cover',
@@ -814,60 +758,90 @@ const OrderHistory = () => {
                   View Details
                 </button>
                 
-                {order.Status !== 'Cancelled' && order.Status !== 'Completed' && order.Status !== 'Delivered' && (
-                  <InlineLoader 
-                    isLoading={cancelling[order.OrderID]} 
-                    text="Cancelling..."
-                    size="small"
+                {order.Status !== 'Cancelled' && order.Status !== 'Completed' && order.Status !== 'Delivered' && order.Status !== 'Shipping' && order.Status !== 'Delivering' && (
+                  <button
+                    className="btn btn-primary"
+                    disabled={cancelling[order.OrderID]}
+                    onClick={() => openModal(order.OrderID)}
+                    style={{
+                      padding: '10px 16px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      background: '#ef4444',
+                      color: '#ffffff',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease'
+                    }}
                   >
-                    <button
-                      className="btn btn-primary"
-                      disabled={cancelling[order.OrderID]}
-                      onClick={() => openModal(order.OrderID)}
-                      style={{
-                        padding: '10px 16px',
-                        borderRadius: '8px',
-                        border: 'none',
-                        background: '#ef4444',
-                        color: '#ffffff',
-                        fontSize: '14px',
-                        fontWeight: '500',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease'
-                      }}
-                    >
-                      <XIcon size={16} color="#ffffff" style={{ marginRight: '6px' }} />
-                      Cancel
-                    </button>
-                  </InlineLoader>
+                    <XIcon size={16} color="#ffffff" style={{ marginRight: '6px' }} />
+                    {cancelling[order.OrderID] ? 'Cancelling...' : 'Cancel'}
+                  </button>
+                )}
+                
+                {(order.Status === 'Shipping' || order.Status === 'Delivering') && (
+                  <span style={{
+                    padding: '10px 16px',
+                    borderRadius: '8px',
+                    border: '1px solid #e5e7eb',
+                    background: '#f0f9ff',
+                    color: '#0369a1',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}>
+                    <TruckIcon size={16} color="#0369a1" />
+                    Cannot Cancel - Order is Shipping
+                  </span>
                 )}
                 
                 {(order.Status === 'Receive' || order.Status === 'Received') && (
-                  <InlineLoader 
-                    isLoading={receiving[order.OrderID]} 
-                    text="Processing..."
-                    size="small"
+                  <button
+                    className="btn btn-success"
+                    disabled={receiving[order.OrderID]}
+                    onClick={() => handleReceiveOrder(order.OrderID)}
+                    style={{
+                      padding: '10px 16px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      background: '#10b981',
+                      color: '#ffffff',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease'
+                    }}
                   >
-                    <button
-                      className="btn btn-success"
-                      disabled={receiving[order.OrderID]}
-                      onClick={() => handleReceiveOrder(order.OrderID)}
-                      style={{
-                        padding: '10px 16px',
-                        borderRadius: '8px',
-                        border: 'none',
-                        background: '#10b981',
-                        color: '#ffffff',
-                        fontSize: '14px',
-                        fontWeight: '500',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease'
-                      }}
-                    >
-                      <CheckCircleIcon size={16} color="#ffffff" style={{ marginRight: '6px' }} />
-                      Receive Order
-                    </button>
-                  </InlineLoader>
+                    <CheckCircleIcon size={16} color="#ffffff" style={{ marginRight: '6px' }} />
+                    {receiving[order.OrderID] ? 'Processing...' : 'Receive Order'}
+                  </button>
+                )}
+                
+                {(order.Status === 'Completed' || order.Status === 'Delivered') && order.items && order.items.length > 0 && (
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => navigate(`/product/${order.items[0].ProductID}`)}
+                    style={{
+                      padding: '10px 16px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      background: '#F0B21B',
+                      color: '#ffffff',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <StarIcon size={16} color="#ffffff" />
+                    Review Product
+                  </button>
                 )}
                 
                 {order.Status === 'Cancelled' && (

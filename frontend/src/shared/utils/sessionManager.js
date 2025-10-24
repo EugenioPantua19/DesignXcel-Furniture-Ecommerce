@@ -62,21 +62,31 @@ class SessionManager {
 
     // Clear session data
     clearSession() {
-        localStorage.removeItem('token');
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
         localStorage.removeItem('user');
+        localStorage.removeItem('userData');
+        localStorage.removeItem('authToken');
         localStorage.removeItem('lastValidation');
+        localStorage.removeItem('rememberMe');
+        localStorage.removeItem('loginTime');
+        localStorage.removeItem('persistentAccount');
         this.stopSessionRefresh();
     }
 
     // Get session info
     getSessionInfo() {
-        const token = localStorage.getItem('token');
+        const accessToken = localStorage.getItem('accessToken');
+        const refreshToken = localStorage.getItem('refreshToken');
         const user = localStorage.getItem('user');
+        const userData = localStorage.getItem('userData');
         const lastValidation = localStorage.getItem('lastValidation');
 
         return {
-            hasToken: !!token,
-            hasUser: !!user,
+            hasAccessToken: !!accessToken,
+            hasRefreshToken: !!refreshToken,
+            hasToken: !!accessToken,
+            hasUser: !!user || !!userData,
             lastValidation: lastValidation ? new Date(parseInt(lastValidation)) : null,
             needsValidation: this.needsValidation()
         };

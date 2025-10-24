@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Customer Reviews - Order Support Panel</title>
+    <link rel="stylesheet" href="/css/Employee/Admin/AdminIndexStyles.css">
+    <link rel="stylesheet" href="/css/dark-mode.css">
+    <style>
+        /* Custom Confirmation Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            visibility: hidden;
+            opacity: 0;
+            transition: visibility 0s, opacity 0.3s ease;
+        }
+        .modal-overlay.show {
+            visibility: visible;
+            opacity: 1;
+        }
+        .modal-content {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+        .modal-overlay.show .modal-content {
+            transform: scale(1);
+        }
+        .modal-content h3 {
+            margin-top: 0;
+            color: #333;
+            font-size: 1.5em;
+            margin-bottom: 20px;
+        }
+        .modal-content p {
+            color: #555;
+            font-size: 1.1em;
+            margin-bottom: 30px;
+        }
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+        .modal-button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .modal-button.confirm {
+            background-color: #dc3545;
+            color: white;
+        }
+        .modal-button.confirm:hover {
+            background-color: #c82333;
+        }
+        .modal-button.cancel {
+            background-color: #f0f0f0;
+            color: #555;
+            border: 1px solid #ccc;
+        }
+        .modal-button.cancel:hover {
+            background-color: #e0e0e0;
+        }
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        .sidebar-menu {
+            flex-grow: 1;
+        }
+        .logout-section {
+            padding: 40px;
+            border-top: 1px solid #ddd;
+            margin-top: auto;
+            text-align: center;
+        }
+        .logout-button {
+            display: inline-block;
+            width: auto;
+            padding: 12px 25px;
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            font-weight: bold;
+            transition: background-color 0.3s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        .logout-button:hover {
+            background-color: #c82333;
+        }
+        .reviews-container {
+            padding: 20px;
+            background: #f8f9fa;
+            min-height: 100vh;
+        }
+
+        .reviews-header {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .reviews-header h1 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 24px;
+        }
+
+        .reviews-header p {
+            margin: 0;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .filters-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .filters-row {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .filter-group label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #555;
+            text-transform: uppercase;
+        }
+
+        .filter-group select,
+        .filter-group input {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            min-width: 150px;
+        }
+
+        .filter-group input[type="text"] {
+            min-width: 200px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 20px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+        }
+
+        .checkbox-group label {
+            font-size: 14px;
+            color: #555;
+            text-transform: none;
+        }
+
+        .reviews-table-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .reviews-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .reviews-table th {
+            background: #f8f9fa;
+            padding: 15px 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #555;
+            border-bottom: 2px solid #e9ecef;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        .reviews-table td {
+            padding: 15px 12px;
+            border-bottom: 1px solid #e9ecef;
+            vertical-align: top;
+        }
+
+        .reviews-table tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        .review-id {
+            font-weight: 600;
+            color: #007bff;
+        }
+
+        .customer-name {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .product-name {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .rating-stars {
+            display: flex;
+            gap: 2px;
+        }
+
+        .star {
+            color: #ffc107;
+            font-size: 16px;
+        }
+
+        .star.empty {
+            color: #e9ecef;
+        }
+
+        .review-text {
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: #666;
+        }
+
+        .review-date {
+            color: #666;
+            font-size: 12px;
+        }
+
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-approved {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-rejected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+        }
+
+        .btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .btn-approve {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-approve:hover {
+            background: #218838;
+        }
+
+        .btn-reject {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-reject:hover {
+            background: #c82333;
+        }
+
+        .btn-delete {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-delete:hover {
+            background: #5a6268;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .no-reviews {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .pagination button {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            background: white;
+            color: #333;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .pagination button:hover:not(:disabled) {
+            background: #f8f9fa;
+        }
+
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pagination .current-page {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar content -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h3>Order Support Panel</h3>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="/Employee/OrderSupport">Dashboard</a></li>
+                
+                <!-- Inventory Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">Inventory</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/OrderSupport/OrderProducts">Products</a></li>
+                    <li><a href="/Employee/OrderSupport/OrderVariations">Variations</a></li>
+                    <li><a href="/Employee/OrderSupport/OrderMaterials">Raw Materials</a></li>
+                    <li><a href="/Employee/OrderSupport/OrderAlerts">Alerts</a></li>
+                    <li><a href="/Employee/OrderSupport/OrderArchived">Archived Items</a></li>
+                </ul>
+                
+                <!-- Transactions Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">Transactions</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/OrderSupport/OrderRates">Delivery Rates</a></li>
+                    <li><a href="/Employee/OrderSupport/OrderWalkIn">Walk In</a></li>
+                    <li><a href="/Employee/OrderSupport/OrderOrdersPending">Orders Pending</a></li>
+                    <li><a href="/Employee/OrderSupport/OrderOrdersProcessing">Orders Processing</a></li>
+                    <li><a href="/Employee/OrderSupport/OrderOrdersShipping">Orders Shipping</a></li>
+                    <li><a href="/Employee/OrderSupport/OrderOrdersDelivery">Orders Delivery</a></li>
+                    <li><a href="/Employee/OrderSupport/OrderOrdersReceive">Orders Receive</a></li>
+                    <li><a href="/Employee/OrderSupport/OrderCancelledOrders">Cancelled Orders</a></li>
+                    <li><a href="/Employee/OrderSupport/OrderCompletedOrders">Completed Orders</a></li>
+                </ul>
+                
+                <!-- User Management Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">User Management</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/OrderSupport/OrderManageUsers">Manage Users</a></li>
+                </ul>
+                
+                <!-- Customer Reviews Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">Customer Reviews</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/OrderSupport/OrderReviews">Reviews</a></li>
+                </ul>
+                
+                <!-- Support & Communication Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">Support & Communication</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/OrderSupport/OrderChatSupport">Chat Support</a></li>
+                </ul>
+                
+                <!-- Content & System Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">Content & System</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/OrderSupport/OrderCMS">Content Management</a></li>
+                    <li><a href="/Employee/OrderSupport/OrderLogs">Activity Logs</a></li>
+                </ul>
+            </ul>
+            <div class="logout-section">
+                <a href="/logout" class="logout-button" onclick="handleLogout(event)">Logout</a>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="reviews-container">
+                <div class="reviews-header">
+                    <h1>Manage customer reviews and ratings</h1>
+                    <p>Customer Reviews</p>
+                </div>
+
+                <div class="filters-section">
+                    <div class="filters-row">
+                        <div class="filter-group">
+                            <label>Status</label>
+                            <select id="statusFilter">
+                                <option value="all">All Status</option>
+                                <option value="approved">Approved</option>
+                                <option value="pending">Pending</option>
+                                <option value="rejected">Rejected</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>Rating</label>
+                            <select id="ratingFilter">
+                                <option value="all">All Ratings</option>
+                                <option value="5">5 Stars</option>
+                                <option value="4">4 Stars</option>
+                                <option value="3">3 Stars</option>
+                                <option value="2">2 Stars</option>
+                                <option value="1">1 Star</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>Search</label>
+                            <input type="text" id="searchInput" placeholder="Search by customer name or product...">
+                        </div>
+                    </div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="showRejected">
+                        <label for="showRejected">Show Rejected Reviews</label>
+                    </div>
+                </div>
+
+                <div class="reviews-table-container">
+                    <table class="reviews-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Customer</th>
+                                <th>Product</th>
+                                <th>Rating</th>
+                                <th>Review</th>
+                                <th>Date</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reviewsTableBody">
+                            <tr>
+                                <td colspan="8" class="loading">Loading reviews...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="pagination" id="pagination" style="display: none;">
+                    <button id="prevPage" disabled>Previous</button>
+                    <span id="pageInfo">Page 1 of 1</span>
+                    <button id="nextPage" disabled>Next</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentPage = 1;
+        let totalPages = 1;
+        let currentFilter = 'all';
+        let currentRating = 'all';
+        let currentSearch = '';
+        let showRejected = false;
+
+        // Load reviews on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadReviews();
+            
+            // Add event listeners
+            document.getElementById('statusFilter').addEventListener('change', function() {
+                currentFilter = this.value;
+                currentPage = 1;
+                loadReviews();
+            });
+            
+            document.getElementById('ratingFilter').addEventListener('change', function() {
+                currentRating = this.value;
+                currentPage = 1;
+                loadReviews();
+            });
+            
+            document.getElementById('searchInput').addEventListener('input', function() {
+                currentSearch = this.value;
+                currentPage = 1;
+                loadReviews();
+            });
+            
+            document.getElementById('showRejected').addEventListener('change', function() {
+                showRejected = this.checked;
+                currentPage = 1;
+                loadReviews();
+            });
+            
+            document.getElementById('prevPage').addEventListener('click', function() {
+                if (currentPage > 1) {
+                    currentPage--;
+                    loadReviews();
+                }
+            });
+            
+            document.getElementById('nextPage').addEventListener('click', function() {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    loadReviews();
+                }
+            });
+        });
+
+        async function loadReviews() {
+            try {
+                const response = await fetch(`/api/admin/reviews?filter=${currentFilter}&rating=${currentRating}&search=${currentSearch}&showRejected=${showRejected}&page=${currentPage}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayReviews(data.reviews);
+                    updatePagination(data.pagination?.totalPages || 1);
+                } else {
+                    console.error('Error loading reviews:', data.error);
+                    document.getElementById('reviewsTableBody').innerHTML = '<tr><td colspan="8" class="no-reviews">Error loading reviews</td></tr>';
+                }
+            } catch (error) {
+                console.error('Error loading reviews:', error);
+                document.getElementById('reviewsTableBody').innerHTML = '<tr><td colspan="8" class="no-reviews">Error loading reviews</td></tr>';
+            }
+        }
+
+        function displayReviews(reviews) {
+            const tbody = document.getElementById('reviewsTableBody');
+            
+            if (reviews.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="no-reviews">No reviews found</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = reviews.map(review => `
+                <tr>
+                    <td class="review-id">${review.ReviewID}</td>
+                    <td class="customer-name">${review.ReviewerName || 'Anonymous'}</td>
+                    <td class="product-name">${review.ProductName}</td>
+                    <td>
+                        <div class="rating-stars">
+                            ${generateStars(review.Rating)}
+                        </div>
+                    </td>
+                    <td class="review-text" title="${review.Comment || ''}">${review.Comment || 'No comment'}</td>
+                    <td class="review-date">${formatDate(review.ReviewDate)}</td>
+                    <td>
+                        <span class="status-badge status-${review.IsActive ? 'approved' : 'pending'}">
+                            ${review.IsActive ? 'Approved' : 'Pending'}
+                        </span>
+                    </td>
+                    <td class="action-buttons">
+                        ${review.IsActive ? 
+                            `<button class="btn btn-reject" onclick="toggleReviewStatus(${review.ReviewID}, false)">Reject</button>` :
+                            `<button class="btn btn-approve" onclick="toggleReviewStatus(${review.ReviewID}, true)">Approve</button>`
+                        }
+                        <button class="btn btn-delete" onclick="deleteReview(${review.ReviewID})">Delete</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function generateStars(rating) {
+            const stars = [];
+            for (let i = 1; i <= 5; i++) {
+                stars.push(`<span class="star ${i <= rating ? '' : 'empty'}">★</span>`);
+            }
+            return stars.join('');
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', {
+                month: '2-digit',
+                day: '2-digit',
+                year: 'numeric'
+            });
+        }
+
+        function updatePagination(total) {
+            totalPages = total;
+            const pagination = document.getElementById('pagination');
+            const prevBtn = document.getElementById('prevPage');
+            const nextBtn = document.getElementById('nextPage');
+            const pageInfo = document.getElementById('pageInfo');
+            
+            if (totalPages > 1) {
+                pagination.style.display = 'flex';
+                prevBtn.disabled = currentPage === 1;
+                nextBtn.disabled = currentPage === totalPages;
+                pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+            } else {
+                pagination.style.display = 'none';
+            }
+        }
+
+        async function toggleReviewStatus(reviewId, isActive) {
+            try {
+                const response = await fetch(`/api/admin/reviews/${reviewId}/toggle`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ isActive: isActive })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(data.message);
+                    loadReviews(); // Reload the reviews
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error toggling review status:', error);
+                alert('Error updating review status');
+            }
+        }
+
+        async function deleteReview(reviewId) {
+            if (!confirm('Are you sure you want to delete this review? This action cannot be undone.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/admin/reviews/${reviewId}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(data.message);
+                    loadReviews(); // Reload the reviews
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error deleting review:', error);
+                alert('Error deleting review');
+            }
+        }
+    </script>
+
+    <!-- Custom Confirmation Modal -->
+    <div id="logoutConfirmModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Confirm Logout</h3>
+            <p>Are you sure you want to log out?</p>
+            <div class="modal-buttons">
+                <button class="modal-button confirm" id="confirmLogoutBtn">Logout</button>
+                <button class="modal-button cancel" id="cancelLogoutBtn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Custom Logout Modal Logic
+        const logoutConfirmModal = document.getElementById('logoutConfirmModal');
+        const confirmLogoutBtn = document.getElementById('confirmLogoutBtn');
+        const cancelLogoutBtn = document.getElementById('cancelLogoutBtn');
+
+        async function handleLogout(event) {
+            event.preventDefault();
+            logoutConfirmModal.classList.add('show');
+        }
+
+        confirmLogoutBtn.addEventListener('click', async () => {
+            logoutConfirmModal.classList.remove('show');
+            try {
+                const response = await fetch('/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    window.location.href = '/login';
+                } else {
+                    console.error('Logout failed');
+                    alert('Failed to logout. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error during logout:', error);
+                alert('An error occurred during logout. Please try again.');
+            }
+        });
+
+        cancelLogoutBtn.addEventListener('click', () => {
+            logoutConfirmModal.classList.remove('show');
+        });
+
+        // Close modal if clicked outside content
+        logoutConfirmModal.addEventListener('click', (event) => {
+            if (event.target === logoutConfirmModal) {
+                logoutConfirmModal.classList.remove('show');
+            }
+        });
+    </script>
+        <script src="/js/dark-mode.js"></script>
+</body>
+</html>
+
+
+
+
+
+

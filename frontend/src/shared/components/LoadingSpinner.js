@@ -4,6 +4,7 @@
  */
 
 import React from 'react';
+import { Bars } from 'react-loader-spinner';
 
 const LoadingSpinner = ({ 
     message = 'Loading...', 
@@ -11,22 +12,20 @@ const LoadingSpinner = ({
     className = '',
     showMessage = true 
 }) => {
-    const sizeClasses = {
-        small: 'h-5 w-5',
-        medium: 'h-8 w-8',
-        large: 'h-10 w-10'
+    const getSpinnerSize = () => {
+        switch (size) {
+            case 'small': return { height: 20, width: 20 };
+            case 'large': return { height: 40, width: 40 };
+            case 'medium':
+            default: return { height: 32, width: 32 };
+        }
     };
+
+    const spinnerSize = getSpinnerSize();
 
     return (
         <div className={`flex flex-col items-center justify-center p-8 ${className}`}>
-            <div 
-                className={`animate-spin rounded-full border-3 border-gray-200 border-t-orange-500 border-r-orange-400 ${sizeClasses[size]}`}
-                style={{
-                    borderColor: '#e5e7eb',
-                    borderTopColor: '#F0B21B',
-                    borderRightColor: '#f6b221'
-                }}
-            ></div>
+            <Bars color="#F0B21B" height={spinnerSize.height} width={spinnerSize.width} />
             {showMessage && (
                 <p className="mt-4 text-gray-600 text-sm font-inter">{message}</p>
             )}

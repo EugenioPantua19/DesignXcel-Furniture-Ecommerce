@@ -1,20 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useCart } from '../../../shared/contexts/CartContext';
+import { useWishlist } from '../../../shared/contexts/WishlistContext';
 import { useCurrency } from '../../../shared/contexts/CurrencyContext';
+import { Bars } from 'react-loader-spinner';
 import { getProductById, getProductVariations } from '../services/productService';
-import apiConfig from '../../../shared/services/api/apiConfig';
+import apiConfig from '../../../shared/services/api/apiConfig.js';
 import Breadcrumb from '../../../shared/components/layout/Breadcrumb';
-import { ContactSection } from '../../../shared/components/layout';
 import CartSuccessModal from '../../../shared/components/ui/CartSuccessModal';
-import { PageLoader, InlineLoader } from '../../../shared/components/ui';
+import { PageLoader } from '../../../shared/components/ui';
 import ReviewSection from '../../reviews/components/ReviewSection';
+import { getImageUrl } from '../../../shared/utils/imageUtils';
 import './product-detail.css';
 
 const ProductDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { addToCart } = useCart();
+  const { toggleWishlist, isInWishlist } = useWishlist();
   const { formatPrice } = useCurrency();
   
   const [product, setProduct] = useState(null);
@@ -25,7 +28,6 @@ const ProductDetail = () => {
   const [quantity, setQuantity] = useState(1);
   const [selectedVariation, setSelectedVariation] = useState(null);
   const [useOriginalProduct, setUseOriginalProduct] = useState(true);
-  const [isWishlisted, setIsWishlisted] = useState(false);
   const [activeTab, setActiveTab] = useState('additional-info');
   const [showCartSuccessModal, setShowCartSuccessModal] = useState(false);
   const [addingToCart, setAddingToCart] = useState(false);
@@ -113,9 +115,9 @@ const ProductDetail = () => {
     }
   };
 
-  // Handle 3D customization
-  const handle3DCustomization = () => {
-    navigate(`/3d-customization/${id}`);
+  // Handle 3D Products
+  const handle3DProducts = () => {
+    navigate(`/3d-products/${id}`);
   };
 
   // Loading state
@@ -150,7 +152,7 @@ const ProductDetail = () => {
   const allImages = [mainImage, ...thumbnails].filter(Boolean);
   
   const currentImage = allImages[selectedImageIndex] || '/logo192.png';
-  const imageUrl = currentImage.startsWith('/') ? currentImage : currentImage; // Use relative URL since proxy is configured
+  const imageUrl = getImageUrl(currentImage);
 
   // Calculate pricing
   const hasDiscount = product.hasDiscount && product.discountInfo;
@@ -172,15 +174,24 @@ const ProductDetail = () => {
     { label: product.name }
   ];
 
-  // Variation selection logic
+  // Variation selection logic with unselect functionality
   const handleVariationSelect = (variation) => {
-    setUseOriginalProduct(false);
-    setSelectedVariation(variation);
+    // If clicking on the already selected variation, unselect it
+    if (!useOriginalProduct && selectedVariation?.id === variation.id) {
+      setUseOriginalProduct(true);
+      setSelectedVariation(null);
+    } else {
+      // Select the new variation
+      setUseOriginalProduct(false);
+      setSelectedVariation(variation);
+    }
   };
 
   // Handle wishlist toggle
   const handleWishlistToggle = () => {
-    setIsWishlisted(!isWishlisted);
+    if (product) {
+      toggleWishlist(product);
+    }
   };
 
   // Generate structured data for SEO
@@ -232,6 +243,11 @@ const ProductDetail = () => {
               <img 
                 src={imageUrl} 
                 alt={product.name}
+                loading="eager"
+                fetchpriority="high"
+                width={1200}
+                height={500}
+                sizes="(max-width: 768px) 100vw, 600px"
                 onError={(e) => {
                   e.target.src = '/logo192.png';
                 }}
@@ -262,7 +278,7 @@ const ProductDetail = () => {
             <div className="pdp-thumbs">
               {Array.from({ length: 4 }, (_, index) => {
                 const image = allImages[index + 1] || null; // Skip main image (index 0)
-                const thumbUrl = image ? (image.startsWith('/') ? image : image) : null; // Use relative URL since proxy is configured
+                const thumbUrl = image ? getImageUrl(image) : null;
                 const isActive = (index + 1) === selectedImageIndex;
                 const hasImage = !!image;
                 
@@ -276,6 +292,8 @@ const ProductDetail = () => {
                       <img 
                         src={thumbUrl} 
                         alt={`${product.name} thumbnail ${index + 1}`}
+                        loading="lazy"
+                        fetchpriority="low"
                         onError={(e) => {
                           e.target.src = '/logo192.png';
                         }}
@@ -345,34 +363,39 @@ const ProductDetail = () => {
             </div>
 
             {/* Product Variations */}
-            {variations.length > 0 && variations.map((variation) => (
-              <div
-                key={variation.id}
-                className={`variation-card ${!useOriginalProduct && selectedVariation?.id === variation.id ? 'selected' : ''}`}
-                onClick={() => handleVariationSelect(variation)}
-              >
-                {variation.imageUrl && (
-                  <div className="variation-image">
-                    <img src={variation.imageUrl} alt={variation.name} />
-                  </div>
-                )}
-                <div className="variation-info">
-                  <h4>{variation.name}</h4>
-                  {variation.color && (
-                    <div className="variation-color">
-                      <span className="color-label">Color:</span>
-                      <span className="color-value">{variation.color}</span>
+            {variations.length > 0 && (
+              <div className="variation-cards-container">
+                {variations.map((variation) => (
+                  <div
+                    key={variation.id}
+                    className={`variation-card ${!useOriginalProduct && selectedVariation?.id === variation.id ? 'selected' : ''}`}
+                    onClick={() => handleVariationSelect(variation)}
+                    title={!useOriginalProduct && selectedVariation?.id === variation.id ? 'Click to unselect' : 'Click to select'}
+                  >
+                    {variation.imageUrl && (
+                      <div className="variation-image">
+                        <img src={getImageUrl(variation.imageUrl)} alt={variation.name} />
+                      </div>
+                    )}
+                    <div className="variation-info">
+                      <h4>{variation.name}</h4>
+                      {variation.color && (
+                        <div className="variation-color">
+                          <span className="color-label">Color:</span>
+                          <span className="color-value">{variation.color}</span>
+                        </div>
+                      )}
+                      <div className="variation-quantity">
+                        <span className="quantity-label">Available:</span>
+                        <span className={`quantity-value ${variation.quantity > 0 ? 'in-stock' : 'out-of-stock'}`}>
+                          {variation.quantity > 0 ? variation.quantity : 'Out of Stock'}
+                        </span>
+                      </div>
                     </div>
-                  )}
-                  <div className="variation-quantity">
-                    <span className="quantity-label">Available:</span>
-                    <span className={`quantity-value ${variation.quantity > 0 ? 'in-stock' : 'out-of-stock'}`}>
-                      {variation.quantity > 0 ? variation.quantity : 'Out of Stock'}
-                    </span>
                   </div>
-                </div>
+                ))}
               </div>
-            ))}
+            )}
 
 
             {/* Quantity and Action Buttons */}
@@ -395,38 +418,44 @@ const ProductDetail = () => {
                 </button>
               </div>
               
-              <InlineLoader 
-                isLoading={addingToCart} 
-                text="Adding..."
-                size="small"
+              <button 
+                className="btn-add-cart"
+                onClick={handleAddToCart}
+                disabled={!isInStock || addingToCart}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: window.innerWidth < 768 ? '6px' : '8px',
+                  padding: window.innerWidth < 768 ? '12px 16px' : '12px 20px',
+                  fontSize: window.innerWidth < 768 ? '14px' : '16px',
+                  minHeight: window.innerWidth < 768 ? '44px' : '48px',
+                  transition: 'all 0.2s ease'
+                }}
               >
-                <button 
-                  className="btn-add-cart"
-                  onClick={handleAddToCart}
-                  disabled={!isInStock || addingToCart}
-                >
-                  Add To Cart
-                </button>
-              </InlineLoader>
+                {addingToCart && <Bars color="#ffffff" height={window.innerWidth < 768 ? 14 : 16} width={window.innerWidth < 768 ? 14 : 16} />}
+                {addingToCart ? 'Adding...' : 'Add To Cart'}
+              </button>
 
               <button 
                 className="btn-buy-now" 
-                onClick={handle3DCustomization}
+                onClick={handle3DProducts}
                 disabled={!isInStock}
               >
-                3D Customization
+                3D Products
               </button>
               
               <button 
                 className="wishlist-btn"
                 onClick={handleWishlistToggle}
-                aria-label="Add to wishlist"
+                aria-label={isInWishlist(product?.id) ? "Remove from wishlist" : "Add to wishlist"}
+                title={isInWishlist(product?.id) ? "Remove from wishlist" : "Add to wishlist"}
               >
                 <svg 
                   width="16" 
                   height="16" 
                   viewBox="0 0 24 24" 
-                  fill={isWishlisted ? "red" : "none"} 
+                  fill={isInWishlist(product?.id) ? "currentColor" : "none"} 
                   stroke="currentColor" 
                   strokeWidth="2"
                 >
@@ -437,8 +466,8 @@ const ProductDetail = () => {
 
             {/* Product Details */}
             <div className="pdp-details">
-              <div>SKU : FRNC87654ABC</div>
-              <div>Tags : Furniture, Office, Gaming Chair, Chair</div>
+              <div>ID : {product.id}</div>
+              <div>Category : {product.categoryName}</div>
             </div>
 
             {/* Share Options */}
@@ -538,23 +567,39 @@ const ProductDetail = () => {
                   </tr>
                   <tr>
                     <td>Category</td>
-                    <td>{product?.category || 'N/A'}</td>
+                    <td>{product?.categoryName || 'N/A'}</td>
                   </tr>
                   <tr>
                     <td>Brand</td>
-                    <td>{product?.brand || 'Design Excellence'}</td>
+                    <td>{product?.brand || 'DesignXcel'}</td>
                   </tr>
                   <tr>
-                    <td>SKU</td>
-                    <td>{product?.sku || 'FRNC87654ABC'}</td>
-                  </tr>
-                  <tr>
-                    <td>Weight</td>
-                    <td>{product?.weight ? `${product.weight} kg` : 'N/A'}</td>
+                    <td>Product ID</td>
+                    <td>{product?.id || 'N/A'}</td>
                   </tr>
                   <tr>
                     <td>Dimensions</td>
-                    <td>{product?.dimensions || 'N/A'}</td>
+                    <td>
+                      {(() => {
+                        try {
+                          const dimensions = product?.specifications;
+                          if (dimensions && (dimensions.length || dimensions.width || dimensions.height || dimensions.weight)) {
+                            return (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                {dimensions.length && <div><strong>Length:</strong> {dimensions.length} cm</div>}
+                                {dimensions.width && <div><strong>Width:</strong> {dimensions.width} cm</div>}
+                                {dimensions.height && <div><strong>Height:</strong> {dimensions.height} cm</div>}
+                                {dimensions.weight && <div><strong>Weight:</strong> {dimensions.weight} kg</div>}
+                                {dimensions.notes && <div><strong>Notes:</strong> {dimensions.notes}</div>}
+                              </div>
+                            );
+                          }
+                          return 'N/A';
+                        } catch (e) {
+                          return 'N/A';
+                        }
+                      })()}
+                    </td>
                   </tr>
                   <tr>
                     <td>Material</td>
@@ -562,11 +607,11 @@ const ProductDetail = () => {
                   </tr>
                   <tr>
                     <td>Color Options</td>
-                    <td>{product?.colors ? product.colors.join(', ') : 'Black, Brown, Grey, Green, Blue'}</td>
+                    <td>{product?.colors ? product.colors.join(', ') : (product?.color || 'N/A')}</td>
                   </tr>
                   <tr>
                     <td>Stock Status</td>
-                    <td>{product?.stock > 0 ? 'In Stock' : 'Out of Stock'}</td>
+                    <td>{product?.stockQuantity > 0 ? 'In Stock' : 'Out of Stock'}</td>
                   </tr>
                   <tr>
                     <td>Price</td>
@@ -595,8 +640,8 @@ const ProductDetail = () => {
                       <span className="summary-value">{product?.categoryName || 'Furniture'}</span>
                     </div>
                     <div className="summary-item">
-                      <span className="summary-label">SKU</span>
-                      <span className="summary-value">{product?.sku || 'FRNC87654ABC'}</span>
+                      <span className="summary-label">ID Number</span>
+                      <span className="summary-value">{product?.id || 'N/A'}</span>
                     </div>
                   </div>
                 </div>
@@ -620,8 +665,6 @@ const ProductDetail = () => {
         onViewCart={() => navigate('/cart')}
       />
       
-      {/* Contact Section with Map */}
-      <ContactSection />
     </div>
   );
 };

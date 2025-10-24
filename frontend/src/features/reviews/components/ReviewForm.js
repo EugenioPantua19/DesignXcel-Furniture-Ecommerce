@@ -1,4 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { getImageUrl } from '../../../shared/utils/imageUtils';
+import { Bars } from 'react-loader-spinner';
+import { canUserReviewProduct } from '../services/reviewService';
+import { useAuth } from '../../../shared/hooks/useAuth';
 import { 
   UserIcon, 
   MessageIcon, 
@@ -16,6 +20,7 @@ import {
 import './review-form.css';
 
 const ReviewForm = ({ productId, productName, onSubmit, onCancel }) => {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -27,10 +32,52 @@ const ReviewForm = ({ productId, productName, onSubmit, onCancel }) => {
   
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [canReview, setCanReview] = useState(true);
+  const [reviewEligibility, setReviewEligibility] = useState({
+    loading: true,
+    canReview: true,
+    reason: ''
+  });
   
-  // Debug: Monitor rating state changes
+  // Check if user can review this product
   useEffect(() => {
-    console.log('Frontend: Rating state changed to:', formData.rating, 'Type:', typeof formData.rating);
+    const checkReviewEligibility = async () => {
+      // Checking eligibility for product
+      
+      if (user && user.id) {
+        try {
+          setReviewEligibility(prev => ({ ...prev, loading: true }));
+          const result = await canUserReviewProduct(productId, user.id);
+          setReviewEligibility({
+            loading: false,
+            canReview: result.canReview,
+            reason: result.reason
+          });
+          setCanReview(result.canReview);
+        } catch (error) {
+          setReviewEligibility({
+            loading: false,
+            canReview: false,
+            reason: 'Error checking purchase status'
+          });
+          setCanReview(false);
+        }
+      } else {
+        setReviewEligibility({
+          loading: false,
+          canReview: false,
+          reason: 'Please login to leave a review'
+        });
+        setCanReview(false);
+      }
+    };
+
+    checkReviewEligibility();
+  }, [productId, user]);
+
+  // Monitor rating state changes
+  useEffect(() => {
+    // Rating state updated
   }, [formData.rating]);
 
   const handleInputChange = (e) => {
@@ -50,7 +97,6 @@ const ReviewForm = ({ productId, productName, onSubmit, onCancel }) => {
   };
 
   const handleRatingChange = (rating) => {
-    console.log('Frontend: Rating changed to:', rating, 'Type:', typeof rating);
     setFormData(prev => ({
       ...prev,
       rating: rating
@@ -115,7 +161,7 @@ const ReviewForm = ({ productId, productName, onSubmit, onCancel }) => {
       newErrors.rating = 'Please select a rating between 1 and 5 stars';
     }
 
-    console.log('Frontend: Form validation - Rating:', formData.rating, 'Type:', typeof formData.rating);
+    // Form validation complete
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -148,21 +194,22 @@ const ReviewForm = ({ productId, productName, onSubmit, onCancel }) => {
       submitData.append('comment', formData.comment);
       submitData.append('productId', productId);
       
+      // Add customer ID if user is logged in
+      if (user && user.id) {
+        submitData.append('customerId', user.id);
+      }
+      
       // Debug logging
-      console.log('Frontend: Form data before submission:', formData);
-      console.log('Frontend: Rating value:', formData.rating, 'Type:', typeof formData.rating);
-      console.log('Frontend: Converted rating value:', ratingValue, 'Type:', typeof ratingValue);
+      // Form data before submission
+      // Rating value validation
       
       // Append image files
       formData.images.forEach((image, index) => {
         submitData.append(`images`, image.file);
       });
 
-      // Log FormData contents
-      console.log('Frontend: FormData contents:');
-      for (let [key, value] of submitData.entries()) {
-        console.log(`  ${key}:`, value, 'Type:', typeof value);
-      }
+      // Log FormData contents for debugging
+      // FormData validation complete
 
       const result = await onSubmit(submitData);
       
@@ -224,7 +271,27 @@ const ReviewForm = ({ productId, productName, onSubmit, onCancel }) => {
           </p>
         </div>
         
-        <form onSubmit={handleSubmit}>
+        {/* Purchase Requirement Message */}
+        {reviewEligibility.loading ? (
+          <div className="purchase-requirement-message loading">
+            <Bars color="#F0B21B" height={20} width={20} />
+            <span>Checking purchase status...</span>
+          </div>
+        ) : !canReview ? (
+          <div className="purchase-requirement-message error">
+            <AlertTriangleIcon size={20} className="warning-icon" />
+            <div className="message-content">
+              <h4>Purchase Required</h4>
+              <p>{reviewEligibility.reason}</p>
+              <p className="help-text">
+                You can only review products you have purchased and received. 
+                Please complete a purchase of this product first.
+              </p>
+            </div>
+          </div>
+        ) : null}
+        
+        <form onSubmit={handleSubmit} style={{ display: canReview ? 'block' : 'none' }}>
           {/* Personal Information */}
           <div className="form-section">
             <div className="section-header">
@@ -457,7 +524,7 @@ const ReviewForm = ({ productId, productName, onSubmit, onCancel }) => {
             >
               {submitting ? (
                 <>
-                  <div className="spinner"></div>
+                  <Bars color="#ffffff" height={20} width={20} />
                   Publishing Review...
                 </>
               ) : (

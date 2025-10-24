@@ -1,4 +1,5 @@
 import React from 'react';
+import { Bars } from 'react-loader-spinner';
 import './LoadingSpinner.css';
 
 const LoadingSpinner = ({ 
@@ -16,10 +17,21 @@ const LoadingSpinner = ({
     className
   ].filter(Boolean).join(' ');
 
+  const getSpinnerSize = () => {
+    switch (size) {
+      case 'small': return { height: 20, width: 20 };
+      case 'large': return { height: 80, width: 80 };
+      case 'medium':
+      default: return { height: 40, width: 40 };
+    }
+  };
+
+  const spinnerSize = getSpinnerSize();
+
   return (
     <div className={spinnerClasses}>
       <div className="loading-spinner__container">
-        <div className="loading-spinner__spinner" />
+        <Bars color="#F0B21B" height={spinnerSize.height} width={spinnerSize.width} />
         {text && (
           <div className="loading-spinner__text">
             {text}

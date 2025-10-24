@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../../../shared/contexts/CartContext';
 import './checkout.css';
-import { useAuth } from '../../auth/hooks/useAuth';
+import { useAuth } from '../../../shared/hooks/useAuth';
 import ConfirmationModal from '../../../shared/components/ui/ConfirmationModal';
+import { ChristmasHeaderDecoration, ChristmasFooterDecoration } from '../../../shared/components/christmas';
 import apiClient from '../../../shared/services/api/apiClient';
 import checkoutSessionManager from '../utils/checkoutSessionManager';
+import { getImageUrl } from '../../../shared/utils/imageUtils';
 
 // Modern SVG Icons
 const ShippingIcon = () => (
@@ -46,7 +48,8 @@ const CheckoutPage = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { items: cartItems, getSubtotal, getTotal, clearCart } = useCart();
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
+    const [currentTheme, setCurrentTheme] = useState('default');
     
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -58,12 +61,17 @@ const CheckoutPage = () => {
     const [publicTerms, setPublicTerms] = useState(null);
     const [deliveryRates, setDeliveryRates] = useState([]);
     const [shippingMethod, setShippingMethod] = useState('pickup'); // 'pickup' or RateID
-    const [shippingCost] = useState(0); // No shipping cost
+    const [shippingCost, setShippingCost] = useState(0);
     const [showAddressModal, setShowAddressModal] = useState(false);
     
     // Fetch addresses from Address Book
     useEffect(() => {
         const fetchAddresses = async () => {
+            // Wait for authentication to complete before proceeding
+            if (authLoading) {
+                return;
+            }
+            
             setAddressLoading(true);
             try {
                 // Validate session before fetching addresses
@@ -97,6 +105,29 @@ const CheckoutPage = () => {
         };
         
         fetchAddresses();
+    }, [authLoading]);
+
+    // Detect current theme from body class
+    useEffect(() => {
+        const detectTheme = () => {
+            const bodyClasses = document.body.className;
+            if (bodyClasses.includes('theme-christmas')) {
+                setCurrentTheme('christmas');
+            } else if (bodyClasses.includes('theme-dark')) {
+                setCurrentTheme('dark');
+            } else {
+                setCurrentTheme('default');
+            }
+        };
+
+        // Initial detection
+        detectTheme();
+
+        // Listen for theme changes
+        const observer = new MutationObserver(detectTheme);
+        observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
+        return () => observer.disconnect();
     }, []);
 
     // Fetch public Terms and Conditions for frontend display
@@ -104,9 +135,9 @@ const CheckoutPage = () => {
         let isMounted = true;
         (async () => {
             try {
-                const terms = await apiClient.get('/api/terms');
-                if (isMounted && terms) {
-                    setPublicTerms(terms);
+                const response = await apiClient.get('/api/terms');
+                if (isMounted && response && response.success) {
+                    setPublicTerms(response);
                 }
             } catch (e) {
                 // Silent fallback; frontend has default text
@@ -132,7 +163,26 @@ const CheckoutPage = () => {
         return () => { mounted = false; };
     }, []);
 
-    // No shipping cost updates needed
+    // Calculate shipping cost based on selected delivery method
+    const calculateShippingCost = () => {
+        if (shippingMethod === 'pickup') {
+            return 0;
+        }
+        
+        const selectedRate = deliveryRates.find(rate => String(rate.RateID) === String(shippingMethod));
+        return selectedRate ? Number(selectedRate.Price || 0) : 0;
+    };
+
+    // Update shipping cost when delivery method changes
+    useEffect(() => {
+        const newShippingCost = calculateShippingCost();
+        setShippingCost(newShippingCost);
+    }, [shippingMethod, deliveryRates]);
+
+    // Calculate total including shipping
+    const getTotalWithShipping = () => {
+        return getTotal() + shippingCost;
+    };
     
     // Get address from default address or fallbacks
     const address = defaultAddress || (user && user.address) || {};
@@ -202,9 +252,6 @@ const CheckoutPage = () => {
         setShowAddressModal(false);
     };
 
-    const handleManageAddresses = () => {
-        navigate('/account?tab=addresses');
-    };
 
     const formatPrice = (price) => {
         return new Intl.NumberFormat('en-PH', {
@@ -224,17 +271,33 @@ const CheckoutPage = () => {
                 items,
                 shippingMethod,
                 shippingCost,
+                subtotal: getTotal(),
+                total: getTotalWithShipping(),
                 deliveryType: shippingMethod === 'pickup' ? 'pickup' : `rate_${shippingMethod}`,
                 shippingAddressId: defaultAddress?.AddressID || null
             } 
         });
     };
 
+    // Show loading state while authentication is loading
+    if (authLoading) {
+        return (
+            <div className="checkout-page">
+                <div className="empty-cart">
+                    <div className="loading-spinner" style={{ margin: '0 auto 1rem' }}></div>
+                    <h2>Loading checkout...</h2>
+                    <p className="text-gray-500">Please wait while we verify your authentication.</p>
+                </div>
+            </div>
+        );
+    }
+
     if (!items || items.length === 0) {
         return (
             <div className="checkout-page">
                 <div className="empty-cart">
                     <h2>Your cart is empty</h2>
+                    <p className="text-gray-500 mb-4">Add some items to your cart to proceed with checkout.</p>
                     <button onClick={() => navigate('/products')} className="btn btn-primary">
                         Continue Shopping
                     </button>
@@ -245,48 +308,40 @@ const CheckoutPage = () => {
 
     return (
         <div className="checkout-page">
+            {currentTheme === 'christmas' && <ChristmasHeaderDecoration />}
             {/* Address Selection Modal */}
             {showAddressModal && (
                 <div className="modal-overlay">
-                    <div className="modal-content address-modal">
+                    <div className="modal-content">
                         <h2>Select Shipping Address</h2>
-                        <div className="address-list">
+                        <div className="shipping-options">
                             {addresses.map((address) => (
                                 <div 
                                     key={address.AddressID}
-                                    className={`address-option ${defaultAddress?.AddressID === address.AddressID ? 'selected' : ''}`}
+                                    className={`shipping-option ${defaultAddress?.AddressID === address.AddressID ? 'selected' : ''}`}
                                     onClick={() => handleAddressSelect(address)}
                                 >
-                                    <div className="address-option-header">
-                                        <div className="address-radio">
-                                            {defaultAddress?.AddressID === address.AddressID && <div className="radio-selected"></div>}
+                                    <div className="shipping-option-header">
+                                        <div className="shipping-radio">
+                                            {defaultAddress?.AddressID === address.AddressID && <div></div>}
                                         </div>
-                                        <div className="address-info">
-                                            <div className="address-label-row">
-                                                {address.Label && <span className="label-badge">{address.Label}</span>}
-                                                {address.IsDefault && <span className="default-badge">Default</span>}
-                                            </div>
-                                            <div className="address-details">
-                                                <div className="address-name">
-                                                    {[address.FirstName, address.LastName].filter(Boolean).join(' ')}
-                                                </div>
-                                                <div className="address-full">
-                                                    {[
-                                                        address.HouseNumber,
-                                                        address.Street,
-                                                        address.Barangay,
-                                                        address.City,
-                                                        address.Province,
-                                                        address.Region,
-                                                        address.PostalCode,
-                                                        address.Country || 'Philippines'
-                                                    ].filter(Boolean).join(', ')}
-                                                </div>
-                                                {address.PhoneNumber && (
-                                                    <div className="address-phone">{address.PhoneNumber}</div>
-                                                )}
-                                            </div>
+                                        <div className="shipping-name">
+                                            {[address.FirstName, address.LastName].filter(Boolean).join(' ')}
+                                            {address.IsDefault && <span className="badge badge-default ml-2">Default</span>}
                                         </div>
+                                    </div>
+                                    <div className="shipping-description">
+                                        {[
+                                            address.HouseNumber,
+                                            address.Street,
+                                            address.Barangay,
+                                            address.City,
+                                            address.Province,
+                                            address.Region,
+                                            address.PostalCode,
+                                            address.Country || 'Philippines'
+                                        ].filter(Boolean).join(', ')}
+                                        {address.PhoneNumber && ` • ${address.PhoneNumber}`}
                                     </div>
                                 </div>
                             ))}
@@ -294,15 +349,9 @@ const CheckoutPage = () => {
                         <div className="modal-actions">
                             <button 
                                 onClick={() => setShowAddressModal(false)}
-                                className="cancel-btn"
+                                className="btn btn-secondary"
                             >
                                 Cancel
-                            </button>
-                            <button 
-                                onClick={handleManageAddresses}
-                                className="btn-secondary"
-                            >
-                                Manage Addresses
                             </button>
                         </div>
                     </div>
@@ -339,13 +388,13 @@ const CheckoutPage = () => {
                         <div className="modal-actions">
                             <button 
                                 onClick={() => { setShowTermsModal(false); setTermsChecked(false); }}
-                                className="cancel-btn"
+                                className="btn btn-secondary"
                             >
                                 Cancel
                             </button>
                             <button 
                                 onClick={handleConfirmTerms}
-                                className="confirm-btn"
+                                className="btn btn-primary"
                                 disabled={!termsChecked}
                             >
                                 Confirm
@@ -355,8 +404,8 @@ const CheckoutPage = () => {
                 </div>
             )}
             <div className="checkout-container">
-                {/* Main Checkout Form */}
-                <div className="checkout-form-area">
+                {/* Main Checkout Content */}
+                <div className="checkout-main">
                     <div className="checkout-header">
                         <h1>Checkout</h1>
                         <p>Complete your order with secure checkout</p>
@@ -375,113 +424,49 @@ const CheckoutPage = () => {
                             <div className="section-number">1</div>
                             <ShippingIcon />
                             <span>Shipping Address</span>
-                            <div className="section-actions">
-                                {addresses.length > 0 && (
-                                    <button 
-                                        className="btn-secondary-small"
-                                        onClick={() => setShowAddressModal(true)}
-                                    >
-                                        Change Address
-                                    </button>
-                                )}
-                                <button 
-                                    className="btn-secondary-small"
-                                    onClick={handleManageAddresses}
-                                >
-                                    Manage Addresses
-                                </button>
+                        </div>
+                        {addressLoading ? (
+                            <div className="text-center" style={{ padding: '2rem' }}>
+                                <div className="loading-spinner" style={{ margin: '0 auto 1rem' }}></div>
+                                <p className="text-gray-500">Loading address...</p>
                             </div>
-                        </div>
-                        <div className="section-content">
-                            {addressLoading ? (
-                                <div style={{ 
-                                    display: 'flex', 
-                                    alignItems: 'center', 
-                                    justifyContent: 'center', 
-                                    padding: '20px',
-                                    color: '#666'
-                                }}>
-                                    <div style={{ 
-                                        width: '20px', 
-                                        height: '20px', 
-                                        border: '2px solid #f3f3f3',
-                                        borderTop: '2px solid #F0B21B',
-                                        borderRadius: '50%',
-                                        animation: 'spin 1s linear infinite',
-                                        marginRight: '10px'
-                                    }}></div>
-                                    Loading address...
-                                </div>
-                            ) : defaultAddress ? (
-                                <div className="shipping-address-display">
-                                    {defaultAddress.Label && (
-                                        <div className="address-label">
-                                            <span className="label-badge">{defaultAddress.Label}</span>
-                                            {defaultAddress.IsDefault && <span className="default-badge">Default</span>}
-                                        </div>
-                                    )}
-                                    <div className="info-row">
-                                        <div className="info-icon" aria-hidden="true">
-                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
-                                                <path d="M12 16V12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                                <path d="M12 8H12.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                            </svg>
-                                        </div>
-                                        <div className="info-label">Name</div>
-                                        <div className="info-value">{name}</div>
+                        ) : defaultAddress ? (
+                            <div className="address-display">
+                                <div className="address-info">
+                                    <div className="address-row">
+                                        <span className="address-label">Name:</span>
+                                        <span className="address-value">{name}</span>
                                     </div>
-                                    <div className="info-row">
-                                        <div className="info-icon" aria-hidden="true">
-                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                <path d="M21 10.5C21 16.5 12 21 12 21C12 21 3 16.5 3 10.5C3 7.19 5.69 4.5 9 4.5C10.66 4.5 12 5.84 12 7.5C12 5.84 13.34 4.5 15 4.5C18.31 4.5 21 7.19 21 10.5Z" stroke="currentColor" strokeWidth="2"/>
-                                                <circle cx="12" cy="10.5" r="2.5" stroke="currentColor" strokeWidth="2"/>
-                                            </svg>
-                                        </div>
-                                        <div className="info-label">Email</div>
-                                        <div className="info-value">{email}</div>
+                                    <div className="address-row">
+                                        <span className="address-label">Email:</span>
+                                        <span className="address-value">{email}</span>
                                     </div>
-                                    <div className="info-row">
-                                        <div className="info-icon" aria-hidden="true">
-                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                <path d="M22 16.92V19A2 2 0 0 1 20 21H4A2 2 0 0 1 2 19V16.92A5 5 0 0 1 4.26 12.36L5.68 10.94A2 2 0 0 1 8.32 10.94L9.74 12.36A5 5 0 0 1 12 13.5A5 5 0 0 1 14.26 12.36L15.68 10.94A2 2 0 0 1 18.32 10.94L19.74 12.36A5 5 0 0 1 22 16.92Z" stroke="currentColor" strokeWidth="2"/>
-                                                <circle cx="12" cy="17" r="1" stroke="currentColor" strokeWidth="2"/>
-                                            </svg>
-                                        </div>
-                                        <div className="info-label">Phone</div>
-                                        <div className="info-value">{phone}</div>
+                                    <div className="address-row">
+                                        <span className="address-label">Phone:</span>
+                                        <span className="address-value">{phone}</span>
                                     </div>
-                                    <div className="info-row info-address">
-                                        <div className="info-icon" aria-hidden="true">
-                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                <path d="M4 4H20V20H4V4Z" stroke="currentColor" strokeWidth="2"/>
-                                                <path d="M4 9H20" stroke="currentColor" strokeWidth="2"/>
-                                                <path d="M9 20V9" stroke="currentColor" strokeWidth="2"/>
-                                            </svg>
-                                        </div>
-                                        <div className="info-label">Address</div>
-                                        <div className="info-value multiline">{addressParts.join(',\n')}</div>
+                                    <div className="address-row">
+                                        <span className="address-label">Address:</span>
+                                        <span className="address-value">{addressParts.join(', ')}</span>
                                     </div>
                                 </div>
-                            ) : (
-                                <div className="no-address-message">
-                                    <div style={{textAlign: 'center', padding: '20px', color: '#666'}}>
-                                        <svg width="48" height="48" fill="none" viewBox="0 0 24 24" style={{margin: '0 auto 16px', opacity: 0.5}}>
-                                            <path d="M21 10.5C21 16.5 12 21 12 21C12 21 3 16.5 3 10.5C3 7.18629 5.68629 4.5 9 4.5C10.6569 4.5 12 5.84315 12 7.5C12 5.84315 13.3431 4.5 15 4.5C18.3137 4.5 21 7.18629 21 10.5Z" stroke="currentColor" strokeWidth="2"/>
-                                            <circle cx="12" cy="10.5" r="2.5" stroke="currentColor" strokeWidth="2"/>
-                                        </svg>
-                                        <p style={{margin: '0 0 16px', fontSize: '16px'}}>No shipping address found</p>
-                                        <p style={{margin: '0 0 20px', fontSize: '14px', color: '#888'}}>Please add an address to continue with your order</p>
+                                <div className="address-actions">
+                                    {addresses.length > 0 && (
                                         <button 
-                                            className="btn-primary"
-                                            onClick={handleManageAddresses}
+                                            className="btn btn-secondary"
+                                            onClick={() => setShowAddressModal(true)}
                                         >
-                                            Add Address
+                                            Change Address
                                         </button>
-                                    </div>
+                                    )}
                                 </div>
-                            )}
-                        </div>
+                            </div>
+                        ) : (
+                            <div className="text-center" style={{ padding: '2rem' }}>
+                                <p className="text-gray-500 mb-2">No shipping address found</p>
+                                <p className="text-gray-500 mb-4">Please add an address to continue with your order</p>
+                            </div>
+                        )}
                     </div>
 
                     {/* Shipping Methods Section */}
@@ -491,159 +476,125 @@ const CheckoutPage = () => {
                             <TruckIcon />
                             <span>Shipping Methods</span>
                         </div>
-                        <div className="section-content">
-                            <div className="payment-methods">
-                                {/* Pick up option (free) */}
-                                <div
-                                    className={`payment-method ${shippingMethod === 'pickup' ? 'selected' : ''}`}
-                                    onClick={() => setShippingMethod('pickup')}
-                                >
-                                    <div className="payment-method-header">
-                                        <div className="payment-method-radio"></div>
-                                        <span className="payment-method-name">Pick up</span>
+                        <div className="shipping-options">
+                            {/* Pick up option (free) */}
+                            <div
+                                className={`shipping-option ${shippingMethod === 'pickup' ? 'selected' : ''}`}
+                                onClick={() => setShippingMethod('pickup')}
+                            >
+                                <div className="shipping-option-header">
+                                    <div className="shipping-radio">
+                                        {shippingMethod === 'pickup' && <div></div>}
                                     </div>
-                                    <div className="payment-method-description">
-                                        Pick up your order at our store. This option is free of delivery charge.
+                                    <div className="shipping-name">Pick up</div>
+                                </div>
+                                <div className="shipping-description">
+                                    Pick up your order at our store. This option is free of delivery charge.
+                                </div>
+                            </div>
+
+                            {/* Dynamic delivery types from DB */}
+                            {deliveryRates.map(rate => (
+                                <div
+                                    key={rate.RateID}
+                                    className={`shipping-option ${String(shippingMethod) === String(rate.RateID) ? 'selected' : ''}`}
+                                    onClick={() => setShippingMethod(String(rate.RateID))}
+                                >
+                                    <div className="shipping-option-header">
+                                        <div className="shipping-radio">
+                                            {String(shippingMethod) === String(rate.RateID) && <div></div>}
+                                        </div>
+                                        <div className="shipping-name">{rate.ServiceType}</div>
+                                    </div>
+                                    <div className="shipping-description">
+                                        {`Delivery charge: ${formatPrice(Number(rate.Price || 0))}`}
                                     </div>
                                 </div>
-
-                                {/* Dynamic delivery types from DB */}
-                                {deliveryRates.map(rate => (
-                                    <div
-                                        key={rate.RateID}
-                                        className={`payment-method ${String(shippingMethod) === String(rate.RateID) ? 'selected' : ''}`}
-                                        onClick={() => setShippingMethod(String(rate.RateID))}
-                                    >
-                                        <div className="payment-method-header">
-                                            <div className="payment-method-radio"></div>
-                                            <span className="payment-method-name">{rate.ServiceType}</span>
-                                        </div>
-                                        <div className="payment-method-description">
-                                            {`Delivery charge: ${formatPrice(Number(rate.Price || 0))}`}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                            ))}
                         </div>
                     </div>
-
-
                 </div>
 
                 {/* Order Summary Sidebar */}
                 <div className="order-summary">
                     <div className="order-summary-header">
-                        <h3>
-                            <span className="summary-icon">
-                                <CartIcon />
-                            </span>
-                            ORDER SUMMARY
-                        </h3>
+                        <div className="summary-icon">
+                            <CartIcon />
+                        </div>
+                        <h3>Order Summary</h3>
                     </div>
-                    <div className="order-summary-content">
-                        {/* Cart Items */}
-                        <div className="cart-items">
-                            {items.map((item) => {
-                                // Handle product images - support both single image and images array
-                                const getImageUrl = () => {
-                                    const product = item.product;
-                                    if (!product) return '/logo192.png';
-                                    
-                                    // Prefer variation image if a variation is selected
-                                    if (!item.useOriginalProduct && item.selectedVariation && item.selectedVariation.imageUrl) {
-                                        return item.selectedVariation.imageUrl.startsWith('http')
-                                            ? item.selectedVariation.imageUrl
-                                            : `http://localhost:5000${item.selectedVariation.imageUrl}`;
-                                    }
-                                    
-                                    // First try to get from images array (from API)
-                                    if (product.images && product.images.length > 0) {
-                                        const imageUrl = product.images[0];
-                                        if (imageUrl.startsWith('/')) {
-                                            return `http://localhost:5000${imageUrl}`;
-                                        }
-                                        return imageUrl;
-                                    }
-                                    
-                                    // Fallback to single image field
-                                    if (product.image) {
-                                        if (product.image.startsWith('/')) {
-                                            return `http://localhost:5000${product.image}`;
-                                        }
-                                        return product.image;
-                                    }
-                                    
-                                    // Final fallback
-                                    return '/logo192.png';
-                                };
-
-                                const imageUrl = getImageUrl();
-                                
-                                return (
-                                    <div key={item.id} className="cart-item">
-                                        <img 
-                                            src={imageUrl}
-                                            alt={item.product ? item.product.name : 'Product'}
-                                            className="cart-item-image"
-                                            onError={(e) => {
-                                                e.target.src = '/logo192.png';
-                                                e.target.onerror = null; // Prevent infinite loop
-                                            }}
-                                        />
-                                        <div className="cart-item-details">
-                                            <div className="cart-item-name">{item.product ? item.product.name : ''}</div>
-                                            
-                                            {/* Variation display in checkout */}
-                                            {item.product && (item.product.useOriginalProduct || !item.product.selectedVariation) ? (
-                                                <span className="variant-pill">Standard</span>
-                                            ) : item.product && item.product.selectedVariation ? (
-                                                <span className="variant-pill">
-                                                    Variant: {item.product.selectedVariation.name}
-                                                    {item.product.selectedVariation.color ? ` · ${item.product.selectedVariation.color}` : ''}
-                                                </span>
-                                            ) : null}
-                                            
-                                            <div className="cart-item-quantity">Qty: {item.quantity}</div>
-                                            {item.product && item.product.hasDiscount && item.product.discountInfo && (
-                                                <div className="cart-item-discount">
-                                                    <span className="discount-badge-small">
-                                                        {item.product.discountInfo.discountType === 'percentage' 
-                                                            ? `-${item.product.discountInfo.discountValue}%` 
-                                                            : `-${formatPrice(item.product.discountInfo.discountAmount)}`
-                                                        }
-                                                    </span>
-                                                </div>
-                                            )}
-                                        </div>
+                    
+                    <div className="cart-items">
+                        {items.map((item) => {
+                            const imageUrl = getImageUrl(item.selectedVariation?.imageUrl || item.product?.images?.[0] || item.product?.image);
+                            
+                            return (
+                                <div key={item.id} className="cart-item">
+                                    <img 
+                                        src={imageUrl}
+                                        alt={item.product ? item.product.name : 'Product'}
+                                        className="cart-item-image"
+                                        onError={(e) => {
+                                            e.target.src = '/logo192.png';
+                                            e.target.onerror = null;
+                                        }}
+                                    />
+                                    <div className="cart-item-info">
+                                        <div className="cart-item-name">{item.product ? item.product.name : ''}</div>
+                                        
+                                        {item.product && (item.product.useOriginalProduct || !item.product.selectedVariation) ? (
+                                            <div className="cart-item-variant">Standard</div>
+                                        ) : item.product && item.product.selectedVariation ? (
+                                            <div className="cart-item-variant">
+                                                Variant: {item.product.selectedVariation.name}
+                                                {item.product.selectedVariation.color ? ` • ${item.product.selectedVariation.color}` : ''}
+                                            </div>
+                                        ) : null}
+                                        
+                                        <div className="cart-item-quantity">Qty: {item.quantity}</div>
+                                        {item.product && item.product.hasDiscount && item.product.discountInfo && (
+                                            <div className="discount-badge-small">
+                                                {item.product.discountInfo.discountType === 'percentage' 
+                                                    ? `-${item.product.discountInfo.discountValue}%` 
+                                                    : `-${formatPrice(item.product.discountInfo.discountAmount)}`
+                                                }
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="cart-item-price-section">
                                         <div className="cart-item-price">
                                             {formatPrice(item.price * item.quantity)}
                                         </div>
                                     </div>
-                                );
-                            })}
-                        </div>
-
-                        {/* Order Totals */}
-                        <div className="order-totals">
-                            <div className="total-row final">
-                                <span>Order Total:</span>
-                                <span>{formatPrice(getTotal())}</span>
-                            </div>
-                        </div>
-                        {/* Removed Payment Checkout section */}
-                        <button 
-                            className="place-order-btn" 
-                            style={{width: '100%', marginTop: 16}}
-                            onClick={() => {
-                                // Preserve selection for payment page
-                                setShowTermsModal(true);
-                            }}
-                        >
-                            Pay Now
-                        </button>
+                                </div>
+                            );
+                        })}
                     </div>
+
+                    <div className="order-totals">
+                        <div className="total-row">
+                            <span>Subtotal:</span>
+                            <span>{formatPrice(getTotal())}</span>
+                        </div>
+                        <div className="total-row">
+                            <span>Shipping:</span>
+                            <span>{formatPrice(shippingCost)}</span>
+                        </div>
+                        <div className="total-row final">
+                            <span>Total:</span>
+                            <span className="total-amount">{formatPrice(getTotalWithShipping())}</span>
+                        </div>
+                    </div>
+                    
+                    <button 
+                        className="btn btn-primary place-order-btn"
+                        onClick={() => setShowTermsModal(true)}
+                    >
+                        Pay Now
+                    </button>
                 </div>
             </div>
+            {currentTheme === 'christmas' && <ChristmasFooterDecoration />}
         </div>
     );
 };

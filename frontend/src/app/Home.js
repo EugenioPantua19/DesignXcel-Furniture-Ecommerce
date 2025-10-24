@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import ProductCard from '../features/products/components/ProductCard';
-import ModernTestimonials from '../shared/components/feedback/ModernTestimonials';
-import ModernHero from '../shared/components/layout/ModernHero';
+import Testimonials from '../shared/components/feedback/Testimonials';
+import Hero from '../shared/components/layout/Hero';
+import Slider from '../shared/components/ui/Slider';
 import { ContactSection } from '../shared/components/layout';
+import { ChristmasHeaderDecoration, ChristmasFooterDecoration } from '../shared/components/christmas';
 import { getFeaturedProducts, productService } from '../features/products/services/productService';
-import { PageLoader } from '../shared/components/ui';
+import { Bars } from 'react-loader-spinner';
 import './pages.css';
+import '../shared/components/ui/slider.css';
 
 const Home = () => {
     // Featured Products
@@ -17,37 +20,46 @@ const Home = () => {
     const [categories, setCategories] = useState([]);
     const [categoriesLoading, setCategoriesLoading] = useState(true);
     
-    // Slider state
-    const [currentSlide, setCurrentSlide] = useState(0);
-    const [itemsPerSlide, setItemsPerSlide] = useState(4);
+    // Theme detection
+    const [currentTheme, setCurrentTheme] = useState('default');
+    
+    // Remove old slider state - now handled by Slider component
+    // const [currentSlide, setCurrentSlide] = useState(0);
+    // const [itemsPerSlide, setItemsPerSlide] = useState(4);
 
     useEffect(() => {
         loadFeaturedProducts();
         loadCategories();
-        
-        // Set items per slide based on screen size
-        const updateItemsPerSlide = () => {
-            if (window.innerWidth <= 480) {
-                setItemsPerSlide(1);
-            } else if (window.innerWidth <= 768) {
-                setItemsPerSlide(2);
-            } else if (window.innerWidth <= 1024) {
-                setItemsPerSlide(3);
+    }, []);
+
+    // Detect current theme from body class
+    useEffect(() => {
+        const detectTheme = () => {
+            const bodyClasses = document.body.className;
+            if (bodyClasses.includes('theme-christmas')) {
+                setCurrentTheme('christmas');
+            } else if (bodyClasses.includes('theme-dark')) {
+                setCurrentTheme('dark');
             } else {
-                setItemsPerSlide(4);
+                setCurrentTheme('default');
             }
         };
-        
-        updateItemsPerSlide();
-        window.addEventListener('resize', updateItemsPerSlide);
-        
-        return () => window.removeEventListener('resize', updateItemsPerSlide);
+
+        // Initial detection
+        detectTheme();
+
+        // Listen for theme changes
+        const observer = new MutationObserver(detectTheme);
+        observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
+        return () => observer.disconnect();
     }, []);
 
     const loadFeaturedProducts = async () => {
         try {
             // Try to get from the frontend API endpoint to get featured products with discounts
-            const response = await fetch('http://localhost:5000/api/products');
+            const apiBase = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+            const response = await fetch(`${apiBase}/api/products`);
             if (response.ok) {
                 const data = await response.json();
                 if (data.success && data.products) {
@@ -249,13 +261,14 @@ const Home = () => {
 
     useEffect(() => {
         // Fetch testimonials
-        fetch('http://localhost:5000/api/testimonials')
+        const apiBase2 = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+        fetch(`${apiBase2}/api/testimonials`)
             .then(res => res.json())
             .then(data => setTestimonials(data.testimonials || []))
             .catch(() => setTestimonials([]));
         
         // Fetch testimonials design settings
-        fetch('http://localhost:5000/api/testimonials-design')
+        fetch(`${apiBase2}/api/testimonials-design`)
             .then(res => res.json())
             .then(data => {
                 console.log('Testimonials design settings loaded:', data);
@@ -267,11 +280,15 @@ const Home = () => {
             });
         
         // Fetch hero banner settings
-        fetch('http://localhost:5000/api/hero-banner')
+        fetch(`${apiBase2}/api/hero-banner`)
             .then(res => res.json())
             .then(data => {
                 console.log('Hero banner settings loaded:', data);
-                setHeroBanner(data);
+                if (data.success && data.heroBanner) {
+                    setHeroBanner(data.heroBanner);
+                } else {
+                    console.log('Hero banner data format issue:', data);
+                }
             })
             .catch((error) => {
                 // Use default values if API fails
@@ -300,34 +317,28 @@ const Home = () => {
     const currentTestimonial = testimonials[testimonialIndex] || {};
     const DEFAULT_IMAGE = '/placeholder.png'; // Place this in your public folder
 
-    // Slider navigation functions
-    const totalSlides = Math.ceil(featuredProducts.length / itemsPerSlide);
-    
-    const nextSlide = () => {
-        if (totalSlides > 1) {
-            setCurrentSlide((prev) => (prev + 1) % totalSlides);
-        }
-    };
-    
-    const prevSlide = () => {
-        if (totalSlides > 1) {
-            setCurrentSlide((prev) => (prev - 1 + totalSlides) % totalSlides);
-        }
-    };
-    
-    const goToSlide = (slideIndex) => {
-        if (totalSlides > 1 && slideIndex >= 0 && slideIndex < totalSlides) {
-            setCurrentSlide(slideIndex);
-        }
-    };
-    
-    // Reset current slide when itemsPerSlide changes
-    useEffect(() => {
-        setCurrentSlide(0);
-    }, [itemsPerSlide, featuredProducts.length]);
+    // Slider navigation functions removed - now handled by Slider component
+
+    if (loading) {
+        return (
+            <div className="home">
+                <div style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    minHeight: '50vh',
+                    gap: '1rem'
+                }}>
+                    <Bars color="#F0B21B" height={80} width={80} />
+                    <p>Loading featured products...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <PageLoader isLoading={loading} text="Loading featured products...">
+        <div className="home">
             <>
                 <style>
                 {`
@@ -338,21 +349,23 @@ const Home = () => {
                     
                     /* Default Theme */
                     .testimonial-item.testimonial-default {
-                        background: white;
+                        background: rgba(255, 255, 255, 0.9);
                         padding: 20px;
                         border: 1px solid #ddd;
                         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
                         text-align: center;
+                        backdrop-filter: blur(10px);
                     }
                     
                     /* Modern Theme */
                     .testimonial-item.testimonial-modern {
-                        background: linear-gradient(135deg, white 0%, #f8f9fa 100%);
+                        background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 249, 250, 0.9) 100%);
                         padding: 25px;
                         border: none;
                         box-shadow: 0 8px 25px rgba(0,0,0,0.1);
                         text-align: center;
                         transition: transform 0.3s ease;
+                        backdrop-filter: blur(10px);
                     }
                     
                     .testimonial-item.testimonial-modern:hover {
@@ -370,12 +383,13 @@ const Home = () => {
                     
                     /* Elegant Theme */
                     .testimonial-item.testimonial-elegant {
-                        background: white;
+                        background: rgba(255, 255, 255, 0.9);
                         padding: 30px;
                         border: 1px solid #e0e0e0;
                         box-shadow: 0 4px 20px rgba(0,0,0,0.08);
                         text-align: left;
                         position: relative;
+                        backdrop-filter: blur(10px);
                     }
                     
                     .testimonial-item.testimonial-elegant {
@@ -547,7 +561,7 @@ const Home = () => {
                     }
                     
                     .indicator.active {
-                        background: white;
+                        background: rgba(255, 255, 255, 0.9);
                         transform: scale(1.2);
                     }
                     
@@ -578,36 +592,90 @@ const Home = () => {
             <div className="home">
             <div className="home-main-content">
             {/* Modern Hero Section */}
-            <ModernHero />
+            <Hero />
 
             {/* Featured Categories */}
             <section className="featured-categories">
                 <div className="container">
+                    {currentTheme === 'christmas' && <ChristmasHeaderDecoration />}
                     <div className="section-header">
                         <h2>Featured Categories</h2>
                         <Link to="/products" className="view-all">View All Categories →</Link>
                     </div>
                     {categoriesLoading ? (
-                        <div className="categories-loading">
-                            <div className="loading-spinner">
-                                <div className="spinner"></div>
-                                <p>Loading categories...</p>
-                            </div>
+                        <div style={{ 
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            alignItems: 'center', 
+                            justifyContent: 'center',
+                            padding: '2rem',
+                            gap: '1rem'
+                        }}>
+                            <Bars color="#F0B21B" height={60} width={60} />
+                            <p>Loading categories...</p>
                         </div>
                     ) : (
-                        <div className="categories-grid">
-                            {categories.map((category, index) => (
-                                <Link
-                                    key={index}
-                                    to={`/products?category=${encodeURIComponent(category.categoryName)}`}
-                                    className="category-card"
+                        <>
+                            {/* Desktop Layout - Grid if < 6 items, Slider if >= 6 items */}
+                            {categories.length < 6 ? (
+                                <div className="categories-grid desktop-only">
+                                    {categories.map((category, index) => (
+                                        <Link
+                                            key={index}
+                                            to={`/products?category=${encodeURIComponent(category.categoryName)}`}
+                                            className="category-card"
+                                        >
+                                            <div className="category-icon">{category.icon}</div>
+                                            <h3>{category.name}</h3>
+                                            <p>{category.count} Products</p>
+                                        </Link>
+                                    ))}
+                                </div>
+                            ) : (
+                                <Slider 
+                                    itemsPerView={4}
+                                    showArrows={true}
+                                    showDots={true}
+                                    autoPlay={true}
+                                    autoPlayInterval={4000}
+                                    className="categories-slider desktop-only"
                                 >
-                                    <div className="category-icon">{category.icon}</div>
-                                    <h3>{category.name}</h3>
-                                    <p>{category.count} Products</p>
-                                </Link>
-                            ))}
-                        </div>
+                                    {categories.map((category, index) => (
+                                        <Link
+                                            key={index}
+                                            to={`/products?category=${encodeURIComponent(category.categoryName)}`}
+                                            className="category-card"
+                                        >
+                                            <div className="category-icon">{category.icon}</div>
+                                            <h3>{category.name}</h3>
+                                            <p>{category.count} Products</p>
+                                        </Link>
+                                    ))}
+                                </Slider>
+                            )}
+                            
+                            {/* Mobile Slider Layout */}
+                            <Slider 
+                                itemsPerView={4}
+                                showArrows={true}
+                                showDots={true}
+                                autoPlay={true}
+                                autoPlayInterval={4000}
+                                className="categories-slider mobile-only"
+                            >
+                                {categories.map((category, index) => (
+                                    <Link
+                                        key={index}
+                                        to={`/products?category=${encodeURIComponent(category.categoryName)}`}
+                                        className="category-card"
+                                    >
+                                        <div className="category-icon">{category.icon}</div>
+                                        <h3>{category.name}</h3>
+                                        <p>{category.count} Products</p>
+                                    </Link>
+                                ))}
+                            </Slider>
+                        </>
                     )}
                 </div>
             </section>
@@ -615,72 +683,63 @@ const Home = () => {
             {/* Featured Products */}
             <section className="featured-products">
                 <div className="container">
+                    {currentTheme === 'christmas' && <ChristmasHeaderDecoration />}
                     <div className="section-header">
                         <h2>Featured Products</h2>
                         <Link to="/products" className="view-all">View All Products →</Link>
                     </div>
-                    {loading ? (
-                        <div className="loading">Loading featured products...</div>
-                    ) : (
-                        <div className="products-slider">
-                            <button 
-                                className="slider-nav prev" 
-                                onClick={prevSlide}
-                                disabled={totalSlides <= 1}
-                                aria-label="Previous products"
-                            >
-                                ‹
-                            </button>
-                            <div className="products-slider-container" style={{
-                                transform: `translateX(-${currentSlide * 100}%)`
-                            }}>
-                                {Array.from({ length: totalSlides }, (_, slideIndex) => {
-                                    const slideProducts = featuredProducts.slice(
-                                        slideIndex * itemsPerSlide, 
-                                        (slideIndex + 1) * itemsPerSlide
-                                    );
-                                    
-                                    return (
-                                        <div key={slideIndex} className="slide">
-                                            {slideProducts.map(product => (
-                                                <ProductCard key={product.id} product={product} />
-                                            ))}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                            <button 
-                                className="slider-nav next" 
-                                onClick={nextSlide}
-                                disabled={totalSlides <= 1}
-                                aria-label="Next products"
-                            >
-                                ›
-                            </button>
-                            <div className="slider-dots">
-                                {Array.from({ length: totalSlides }, (_, index) => (
-                                    <button
-                                        key={index}
-                                        className={`slider-dot ${index === currentSlide ? 'active' : ''}`}
-                                        onClick={() => goToSlide(index)}
-                                        aria-label={`Go to slide ${index + 1}`}
-                                    />
+                    <>
+                        {/* Desktop Layout - Grid if < 6 items, Slider if >= 6 items */}
+                        {featuredProducts.length < 6 ? (
+                            <div className="products-grid desktop-only">
+                                {featuredProducts.map(product => (
+                                    <ProductCard key={product.id} product={product} />
                                 ))}
                             </div>
-                        </div>
-                    )}
+                        ) : (
+                            <Slider 
+                                itemsPerView={4}
+                                showArrows={true}
+                                showDots={true}
+                                autoPlay={true}
+                                autoPlayInterval={5000}
+                                className="products-slider desktop-only"
+                            >
+                                {featuredProducts.map(product => (
+                                    <ProductCard key={product.id} product={product} />
+                                ))}
+                            </Slider>
+                        )}
+                        
+                        {/* Mobile Slider Layout */}
+                        <Slider 
+                            itemsPerView={4}
+                            showArrows={true}
+                            showDots={true}
+                            autoPlay={true}
+                            autoPlayInterval={5000}
+                            className="products-slider mobile-only"
+                        >
+                            {featuredProducts.map(product => (
+                                <ProductCard key={product.id} product={product} />
+                            ))}
+                        </Slider>
+                    </>
                 </div>
             </section>
 
             {/* Modern Testimonials Section */}
-            <ModernTestimonials designSettings={testimonialsDesign} />
+            <Testimonials designSettings={testimonialsDesign} />
             
             {/* Contact Section with Map */}
             <ContactSection />
+            
+            {/* Christmas Footer Decoration - Only show in Christmas theme */}
+            {currentTheme === 'christmas' && <ChristmasFooterDecoration />}
             </div>
         </div>
         </>
-        </PageLoader>
+        </div>
     );
 };
 

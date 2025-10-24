@@ -1,8 +1,9 @@
-/* New Auth Page Design - Based on Image Layout with Yellow Mustard Accent */
+/* New Auth Page Design - Light Theme Default */
 
 .auth-page-new {
     min-height: 100vh;
     background: #ffffff;
+    color: #111827;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -25,6 +26,7 @@
     justify-content: center;
     padding: 2rem;
     background: #ffffff;
+    color: #111827;
 }
 
 .auth-form-wrapper {
@@ -55,14 +57,14 @@
 .auth-form-header h1 {
     font-size: 32px;
     font-weight: 700;
-    color: #4D5157;
+    color: #111827;
     margin: 0 0 8px 0;
     letter-spacing: -0.02em;
 }
 
 .auth-subtitle {
     font-size: 16px;
-    color: #4D5157;
+    color: #6b7280;
     margin: 0;
     line-height: 1.5;
 }
@@ -83,16 +85,17 @@
 .form-group-new label {
     font-size: 14px;
     font-weight: 600;
-    color: #4D5157;
+    color: #111827;
 }
 
 .form-group-new input {
     padding: 12px 16px;
-    border: 1px solid #e0e0e0;
+    border: 1px solid #e5e7eb;
     border-radius: 8px;
     font-size: 16px;
     transition: all 0.3s ease;
     background: #ffffff;
+    color: #111827;
 }
 
 .form-group-new input:focus {
@@ -102,7 +105,7 @@
 }
 
 .form-group-new input::placeholder {
-    color: #bdc3c7;
+    color: #9ca3af;
 }
 
 /* Password Input Wrapper */
@@ -153,7 +156,7 @@
 .form-options-new {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     margin: 20px 0;
     padding: 0.5rem 0;
     min-height: 2.5rem;
@@ -163,19 +166,20 @@
 .remember-me {
     display: flex;
     align-items: center;
-    gap: 14px;
     cursor: pointer;
     font-size: 14px;
-    color: #4D5157;
+    color: #111827;
     font-weight: 500;
     user-select: none;
     transition: color 0.3s ease;
-    padding: 6px 0;
-    line-height: 1;
+    padding: 0;
+    line-height: 1.4;
+    gap: 17px;
+    min-height: 20px;
 }
 
 .remember-me:hover {
-    color: #2C2C2C;
+    color: #374151;
 }
 
 .remember-me input[type="checkbox"] {
@@ -185,17 +189,15 @@
 .checkmark {
     width: 20px;
     height: 20px;
-    border: 2px solid #e0e0e0;
+    border: 2px solid #d1d5db;
     border-radius: 4px;
     position: relative;
     transition: all 0.3s ease;
-    background: white;
-    flex-shrink: 0;
-    margin: 0;
+    background: #ffffff;
     display: flex;
     align-items: center;
     justify-content: center;
-    vertical-align: middle;
+    flex-shrink: 0;
 }
 
 .remember-me input[type="checkbox"]:checked + .checkmark {
@@ -226,12 +228,6 @@
 
 .remember-me:hover .checkmark {
     border-color: #F0B21B;
-}
-
-.remember-me span {
-    display: inline-block;
-    vertical-align: middle;
-    line-height: 1.2;   
 }
 
 .forgot-password-link {
@@ -273,21 +269,7 @@
     transform: none;
 }
 
-/* Loading Spinner */
-.loading-spinner-new {
-    width: 20px;
-    height: 20px;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-top: 2px solid white;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin: 0 auto;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
+/* Loading Spinner - Removed old CSS spinner, now using react-loader-spinner */
 
 /* Divider */
 .auth-divider {
@@ -303,13 +285,13 @@
     left: 0;
     right: 0;
     height: 1px;
-    background: #e0e0e0;
+    background: #e5e7eb;
 }
 
 .auth-divider span {
     background: #ffffff;
     padding: 0 16px;
-    color: #4D5157;
+    color: #6b7280;
     font-size: 14px;
     position: relative;
     z-index: 1;
@@ -319,7 +301,7 @@
 .auth-switch-link {
     text-align: center;
     font-size: 14px;
-    color: #4D5157;
+    color: #6b7280;
 }
 
 .switch-link-btn {
@@ -460,28 +442,13 @@
     box-shadow: 0 0 8px rgba(240, 178, 27, 0.4);
 }
 
-/* Loading Spinner */
+/* Loading Spinner - Removed old CSS spinner, now using react-loader-spinner */
 .loading-spinner {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     color: white;
-}
-
-.spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid rgba(255, 255, 255, 0.3);
-    border-top: 4px solid #F0B21B;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-bottom: 1rem;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
 }
 
 .loading-spinner p {
@@ -554,6 +521,186 @@
     gap: 8px;
     font-size: 14px;
     margin-bottom: 1rem;
+}
+
+/* Modern Error Message */
+.error-message-modern {
+    background: rgba(220, 53, 69, 0.08);
+    border: 1px solid rgba(220, 53, 69, 0.15);
+    color: #dc3545;
+    padding: 12px 16px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 14px;
+    margin-bottom: 1rem;
+    font-weight: 500;
+    line-height: 1.4;
+    animation: slideInError 0.3s ease-out;
+    box-shadow: 0 2px 4px rgba(220, 53, 69, 0.1);
+}
+
+.error-message-modern span {
+    color: #dc3545;
+    font-weight: 500;
+}
+
+.error-message-modern button,
+.error-login-link {
+    background: none;
+    border: none;
+    color: #F0B21B;
+    text-decoration: underline;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 0;
+    margin-top: 4px;
+    transition: all 0.2s ease;
+}
+
+.error-message-modern button:hover,
+.error-login-link:hover {
+    color: #d69e16;
+    text-decoration: none;
+}
+
+/* Success Message */
+.success-message-modern {
+    background: rgba(40, 167, 69, 0.08);
+    border: 1px solid rgba(40, 167, 69, 0.15);
+    color: #28a745;
+    padding: 12px 16px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    margin-bottom: 1rem;
+    font-weight: 500;
+    line-height: 1.4;
+    animation: slideInSuccess 0.3s ease-out;
+    box-shadow: 0 2px 4px rgba(40, 167, 69, 0.1);
+}
+
+/* Error Message Animation */
+@keyframes slideInError {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Success Message Animation */
+@keyframes slideInSuccess {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Error Message Responsive */
+@media (max-width: 768px) {
+    .error-message-modern {
+        font-size: 13px;
+        padding: 10px 14px;
+    }
+    
+    .error-login-link {
+        font-size: 12px;
+    }
+}
+
+/* Google Sign-In Styles */
+.google-signin-section {
+    margin-top: 1.5rem;
+}
+
+.divider {
+    display: flex;
+    align-items: center;
+    margin: 1.5rem 0;
+    color: #6b7280;
+    font-size: 0.875rem;
+}
+
+.divider::before,
+.divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: #e5e7eb;
+}
+
+.divider span {
+    padding: 0 1rem;
+    background: #ffffff;
+}
+
+.google-signin-container {
+    position: relative;
+    width: 100%;
+}
+
+.google-signin-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 1rem;
+    color: #6b7280;
+    font-size: 0.875rem;
+}
+
+.google-signin-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.9);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    z-index: 10;
+    border-radius: 0.5rem;
+    color: #6b7280;
+    font-size: 0.875rem;
+}
+
+.google-signin-disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+/* Dark mode Google Sign-In styles */
+[data-theme="dark"] .divider {
+    color: #9ca3af;
+}
+
+[data-theme="dark"] .divider::before,
+[data-theme="dark"] .divider::after {
+    background: #374151;
+}
+
+[data-theme="dark"] .divider span {
+    background: #1f2937;
+}
+
+[data-theme="dark"] .google-signin-overlay {
+    background: rgba(31, 41, 55, 0.9);
+    color: #9ca3af;
 }
 
 /* Responsive Design */
@@ -653,9 +800,9 @@
     margin: 0;
     width: 18px;
     height: 18px;
-    border: 2px solid #e0e0e0;
+    border: 2px solid #d1d5db;
     border-radius: 4px;
-    background: white;
+    background: #ffffff;
     cursor: pointer;
     position: relative;
     appearance: none;
@@ -693,7 +840,7 @@
 
 .auth-form-new .terms-checkbox-new label {
     font-size: 13px;
-    color: #4D5157;
+    color: #111827;
     line-height: 1.5;
     cursor: pointer;
     margin: 0;
@@ -713,6 +860,24 @@
     text-decoration: underline;
 }
 
+/* Terms Link Styles for Modal */
+.auth-form-new .terms-checkbox-new .terms-link {
+    color: #F0B21B;
+    text-decoration: none;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-bottom: 1px solid transparent;
+    padding: 0.125rem 0;
+    display: inline;
+}
+
+.auth-form-new .terms-checkbox-new .terms-link:hover {
+    color: #d69e16;
+    border-bottom-color: #d69e16;
+    text-decoration: none;
+}
+
 /* Password Strength Indicator */
 .password-strength-indicator {
     margin-top: 8px;
@@ -720,7 +885,7 @@
 
 .password-strength-bar {
     height: 4px;
-    background: #e0e0e0;
+    background: #e5e7eb;
     border-radius: 2px;
     overflow: hidden;
     margin-bottom: 8px;
@@ -754,7 +919,7 @@
 
 .password-requirements {
     font-size: 12px;
-    color: #4D5157;
+    color: #6b7280;
 }
 
 .password-requirements ul {
@@ -764,7 +929,7 @@
 
 .password-requirements li {
     margin-bottom: 2px;
-    color: #4D5157;
+    color: #6b7280;
 }
 
 .password-requirements li.valid {
@@ -777,8 +942,8 @@
 
 /* Form Completion Status */
 .form-completion-status {
-    background: #f8f9fa;
-    border: 1px solid #e9ecef;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
     border-radius: 8px;
     padding: 1rem;
     margin-top: 1rem;
@@ -819,18 +984,18 @@
 }
 
 .completion-text {
-    color: #4D5157;
+    color: #111827;
 }
 
 /* Security Notice */
 .security-notice {
-    background: #f8f9fa;
-    border: 1px solid #e9ecef;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
     border-radius: 8px;
     padding: 12px;
     margin: 12px 0;
     font-size: 14px;
-    color: #4D5157;
+    color: #6b7280;
     text-align: center;
     display: flex;
     align-items: center;
@@ -840,8 +1005,8 @@
 
 /* Terms Summary */
 .terms-summary {
-    background: #f8f9fa;
-    border: 1px solid #e9ecef;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
     border-radius: 8px;
     padding: 1rem;
     margin-bottom: 1rem;
@@ -850,7 +1015,7 @@
 .terms-summary h4 {
     font-size: 16px;
     font-weight: 600;
-    color: #4D5157;
+    color: #111827;
     margin: 0 0 8px 0;
 }
 
@@ -861,7 +1026,7 @@
 
 .terms-summary li {
     font-size: 14px;
-    color: #4D5157;
+    color: #6b7280;
     margin-bottom: 4px;
 }
 
@@ -873,7 +1038,7 @@
 
 .terms-checkbox-label {
     font-size: 14px;
-    color: #4D5157;
+    color: #111827;
     line-height: 1.4;
     cursor: pointer;
 }
@@ -915,6 +1080,54 @@
     font-weight: bold;
 }
 
+/* Success Container */
+.success-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.success-instructions {
+    background: #1a1a1a;
+    border: 1px solid #333333;
+    border-radius: 8px;
+    padding: 1rem;
+    font-size: 14px;
+    color: #cccccc;
+    line-height: 1.5;
+}
+
+.success-instructions p {
+    margin: 0 0 8px 0;
+}
+
+.success-instructions p:last-child {
+    margin-bottom: 0;
+}
+
+.success-instructions strong {
+    color: #F0B21B;
+    font-weight: 600;
+}
+
+/* Input Wrapper with Icon */
+.input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-wrapper svg {
+    position: absolute;
+    left: 12px;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.input-wrapper input {
+    padding-left: 40px;
+}
+
 /* Enhanced Responsive Design for Checkboxes */
 @media (max-width: 768px) {
     .auth-form-new .terms-checkbox-new {
@@ -939,16 +1152,19 @@
     
     .remember-me {
         font-size: 13px;
-        gap: 8px;
+        gap: 15px;
+        align-items: center;
+        min-height: 18px;
     }
     
     .checkmark {
-        width: 16px;
-        height: 16px;
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
     }
     
     .remember-me input[type="checkbox"]:checked + .checkmark::after {
-        font-size: 10px;
+        font-size: 12px;
     }
     
     .form-options-new {
@@ -962,20 +1178,6 @@
     .forgot-password-link {
         align-self: flex-end;
         font-size: 13px;
-    }
-    
-    .remember-me {
-        gap: 12px;
-        padding: 4px 0;
-    }
-    
-    .checkmark {
-        width: 18px;
-        height: 18px;
-    }
-    
-    .remember-me input[type="checkbox"]:checked + .checkmark::after {
-        font-size: 12px;
     }
 }
 

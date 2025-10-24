@@ -69,11 +69,13 @@
     border-radius: 12px;
     padding: 20px;
     height: fit-content;
-    position: sticky;
-    top: 2rem;
+    position: static;
 }
 
 .order-summary-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
     margin-bottom: 16px;
     padding-bottom: 16px;
     border-bottom: 1px solid #e5e7eb;
@@ -84,6 +86,23 @@
     font-size: 18px;
     font-weight: 600;
     color: #111827;
+}
+
+.summary-icon {
+    width: 24px;
+    height: 24px;
+    background: #F0B21B;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    flex-shrink: 0;
+}
+
+.summary-icon svg {
+    width: 16px;
+    height: 16px;
 }
 
 .order-summary-content {
@@ -121,6 +140,12 @@
 .order-detail-value.total-amount {
     color: #F0B21B;
     font-size: 16px;
+}
+
+.order-detail-value.shipping-cost {
+    color: #F0B21B;
+    font-size: 15px;
+    font-weight: 600;
 }
 
 .status-success {
@@ -431,6 +456,20 @@
         padding: 16px;
     }
     
+    .order-summary-header {
+        gap: 0.5rem;
+    }
+    
+    .summary-icon {
+        width: 20px;
+        height: 20px;
+    }
+    
+    .summary-icon svg {
+        width: 14px;
+        height: 14px;
+    }
+    
     .order-details-grid {
         gap: 8px;
     }
@@ -593,5 +632,303 @@
 
     .payment-status-card {
         padding: 1rem;
+    }
+}
+
+/* =============================================================================
+   DARK MODE STYLES FOR ORDER SUCCESS PAGE AND ALL COMPONENTS
+   ============================================================================= */
+
+/* Dark mode styles for order success page */
+body.theme-dark .order-success-page {
+    background-color: #1a1a1a !important;
+    color: #ffffff !important;
+}
+
+body.theme-dark .success-container {
+    background: transparent !important;
+}
+
+/* Dark mode styles for success header */
+body.theme-dark .success-header {
+    background-color: #2d2d2d !important;
+    border: 1px solid #404040 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+body.theme-dark .success-title {
+    color: #ffffff !important;
+}
+
+body.theme-dark .success-subtitle {
+    color: #cccccc !important;
+}
+
+/* Dark mode styles for order summary section */
+body.theme-dark .order-summary-section {
+    background-color: #2d2d2d !important;
+    border: 1px solid #404040 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+body.theme-dark .order-summary-header {
+    border-bottom: 1px solid #404040 !important;
+}
+
+body.theme-dark .order-summary-header h2 {
+    color: #ffffff !important;
+}
+
+body.theme-dark .summary-icon {
+    background: #F0B21B !important;
+    color: #000000 !important;
+}
+
+/* Dark mode styles for order details */
+body.theme-dark .order-detail-item {
+    background: #333333 !important;
+    border-left: 3px solid #F0B21B !important;
+}
+
+body.theme-dark .order-detail-label {
+    color: #cccccc !important;
+}
+
+body.theme-dark .order-detail-value {
+    color: #ffffff !important;
+}
+
+body.theme-dark .order-detail-value.total-amount {
+    color: #F0B21B !important;
+}
+
+body.theme-dark .order-detail-value.shipping-cost {
+    color: #F0B21B !important;
+}
+
+/* Dark mode styles for status badges */
+body.theme-dark .status-success {
+    background: rgba(16, 185, 129, 0.2) !important;
+    color: #10b981 !important;
+}
+
+body.theme-dark .status-badge.success {
+    background: rgba(16, 185, 129, 0.2) !important;
+    color: #10b981 !important;
+}
+
+/* Dark mode styles for detail sections */
+body.theme-dark .detail-section h3 {
+    color: #ffffff !important;
+    border-bottom: 2px solid #404040 !important;
+}
+
+body.theme-dark .detail-item {
+    background: #333333 !important;
+    border-left: 4px solid #F0B21B !important;
+}
+
+body.theme-dark .detail-label {
+    color: #cccccc !important;
+}
+
+body.theme-dark .detail-value {
+    color: #ffffff !important;
+}
+
+body.theme-dark .detail-value.total-amount {
+    color: #F0B21B !important;
+}
+
+/* Dark mode styles for payment method */
+body.theme-dark .payment-id {
+    background: #333333 !important;
+    color: #ffffff !important;
+}
+
+/* Dark mode styles for next steps section */
+body.theme-dark .next-steps-section {
+    background-color: #2d2d2d !important;
+    border: 1px solid #404040 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+body.theme-dark .next-steps-header {
+    border-bottom: 1px solid #404040 !important;
+}
+
+body.theme-dark .next-steps-header h2 {
+    color: #ffffff !important;
+}
+
+body.theme-dark .step-item {
+    background: #333333 !important;
+    border: 1px solid #404040 !important;
+}
+
+body.theme-dark .step-item:hover {
+    background: #404040 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+}
+
+body.theme-dark .step-icon {
+    background: #F0B21B !important;
+    color: #000000 !important;
+}
+
+body.theme-dark .step-content h4 {
+    color: #ffffff !important;
+}
+
+body.theme-dark .step-content p {
+    color: #cccccc !important;
+}
+
+/* Dark mode styles for success actions section */
+body.theme-dark .success-actions-section {
+    background-color: #2d2d2d !important;
+    border: 1px solid #404040 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Dark mode styles for buttons */
+body.theme-dark .btn-primary {
+    background: #F0B21B !important;
+    color: #000000 !important;
+}
+
+body.theme-dark .btn-primary:hover {
+    background: #e6a017 !important;
+    color: #000000 !important;
+    box-shadow: 0 4px 12px rgba(240, 178, 27, 0.3) !important;
+}
+
+body.theme-dark .btn-secondary {
+    background: #333333 !important;
+    color: #ffffff !important;
+    border: 1px solid #404040 !important;
+}
+
+body.theme-dark .btn-secondary:hover {
+    background: #404040 !important;
+    border-color: #F0B21B !important;
+}
+
+/* Dark mode styles for support info */
+body.theme-dark .support-info {
+    background: #333333 !important;
+    border: 1px solid #404040 !important;
+}
+
+body.theme-dark .support-info p {
+    color: #cccccc !important;
+}
+
+body.theme-dark .support-link {
+    color: #F0B21B !important;
+}
+
+/* Dark mode styles for error state */
+body.theme-dark .error-state {
+    background: #2d2d2d !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+}
+
+body.theme-dark .error-state h2 {
+    color: #ef4444 !important;
+}
+
+body.theme-dark .error-state p {
+    color: #cccccc !important;
+}
+
+/* Dark mode styles for payment section */
+body.theme-dark .payment-status-card {
+    background: linear-gradient(135deg, #333333 0%, #2d2d2d 100%) !important;
+    border: 1px solid #404040 !important;
+}
+
+body.theme-dark .payment-status-header {
+    border-bottom: 1px solid #404040 !important;
+}
+
+body.theme-dark .payment-status-text {
+    color: #ffffff !important;
+}
+
+body.theme-dark .payment-detail-label {
+    color: #cccccc !important;
+}
+
+body.theme-dark .payment-detail-value {
+    color: #ffffff !important;
+}
+
+body.theme-dark .payment-security-notice {
+    background-color: rgba(59, 130, 246, 0.1) !important;
+    border: 1px solid #3b82f6 !important;
+    color: #60a5fa !important;
+}
+
+/* Dark mode responsive adjustments */
+@media (max-width: 768px) {
+    body.theme-dark .order-success-page {
+        background: #1a1a1a !important;
+    }
+    
+    body.theme-dark .success-header {
+        background: #2d2d2d !important;
+        border: 1px solid #404040 !important;
+    }
+    
+    body.theme-dark .order-summary-section {
+        background: #2d2d2d !important;
+        border: 1px solid #404040 !important;
+    }
+    
+    body.theme-dark .next-steps-section {
+        background: #2d2d2d !important;
+        border: 1px solid #404040 !important;
+    }
+    
+    body.theme-dark .success-actions-section {
+        background: #2d2d2d !important;
+        border: 1px solid #404040 !important;
+    }
+    
+    body.theme-dark .payment-status-card {
+        background: linear-gradient(135deg, #333333 0%, #2d2d2d 100%) !important;
+        border: 1px solid #404040 !important;
+    }
+}
+
+@media (max-width: 480px) {
+    body.theme-dark .order-success-page {
+        background: #1a1a1a !important;
+    }
+    
+    body.theme-dark .success-header {
+        background: #2d2d2d !important;
+        border: 1px solid #404040 !important;
+    }
+    
+    body.theme-dark .order-summary-section {
+        background: #2d2d2d !important;
+        border: 1px solid #404040 !important;
+    }
+    
+    body.theme-dark .next-steps-section {
+        background: #2d2d2d !important;
+        border: 1px solid #404040 !important;
+    }
+    
+    body.theme-dark .success-actions-section {
+        background: #2d2d2d !important;
+        border: 1px solid #404040 !important;
+    }
+    
+    body.theme-dark .payment-status-card {
+        background: linear-gradient(135deg, #333333 0%, #2d2d2d 100%) !important;
+        border: 1px solid #404040 !important;
     }
 }

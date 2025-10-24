@@ -8,14 +8,7 @@ class EmployeeUtils {
         this.notifications = [];
     }
 
-    // Permission checking utilities
-    hasPermission(permission) {
-        return window.userPermissions && window.userPermissions.hasPermission(permission);
-    }
-
-    canAccessPage(page) {
-        return window.userPermissions && window.userPermissions.canAccessPage(page);
-    }
+    // Admin-only system - no permission checking needed
 
     // API request utilities
     async apiRequest(endpoint, options = {}) {

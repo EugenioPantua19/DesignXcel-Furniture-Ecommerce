@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory Manager Pending Orders - Design Excellence</title>
+    <link rel="stylesheet" href="/css/Employee/Admin/AdminIndexStyles.css">
+    <link rel="stylesheet" href="/css/dark-mode.css">
+    </head>
+<body>
+    <div class="dashboard-container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h3>Inventory Manager Panel</h3>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="/Employee/InventoryManager">Dashboard</a></li>
+                <li class="sidebar-section-label" style="font-weight:normal;">Inventory</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/InventoryManager/InventoryProducts">Products</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryVariations">Variations</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryMaterials">Raw Materials</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryAlerts">Alerts</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryArchived">Archived items</a></li>
+                </ul>
+                <li class="sidebar-section-label" style="font-weight:normal;">Transactions</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/InventoryManager/InventoryRates">Delivery Rates</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryWalkIn">Walk In</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryOrdersPending">Orders Pending</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryOrdersProcessing">Orders Processing</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryOrdersShipping">Orders Shipping</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryOrdersDelivery">Orders Delivery</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryOrdersReceive">Orders Receive</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryCancelledOrders">Cancelled Orders</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryCompletedOrders">Completed Orders</a></li>
+                </ul>
+                <!-- User Management Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">User Management</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/InventoryManager/InventoryManageUsers">Manage Users</a></li>
+                </ul>
+                
+                <!-- Customer Reviews Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">Customer Reviews</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/InventoryManager/InventoryReviews">Reviews</a></li>
+                </ul>
+                
+                <!-- Support & Communication Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">Support & Communication</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/InventoryManager/InventoryChatSupport">Chat Support</a></li>
+                </ul>
+                
+                <!-- Content & System Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">Content & System</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/InventoryManager/InventoryCMS">Content Management</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryLogs">Activity Logs</a></li>
+                </ul>
+            </ul>
+            <div class="logout-section">
+                <a href="/logout" class="logout-button" onclick="handleLogout(event)">Logout</a>
+            </div>
+        </div>
+        <div class="main-content">
+            <div class="header">
+                <h2>Pending Orders</h2>
+            </div>
+            <div class="content-area">
+                <% if (orders && orders.length > 0) { %>
+                    <div style="display: flex; flex-wrap: wrap; gap: 24px;">
+                        <% orders.forEach(function(order) { %>
+                            <div style="background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 24px; min-width: 340px; max-width: 420px; flex: 1 1 340px; border-left: 6px solid #f0b21b; margin-bottom: 12px; display: flex; flex-direction: column; height: 520px;" class="order-card">
+                                <div style="flex: 1 1 auto; overflow-y: auto; min-height: 0;" class="order-details-summary">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                        <div style="font-weight: 600; font-size: 1.1em;">Order #<%= order.OrderID %></div>
+                                        <span style="background: #f0b21b; color: #fff; border-radius: 12px; padding: 4px 14px; font-size: 0.95em; font-weight: 600;">Pending</span>
+                                    </div>
+                                    <div style="font-size: 0.97em; color: #555; margin-bottom: 8px;">Placed: <%= order.FormattedOrderDate || new Date(order.OrderDate).toLocaleString('en-US') %></div>
+                                    <hr style="border: none; border-top: 1.5px solid #e0e0e0; margin: 10px 0;" />
+                                    <div style="margin-bottom: 10px;">
+                                        <div style="font-weight: bold;">Customer:</div>
+                                        <div><%= order.CustomerName %> (<%= order.CustomerEmail %>)<br>Phone: <%= order.CustomerPhone %></div>
+                                    </div>
+                                    <hr style="border: none; border-top: 1.5px solid #e0e0e0; margin: 10px 0;" />
+                                    <div style="margin-bottom: 10px;">
+                                        <div style="font-weight: bold;">Shipping Address:</div>
+                                        <div><%= order.AddressLabel ? order.AddressLabel + ': ' : '' %><%= [order.HouseNumber, order.Street, order.Barangay, order.City, order.Province, order.PostalCode, order.Country].filter(Boolean).join(', ') %></div>
+                                    </div>
+                                    <hr style="border: none; border-top: 1.5px solid #e0e0e0; margin: 10px 0;" />
+                                    <div style="margin-bottom: 10px;">
+                                        <div style="font-weight: bold;">Products:</div>
+                                        <% if (order.items && order.items.length > 0) { %>
+                                            <% order.items.forEach(function(item) { %>
+                                                <div style="display: flex; align-items: center; gap: 12px; background: #f8f9fa; border-radius: 6px; padding: 7px 10px; margin-bottom: 6px;">
+                                                    <% if (item.VariationImageURL) { %>
+                                                        <img src="<%= item.VariationImageURL %>" alt="<%= item.VariationName || item.Name %>" style="width: 44px; height: 44px; object-fit: cover; border-radius: 6px; background: #eee;" />
+                                                    <% } else if (item.ImageURL) { %>
+                                                        <img src="<%= item.ImageURL %>" alt="<%= item.Name %>" style="width: 44px; height: 44px; object-fit: cover; border-radius: 6px; background: #eee;" />
+                                                    <% } else { %>
+                                                        <div style="width: 44px; height: 44px; background: #eee; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #aaa; font-size: 20px;">🖼️</div>
+                                                    <% } %>
+                                                    <div style="flex:1;">
+                                                        <div style="font-weight: 600; font-size: 1em;"><%= item.Name %></div>
+                                                        <% if (item.VariationName) { %>
+                                                            <div style="font-size: 0.9em; color: #666; margin: 2px 0;">
+                                                                <span style="background: #e3f2fd; color: #1976d2; padding: 2px 6px; border-radius: 4px; font-size: 0.85em; font-weight: 500;">
+                                                                    <%= item.VariationName %>
+                                                                </span>
+                                                                <% if (item.Color) { %>
+                                                                    <span style="color: #666; margin-left: 6px;">• <%= item.Color %></span>
+                                                                <% } %>
+                                                            </div>
+                                                        <% } %>
+                                                        <div style="font-size: 0.93em; color: #888;">Qty: <%= item.Quantity %></div>
+                                                    </div>
+                                                    <div style="font-weight: 600; color: #333;">₱<%= Number(item.PriceAtPurchase).toLocaleString(undefined, { minimumFractionDigits: 2 }) %></div>
+                                                </div>
+                                            <% }); %>
+                                        <% } else { %>
+                                            <div>No products found.</div>
+                                        <% } %>
+                                    </div>
+                                    <hr style="border: none; border-top: 1.5px solid #e0e0e0; margin: 10px 0;" />
+                                    <div style="margin-bottom: 10px;">
+                                        <div style="font-weight: bold;">Payment Method:</div>
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <span><%= order.PaymentMethod %></span>
+                                            <% if (order.PaymentMethod && order.PaymentMethod.includes('E-Wallet')) { %>
+                                                <span style="background: #28a745; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.8em;">PAID</span>
+                                            <% } else if (order.PaymentMethod === 'Bank Transfer') { %>
+                                                <span style="background: #17a2b8; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.8em;">BANK</span>
+                                            <% } %>
+                                            <% if (order.StripeSessionID) { %>
+                                                <button type="button" onclick="checkPaymentStatus(<%= order.OrderID %>)" style="background: #007bff; color: white; border: none; padding: 2px 6px; border-radius: 3px; font-size: 0.8em; cursor: pointer;">Check Payment</button>
+                                            <% } %>
+                                        </div>
+                                    </div>
+                                    <hr style="border: none; border-top: 1.5px solid #e0e0e0; margin: 10px 0;" />
+                                    <div style="margin-bottom: 10px;">
+                                        <div style="font-weight: bold;">Delivery Method:</div>
+                                        <div><%= order.DeliveryTypeName || 'Pick up' %></div>
+                                    </div>
+                                    <hr style="border: none; border-top: 1.5px solid #e0e0e0; margin: 10px 0;" />
+                                    <div style="margin-bottom: 10px;">
+                                        <div style="font-weight: bold;">Delivery Cost:</div>
+                                        <div>₱<%= Number(order.DeliveryCost || 0).toLocaleString(undefined, { minimumFractionDigits: 2 }) %></div>
+                                    </div>
+                                    <hr style="border: none; border-top: 1.5px solid #e0e0e0; margin: 10px 0;" />
+                                    <div style="margin-bottom: 10px;">
+                                        <div style="font-weight: bold;">Order Total:</div>
+                                        <div style="font-weight: bold; font-size: 1.1em; color: #222;">₱<%= Number(order.TotalAmount).toLocaleString(undefined, { minimumFractionDigits: 2 }) %></div>
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 10px; margin-top: 18px; flex-shrink: 0;">
+                                    <button type="button" class="reactivate-btn" style="background: #27ae60; color: #fff; border: none; border-radius: 4px; padding: 8px 18px; font-weight: 600; cursor: pointer;" onclick="showModal(<%= order.OrderID %>, 'proceed')">Proceed to Next Process</button>
+                                    <button type="button" class="delete-cancel-btn" style="background: #e74c3c; color: #fff; border: none; border-radius: 4px; padding: 8px 18px; font-weight: 600; cursor: pointer;" onclick="showModal(<%= order.OrderID %>, 'cancel')">Cancel Order</button>
+                                </div>
+                                <button type="button" class="view-details-btn" onclick="toggleCardSize(this)">View Details</button>
+                            </div>
+                            <div id="modal-<%= order.OrderID %>-proceed" class="order-modal-overlay">
+                                <div class="order-modal-content">
+                                    <h4>Proceed to Next Process?</h4>
+                                    <p>Are you sure you want to move this order to <b>Processing</b>?<br>This action cannot be undone.</p>
+                                    <div class="modal-btns">
+                                        <button class="btn btn-secondary" onclick="closeModal(<%= order.OrderID %>, 'proceed')">No, go back</button>
+                                        <button class="btn btn-primary confirm-btn" onclick="handleAction(<%= order.OrderID %>, 'proceed')">Proceed</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="modal-<%= order.OrderID %>-cancel" class="order-modal-overlay">
+                                <div class="order-modal-content">
+                                    <h4>Cancel Order?</h4>
+                                    <p>Are you sure you want to cancel this order?<br>This action cannot be undone.</p>
+                                    <div class="modal-btns">
+                                        <button class="btn btn-secondary" onclick="closeModal(<%= order.OrderID %>, 'cancel')">No, go back</button>
+                                        <button class="btn btn-primary confirm-btn" style="background:#e74c3c;" onclick="handleAction(<%= order.OrderID %>, 'cancel')">Cancel</button>
+                                    </div>
+                                </div>
+                            </div>
+                        <% }); %>
+                    </div>
+                <% } else { %>
+                    <div style="text-align:center; color:#888; font-size:1.1em;">No pending orders found.</div>
+                <% } %>
+            </div>
+        </div>
+    </div>
+    <div id="order-success-popup" style="display:none; position:fixed; top:32px; left:50%; transform:translateX(-50%); background:#27ae60; color:#fff; padding:18px 32px; border-radius:8px; font-size:1.1em; font-weight:600; z-index:10000; box-shadow:0 4px 18px rgba(0,0,0,0.13); transition:opacity 0.3s;">
+        <span id="order-success-message"></span>
+    </div>
+    <script>
+function showModal(orderId, action) {
+    const modal = document.getElementById('modal-' + orderId + '-' + action);
+    if (!modal) return;
+    modal.style.display = 'flex';
+    let countdown = 5;
+    const btn = modal.querySelector('.confirm-btn');
+    btn.disabled = true;
+    btn.textContent = action === 'proceed' ? `Proceed (${countdown})` : `Cancel (${countdown})`;
+    const interval = setInterval(() => {
+        countdown--;
+        btn.textContent = action === 'proceed' ? `Proceed (${countdown})` : `Cancel (${countdown})`;
+        if (countdown <= 0) {
+            clearInterval(interval);
+            btn.disabled = false;
+            btn.textContent = action === 'proceed' ? 'Proceed' : 'Cancel';
+        }
+    }, 1000);
+}
+function closeModal(orderId, action) {
+    const modal = document.getElementById('modal-' + orderId + '-' + action);
+    if (modal) modal.style.display = 'none';
+}
+
+async function checkPaymentStatus(orderId) {
+    try {
+        const response = await fetch(`/api/admin/payment-status/${orderId}`, {
+            method: 'GET',
+            credentials: 'include'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            const details = result.paymentDetails;
+            let message = `Payment Details for Order #${orderId}:\n\n`;
+            message += `Payment Method: ${details.PaymentMethod}\n`;
+            message += `Payment Status: ${details.PaymentStatus || 'Unknown'}\n`;
+            message += `Total Amount: ₱${Number(details.TotalAmount).toLocaleString()}\n`;
+            message += `Order Date: ${new Date(details.OrderDate).toLocaleString()}\n`;
+            
+            if (details.stripeDetails) {
+                message += `\nStripe Details:\n`;
+                message += `Payment Status: ${details.stripeDetails.payment_status}\n`;
+                message += `Amount Paid: ₱${(details.stripeDetails.amount_total / 100).toLocaleString()}\n`;
+                message += `Currency: ${details.stripeDetails.currency.toUpperCase()}\n`;
+                message += `Customer Email: ${details.stripeDetails.customer_email}\n`;
+            }
+            
+            alert(message);
+        } else {
+            alert('Failed to retrieve payment details: ' + result.message);
+        }
+    } catch (error) {
+        console.error('Error checking payment status:', error);
+        alert('Error checking payment status. Please try again.');
+    }
+}
+function showOrderSuccess(message) {
+    var popup = document.getElementById('order-success-popup');
+    var msg = document.getElementById('order-success-message');
+    msg.textContent = message;
+    popup.style.display = 'block';
+    popup.style.opacity = '1';
+    setTimeout(function() {
+        popup.style.opacity = '0';
+        setTimeout(function() { popup.style.display = 'none'; }, 300);
+    }, 2000);
+}
+function handleAction(orderId, action) {
+    const url = action === 'proceed'
+        ? `/Employee/InventoryManager/InventoryOrdersPending/Proceed/${orderId}`
+        : `/Employee/InventoryManager/InventoryOrdersPending/Cancel/${orderId}`;
+    fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                showOrderSuccess(action === 'proceed' ? 'Order proceeded to Processing!' : 'Order cancelled successfully!');
+                setTimeout(() => location.reload(), 2000);
+            } else {
+                alert(data.message || 'Action failed.');
+            }
+        })
+        .catch(() => alert('Action failed.'));
+}
+
+function toggleCardSize(button) {
+    const card = button.closest('.order-card');
+    if (card) {
+        const isExpanded = card.classList.contains('expanded');
+        card.classList.toggle('expanded', !isExpanded);
+        button.textContent = isExpanded ? 'View Details' : 'Hide Details';
+    }
+}
+</script>
+    <style>
+.order-modal-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.25); z-index: 9999;
+    display: none; align-items: center; justify-content: center;
+}
+.order-modal-content {
+    background: #fff; border-radius: 10px; padding: 2rem 2.5rem; min-width: 320px; box-shadow: 0 8px 32px rgba(0,0,0,0.18); text-align: center;
+}
+.order-modal-content h4 { margin-bottom: 18px; }
+.order-modal-content p { margin-bottom: 24px; color: #444; }
+.order-modal-content .modal-btns { display: flex; gap: 16px; justify-content: center; }
+.order-modal-content .modal-btns button { min-width: 90px; }
+
+/* New styles for order cards */
+.order-card {
+    max-height: 200px; /* Initial smaller height */
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+    position: relative; /* For proper positioning of elements within */
+}
+
+.order-card.expanded {
+    max-height: 1000px; /* Greatly expanded height, adjust as needed */
+    overflow-y: auto;
+}
+
+.order-card .order-details-summary {
+    /* Optional: styles to specifically show only a summary part when collapsed */
+}
+
+.order-actions-bar {
+    display: flex;
+    gap: 10px;
+    margin-top: 18px;
+    flex-shrink: 0;
+}
+
+.view-details-btn {
+    background: #555;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 18px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 10px;
+    width: 100%;
+}
+
+        /* Custom Confirmation Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent black background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            visibility: hidden; /* Hidden by default */
+            opacity: 0;
+            transition: visibility 0s, opacity 0.3s ease;
+        }
+
+        .modal-overlay.show {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .modal-content {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-overlay.show .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-content h3 {
+            margin-top: 0;
+            color: #333;
+            font-size: 1.5em;
+            margin-bottom: 20px;
+        }
+
+        .modal-content p {
+            color: #555;
+            font-size: 1.1em;
+            margin-bottom: 30px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .modal-button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .modal-button.confirm {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .modal-button.confirm:hover {
+            background-color: #c82333;
+        }
+
+        .modal-button.cancel {
+            background-color: #f0f0f0;
+            color: #555;
+            border: 1px solid #ccc;
+        }
+
+        .modal-button.cancel:hover {
+            background-color: #e0e0e0;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        .sidebar-menu {
+            flex-grow: 1;
+        }
+        .logout-section {
+            padding: 40px;
+            border-top: 1px solid #ddd;
+            margin-top: auto;
+            text-align: center;
+        }
+        .logout-button {
+            display: inline-block;
+            width: auto;
+            padding: 12px 25px;
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            font-weight: bold;
+            transition: background-color 0.3s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        .logout-button:hover {
+            background-color: #c82333;
+        }
+</style>
+
+    <!-- Custom Confirmation Modal -->
+    <div id="logoutConfirmModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Confirm Logout</h3>
+            <p>Are you sure you want to log out?</p>
+            <div class="modal-buttons">
+                <button class="modal-button confirm" id="confirmLogoutBtn">Logout</button>
+                <button class="modal-button cancel" id="cancelLogoutBtn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Custom Logout Modal Logic
+        const logoutConfirmModal = document.getElementById('logoutConfirmModal');
+        const confirmLogoutBtn = document.getElementById('confirmLogoutBtn');
+        const cancelLogoutBtn = document.getElementById('cancelLogoutBtn');
+
+        async function handleLogout(event) {
+            event.preventDefault();
+            logoutConfirmModal.classList.add('show');
+        }
+
+        confirmLogoutBtn.addEventListener('click', async () => {
+            logoutConfirmModal.classList.remove('show');
+            try {
+                const response = await fetch('/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    window.location.href = '/login';
+                } else {
+                    console.error('Logout failed');
+                    alert('Failed to logout. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error during logout:', error);
+                alert('An error occurred during logout. Please try again.');
+            }
+        });
+
+        cancelLogoutBtn.addEventListener('click', () => {
+            logoutConfirmModal.classList.remove('show');
+        });
+
+        // Close modal if clicked outside content
+        logoutConfirmModal.addEventListener('click', (event) => {
+            if (event.target === logoutConfirmModal) {
+                logoutConfirmModal.classList.remove('show');
+            }
+        });
+    </script>
+        <script src="/js/dark-mode.js"></script>
+</body>
+</html> 
+
+
+
+

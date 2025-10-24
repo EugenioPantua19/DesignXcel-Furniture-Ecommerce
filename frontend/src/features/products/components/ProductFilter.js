@@ -102,6 +102,21 @@ const ProductFilter = ({ categories, products, filters, onFilterChange, onClearF
         // Set stock status
         if (stockStatusResponse.success && stockStatusResponse.stockStatus) {
           setStockStatus(stockStatusResponse.stockStatus);
+        } else {
+          // Fallback: calculate stock status from products data
+          if (products && products.length > 0) {
+            const inStockCount = products.filter(product => {
+              const currentStock = product.stockQuantity || product.stock || product.quantity || 0;
+              return currentStock > 0;
+            }).length;
+            
+            const outOfStockCount = products.filter(product => {
+              const currentStock = product.stockQuantity || product.stock || product.quantity || 0;
+              return currentStock === 0;
+            }).length;
+            
+            setStockStatus({ inStock: inStockCount, outOfStock: outOfStockCount });
+          }
         }
         
       } catch (error) {
@@ -109,6 +124,21 @@ const ProductFilter = ({ categories, products, filters, onFilterChange, onClearF
         
         // Fallback materials
         setRealMaterials(['Metal', 'Wood', 'Upholstered', 'Glass', 'Plastic', 'Fabric', 'Leather', 'Steel', 'Aluminum']);
+        
+        // Fallback: calculate stock status from products data
+        if (products && products.length > 0) {
+          const inStockCount = products.filter(product => {
+            const currentStock = product.stockQuantity || product.stock || product.quantity || 0;
+            return currentStock > 0;
+          }).length;
+          
+          const outOfStockCount = products.filter(product => {
+            const currentStock = product.stockQuantity || product.stock || product.quantity || 0;
+            return currentStock === 0;
+          }).length;
+          
+          setStockStatus({ inStock: inStockCount, outOfStock: outOfStockCount });
+        }
       } finally {
         setLoading(false);
       }
@@ -162,22 +192,56 @@ const ProductFilter = ({ categories, products, filters, onFilterChange, onClearF
               ₱{priceRange[0].toLocaleString()} - ₱{priceRange[1].toLocaleString()}
             </div>
             <div className="price-slider-container">
-              <input
-                type="range"
-                min={priceRangeData.min}
-                max={priceRangeData.max}
-                value={priceRange[0]}
-                onChange={(e) => handleMinPriceChange(e.target.value)}
-                className="price-slider price-slider-min"
-              />
-              <input
-                type="range"
-                min={priceRangeData.min}
-                max={priceRangeData.max}
-                value={priceRange[1]}
-                onChange={(e) => handleMaxPriceChange(e.target.value)}
-                className="price-slider price-slider-max"
-              />
+              <div className="price-slider-wrapper">
+                <div className="price-slider-track"></div>
+                <div 
+                  className="price-slider-range"
+                  style={{
+                    left: `${((priceRange[0] - priceRangeData.min) / (priceRangeData.max - priceRangeData.min)) * 100}%`,
+                    width: `${((priceRange[1] - priceRange[0]) / (priceRangeData.max - priceRangeData.min)) * 100}%`
+                  }}
+                ></div>
+                <input
+                  type="range"
+                  min={priceRangeData.min}
+                  max={priceRangeData.max}
+                  value={priceRange[0]}
+                  onChange={(e) => handleMinPriceChange(e.target.value)}
+                  className="price-slider price-slider-min"
+                />
+                <input
+                  type="range"
+                  min={priceRangeData.min}
+                  max={priceRangeData.max}
+                  value={priceRange[1]}
+                  onChange={(e) => handleMaxPriceChange(e.target.value)}
+                  className="price-slider price-slider-max"
+                />
+              </div>
+            </div>
+            <div className="price-inputs">
+              <div className="price-input-group">
+                <label>Min Price</label>
+                <input
+                  type="number"
+                  min={priceRangeData.min}
+                  max={priceRangeData.max}
+                  value={priceRange[0]}
+                  onChange={(e) => handleMinPriceChange(e.target.value)}
+                  placeholder="Min"
+                />
+              </div>
+              <div className="price-input-group">
+                <label>Max Price</label>
+                <input
+                  type="number"
+                  min={priceRangeData.min}
+                  max={priceRangeData.max}
+                  value={priceRange[1]}
+                  onChange={(e) => handleMaxPriceChange(e.target.value)}
+                  placeholder="Max"
+                />
+              </div>
             </div>
           </>
         )}

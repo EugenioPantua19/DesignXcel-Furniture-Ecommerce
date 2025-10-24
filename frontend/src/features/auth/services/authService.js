@@ -4,13 +4,26 @@ export const authService = {
     async login(email, password, rememberMe = false) {
         const response = await apiClient.post('/api/auth/customer/login', { 
             email, 
-            password 
+            password,
+            rememberMe 
         });
+        
+        // Store JWT tokens if available
+        if (response.success && response.tokens) {
+            apiClient.setTokens(response.tokens);
+        }
+        
         return response;
     },
 
     async register(userData) {
         const response = await apiClient.post('/api/auth/customer/register', userData);
+        
+        // Store JWT tokens if available
+        if (response.success && response.tokens) {
+            apiClient.setTokens(response.tokens);
+        }
+        
         return response;
     },
 
@@ -36,7 +49,7 @@ export const authService = {
 
     async validateSession() {
         try {
-            const response = await apiClient.get('/api/auth/validate-session');
+            const response = await apiClient.get('/api/auth/status');
             return response;
         } catch (error) {
             console.error('Session validation failed:', error);

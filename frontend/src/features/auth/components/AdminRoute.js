@@ -1,6 +1,6 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../../../shared/hooks/useAuth';
 
 const AdminRoute = ({ children, allowEmployee = false }) => {
   const { user, isAuthenticated, loading } = useAuth();

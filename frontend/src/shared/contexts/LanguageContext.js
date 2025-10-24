@@ -15,7 +15,7 @@ const translations = {
         // Navigation
         home: 'HOME',
         products: 'Products',
-        customFurniture: '3D Custom Furniture',
+        customFurniture: '3D Products Furniture',
         projects: 'Projects',
         about: 'About Us',
         contact: 'Contact Us',

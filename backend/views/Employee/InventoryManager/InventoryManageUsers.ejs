@@ -1,0 +1,1716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Manage Users - Design Excellence</title>
+    <link rel="stylesheet" href="/css/Employee/Admin/AdminIndexStyles.css?v=<%= Date.now() %>">
+    <link rel="stylesheet" href="/css/dark-mode.css">
+    <style>
+        /* General table styling */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            margin-bottom: 30px;
+        }
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+            color: #333;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tr:hover {
+            background-color: #e9e9e9;
+        }
+
+        .manage-users-section {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .manage-users-section h3 {
+            color: #333;
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+            padding-bottom: 10px;
+        }
+
+        .manage-users-section table th {
+            background-color: #f2f2f2;
+            color: #333;
+        }
+
+        /* Sidebar submenu and section label styles */
+        .sidebar-section-label {
+            color: #fff;
+            font-weight: bold;
+            padding: 12px 18px 6px 18px;
+            background: #333;
+            border-top: 1px solid #444;
+            border-bottom: none;
+            margin-top: 2px;
+            margin-bottom: 0;
+            font-size: 1.08em;
+        }
+        .sidebar-submenu {
+            list-style: none;
+            margin: 0 0 0 0;
+            padding: 0 0 0 18px;
+            background: #444;
+        }
+        .sidebar-submenu li a {
+            color: #fff;
+            display: block;
+            padding: 10px 0 10px 10px;
+            text-decoration: none;
+            font-size: 1em;
+            border-bottom: 1px solid #555;
+            transition: background 0.2s;
+        }
+        .sidebar-submenu li a:hover {
+            background: #555;
+        }
+
+        .edit-user-btn {
+            background-color: #FFC107;
+            color: #222;
+            border: none;
+            border-radius: 5px;
+            padding: 6px 16px;
+            font-size: 1em;
+            font-weight: 400;
+            cursor: pointer;
+            margin-right: 7px;
+            transition: background-color 0.2s;
+        }
+        .edit-user-btn:hover, .edit-user-btn:focus {
+            background-color: #e0ac06;
+            color: #111;
+        }
+        
+        .toggle-btn {
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+            margin-left: 5px;
+        }
+        
+        .toggle-btn[data-bg-color="#dc3545"] {
+            background-color: #dc3545;
+        }
+        
+        .toggle-btn[data-bg-color="#28a745"] {
+            background-color: #28a745;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        
+        /* Custom Confirmation Modal Styles */
+        .modal-overlay {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            background-color: rgba(0, 0, 0, 0.5) !important;
+            display: none !important;
+            justify-content: center !important;
+            align-items: center !important;
+            z-index: 9999 !important;
+            visibility: hidden;
+            opacity: 0;
+            transition: visibility 0s, opacity 0.3s ease;
+        }
+
+        .modal-overlay.show {
+            visibility: visible !important;
+            opacity: 1 !important;
+            display: flex !important;
+        }
+
+        .modal-content {
+            background-color: #fff !important;
+            padding: 30px !important;
+            border-radius: 8px !important;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3) !important;
+            text-align: center !important;
+            max-width: 500px !important;
+            width: 90% !important;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+            position: relative !important;
+            z-index: 10000 !important;
+        }
+
+        .modal-overlay.show .modal-content {
+            transform: scale(1) !important;
+        }
+
+        .modal-content h3 {
+            margin-top: 0;
+            color: #333;
+            font-size: 1.5em;
+            margin-bottom: 20px;
+        }
+
+        .modal-content p {
+            color: #555;
+            font-size: 1.1em;
+            margin-bottom: 30px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .modal-button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .modal-button.confirm {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .modal-button.confirm:hover {
+            background-color: #c82333;
+        }
+
+        .modal-button.cancel {
+            background-color: #f0f0f0;
+            color: #555;
+            border: 1px solid #ccc;
+        }
+
+        .modal-button.cancel:hover {
+            background-color: #e0e0e0;
+        }
+
+        /* Specific styles for dearchive modal button */
+        #confirmDearchiveBtn {
+            background-color: #28a745 !important;
+            color: white !important;
+        }
+
+        #confirmDearchiveBtn:hover {
+            background-color: #218838 !important;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        .sidebar-menu {
+            flex-grow: 1;
+        }
+        .logout-section {
+            padding: 40px;
+            border-top: 1px solid #ddd;
+            margin-top: auto;
+            text-align: center;
+        }
+        .logout-button {
+            display: inline-block;
+            width: auto;
+            padding: 12px 25px;
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            font-weight: bold;
+            transition: background-color 0.3s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        .logout-button:hover {
+            background-color: #c82333;
+        }
+
+        /* Clean Edit User Form Styles */
+        .edit-user-modal {
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 25px 15px;
+            border-bottom: 1px solid #e9ecef;
+            margin-bottom: 0;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            color: #2c3e50;
+            font-size: 1.4rem;
+            font-weight: 600;
+        }
+
+        .edit-user-form {
+            padding: 25px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-weight: 500;
+            color: #495057;
+            margin-bottom: 6px;
+            font-size: 0.9rem;
+        }
+
+        .form-group input,
+        .form-group select {
+            padding: 10px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+            background-color: #fff;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        }
+
+        .form-group input[type="password"] {
+            font-family: monospace;
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #0056b3;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background-color: #545b62;
+            transform: translateY(-1px);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 600px) {
+            .form-row {
+                flex-direction: column;
+                gap: 0;
+            }
+            
+            .form-group {
+                margin-bottom: 15px;
+            }
+            
+            .edit-user-modal {
+                width: 95%;
+                margin: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <%
+        // Ensure userRole is defined with a fallback
+        if (typeof userRole === 'undefined') {
+            userRole = user && user.role ? user.role : 'Guest';
+        }
+    %>
+    <div class="dashboard-container">
+        <!-- Sidebar content -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h3>Inventory Manager Panel</h3>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="/Employee/InventoryManager">Dashboard</a></li>
+                <li class="sidebar-section-label" style="font-weight:normal;">Inventory</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/InventoryManager/InventoryProducts">Products</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryVariations">Variations</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryMaterials">Raw Materials</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryAlerts">Alerts</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryArchived">Archived items</a></li>
+                </ul>
+                <li class="sidebar-section-label" style="font-weight:normal;">Transactions</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/InventoryManager/InventoryRates">Delivery Rates</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryWalkIn">Walk In</a></li>
+                </ul>
+                
+                <!-- Orders Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">Orders Section</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/InventoryManager/InventoryOrdersPending">Orders Pending</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryOrdersProcessing">Orders Processing</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryOrdersShipping">Orders Shipping</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryOrdersDelivery">Orders Delivery</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryOrdersReceive">Orders Receive</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryCancelledOrders">Cancelled Orders</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryCompletedOrders">Completed Orders</a></li>
+                </ul>
+                <!-- User Management Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">User Management</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/InventoryManager/InventoryManageUsers">Manage Users</a></li>
+                </ul>
+                
+                <!-- Customer Reviews Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">Customer Reviews</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/InventoryManager/InventoryReviews">Reviews</a></li>
+                </ul>
+                
+                <!-- Support & Communication Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">Support & Communication</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/InventoryManager/InventoryChatSupport">Chat Support</a></li>
+                </ul>
+                
+                <!-- Content & System Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">Content & System</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/InventoryManager/InventoryCMS">Content Management</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryReviews">Customer Reviews</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryLogs">Activity Logs</a></li>
+                </ul>
+            </ul>
+            <div class="logout-section">
+                <a href="/logout" class="logout-button" onclick="handleLogout(event)">Logout</a>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="header">
+                <h2>Manage Users</h2>
+            </div>
+              <!-- Tab Navigation -->
+              <div class="cms-tabs">
+                  <button class="cms-tab-btn active" onclick="showTab('employee-accounts')" id="tab-employee-accounts">Employee Accounts</button>
+                  <button class="cms-tab-btn" onclick="showTab('customer-accounts')" id="tab-customer-accounts">Customer Accounts</button>
+              </div>
+              
+              <div class="content-area">
+                  <!-- Employee Accounts Tab Content -->
+                  <div class="cms-tab-content" id="tab-content-employee-accounts">
+                      <div class="manage-users-section">
+                          <h3>Admin Accounts</h3>
+                    <table id="adminAccountsTable">
+                        <thead>
+                            <tr>
+                                <th>User ID</th>
+                                <th>Username</th>
+                                <th>Full Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Created At</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% if (users && users.length > 0 && users.some(u => u.RoleName === 'Admin')) { %>
+                                <% users.filter(user => user.RoleName === 'Admin').forEach(function(user) { %>
+                                    <tr>
+                                        <td><%= user.UserID %></td>
+                                        <td><%= user.Username %></td>
+                                        <td><%= user.FullName %></td>
+                                        <td><%= user.Email %></td>
+                                        <td><%= user.RoleName %></td>
+                                        <td><%= user.IsActive ? 'Active' : 'Inactive' %></td>
+                                        <td><%= user.CreatedAt ? new Date(user.CreatedAt).toLocaleDateString() : 'N/A' %></td>
+                                        <td>
+                                            <button class="edit-user-btn"
+                                                data-userid="<%= user.UserID %>"
+                                                data-username="<%= user.Username %>"
+                                                data-fullname="<%= user.FullName %>"
+                                                data-email="<%= user.Email %>"
+                                                data-roleid="<%= user.RoleID %>"
+                                                data-isactive="<%= user.IsActive ? 1 : 0 %>"
+                                                title="Edit"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 20h9"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16.5 3.5a2.121 2.121 0 113 3L7 19.5 3 21l1.5-4L16.5 3.5z"/></svg>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                <% }); %>
+                            <% } else { %>
+                                <tr><td colspan="8">No admin accounts found.</td></tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="manage-users-section">
+                    <h3>Employee Accounts</h3>
+                    <table id="employeeAccountsTable">
+                        <thead>
+                            <tr>
+                                <th>User ID</th>
+                                <th>Username</th>
+                                <th>Full Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Created At</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% if (users && users.length > 0 && users.some(u => u.RoleName !== 'Admin')) { %>
+                                <% users.filter(user => user.RoleName !== 'Admin').forEach(function(user) { %>
+                                    <tr>
+                                        <td><%= user.UserID %></td>
+                                        <td><%= user.Username %></td>
+                                        <td><%= user.FullName %></td>
+                                        <td><%= user.Email %></td>
+                                        <td><%= user.RoleName %></td>
+                                        <td><%= user.IsActive ? 'Active' : 'Inactive' %></td>
+                                        <td><%= user.CreatedAt ? new Date(user.CreatedAt).toLocaleDateString() : 'N/A' %></td>
+                                        <td>
+                                            <button class="edit-user-btn"
+                                                data-userid="<%= user.UserID %>"
+                                                data-username="<%= user.Username %>"
+                                                data-fullname="<%= user.FullName %>"
+                                                data-email="<%= user.Email %>"
+                                                data-roleid="<%= user.RoleID %>"
+                                                data-isactive="<%= user.IsActive ? 1 : 0 %>"
+                                                title="Edit"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 20h9"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16.5 3.5a2.121 2.121 0 113 3L7 19.5 3 21l1.5-4L16.5 3.5z"/></svg>
+                                            </button>
+                                            
+                                            <button class="toggle-btn"
+                                                data-userid="<%= user.UserID %>"
+                                                data-isactive="<%= user.IsActive ? 1 : 0 %>"
+                                                data-bg-color="<%= user.IsActive ? '#dc3545' : '#28a745' %>">
+                                                <%= user.IsActive ? 'Deactivate' : 'Activate' %>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                <% }); %>
+                            <% } else { %>
+                                <tr><td colspan="8">No employee accounts found.</td></tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                      <p id="noEmployeeAccounts" style="display:none;">No employee accounts found.</p>
+                      </div>
+                  </div>
+
+                  <!-- Customer Accounts Tab Content -->
+                  <div class="cms-tab-content" id="tab-content-customer-accounts" style="display:none;">
+                      <div class="manage-users-section">
+                          <h3>Customer Accounts</h3>
+                          <table id="customerAccountsTable">
+                              <thead>
+                                  <tr>
+                                      <th>Customer ID</th>
+                                      <th>Full Name</th>
+                                      <th>Email</th>
+                                      <th>Phone</th>
+                                      <th>Created Date</th>
+                                      <th>Status</th>
+                                      <th>Actions</th>
+                                  </tr>
+                              </thead>
+                              <tbody>
+                                  <tr><td colspan="7">Loading customer accounts...</td></tr>
+                              </tbody>
+                          </table>
+                          <p id="noCustomerAccounts" style="display:none;">No customer accounts found.</p>
+                      
+    <!-- Archive Customer Confirmation Modal -->
+    <div id="archiveCustomerModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Archive Customer</h3>
+            <p id="archiveCustomerMessage">Are you sure you want to archive this customer?</p>
+            <div class="modal-buttons">
+                <button class="modal-button confirm" id="confirmArchiveBtn" style="background-color: #ff9800;">Archive</button>
+                <button class="modal-button cancel" id="cancelArchiveBtn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+<!-- Delete Customer Confirmation Modal -->
+    <div id="deleteCustomerModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Delete Customer</h3>
+            <p id="deleteCustomerMessage">Are you sure you want to permanently delete this customer?</p>
+            <div class="modal-buttons">
+                <button class="modal-button confirm" id="confirmDeleteBtn" style="background-color: #f44336;">Delete</button>
+                <button class="modal-button cancel" id="cancelDeleteBtn">Cancel</button>
+            </div>
+        </div>
+    </div>
+        
+    <!-- Dearchive Customer Modal -->
+    <div id="dearchiveCustomerModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Restore Customer</h3>
+            <p id="dearchiveCustomerMessage">Are you sure you want to restore this customer?</p>
+            <div class="modal-buttons">
+                <button class="modal-button confirm" id="confirmDearchiveBtn" style="background-color: #28a745;">Restore</button>
+                <button class="modal-button cancel" id="cancelDearchiveBtn">Cancel</button>
+            </div>
+        </div>
+    </div>
+                  </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit User Modal -->
+    <div id="editUserModal" class="modal" style="display:none;">
+        <div class="modal-content edit-user-modal" style="max-width: 500px; width: 90%;">
+            <div class="modal-header">
+                <h3>Edit User</h3>
+                <span class="close-button" id="closeEditUserModal">&times;</span>
+            </div>
+            <form id="editUserForm" method="POST" action="/Employee/InventoryManager/InventoryManageUsers/Users/Edit" class="edit-user-form">
+                <input type="hidden" id="editUserID" name="userId">
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="editUsername">Username</label>
+                        <input type="text" id="editUsername" name="username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editFullName">Full Name</label>
+                        <input type="text" id="editFullName" name="fullName" required>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="editEmail">Email</label>
+                        <input type="email" id="editEmail" name="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editPhone">Phone</label>
+                        <input type="text" id="editPhone" name="phone" maxlength="11" pattern="[0-9]{11}" title="Phone number must be exactly 11 digits" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="editPassword">Password</label>
+                        <input type="password" id="editPassword" name="password" placeholder="Leave blank to keep current password" minlength="6">
+                    </div>
+                    <div class="form-group">
+                        <label for="editRole">Role</label>
+                        <select id="editRole" name="roleId">
+                            <option value="1">Admin</option>
+                            <option value="2">TransactionManager</option>
+                            <option value="3">InventoryManager</option>
+                            <option value="4">UserManager</option>
+                            <option value="5">OrderSupport</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="editIsActive">Status</label>
+                        <select id="editIsActive" name="isActive" required>
+                            <option value="1">Active</option>
+                            <option value="0">Inactive</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <!-- Empty space for alignment -->
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" id="cancelEditUser" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Custom Success Popup -->
+    <div id="customPopup" class="custom-popup" style="display:none;position:fixed;top:20px;right:20px;background-color:#4CAF50;color:white;padding:15px 25px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:1000;max-width:300px;">
+        <div class="custom-popup-content" style="display:flex;align-items:center;gap:12px;">
+            <span class="custom-popup-icon" style="font-size:24px;">✓</span>
+            <span class="custom-popup-message" style="font-size:14px;line-height:1.4;"></span>
+        </div>
+    </div>
+
+    <script src="/js/Employee/InventoryManager/InventoryManageUsers.js?v=<%= Date.now() %>"></script>
+    <div id="users-data" style="display: none;" data-users='<%- JSON.stringify(users || []) %>'></div>
+    <script>
+        // Wait for DOM to be fully loaded
+        
+        // Archive Customer Modal Functions
+        function showArchiveModal(customerId, fullName, email) {
+            console.log('showArchiveModal called with:', { customerId, fullName, email });
+            const modal = document.getElementById('archiveCustomerModal');
+            const message = document.getElementById('archiveCustomerMessage');
+            
+            console.log('Modal element:', modal);
+            console.log('Message element:', message);
+            
+            if (modal && message) {
+                message.textContent = 'Are you sure you want to archive customer "' + fullName + '" (' + email + ')?';
+                modal.classList.add('show');
+                modal.style.display = 'flex';
+                
+                // Store customer data for the confirm action
+                modal.dataset.customerId = customerId;
+                modal.dataset.fullName = fullName;
+                modal.dataset.email = email;
+                
+                console.log('Modal should now be visible');
+            } else {
+                console.error('Modal or message element not found');
+            }
+        }
+        
+        function hideArchiveModal() {
+            const modal = document.getElementById('archiveCustomerModal');
+            if (modal) {
+                modal.classList.remove('show');
+                modal.style.display = 'none';
+            }
+        }
+        
+        // Delete Customer Modal Functions
+        function showDeleteModal(customerId, fullName, email) {
+            console.log('showDeleteModal called with:', { customerId, fullName, email });
+            const modal = document.getElementById('deleteCustomerModal');
+            const message = document.getElementById('deleteCustomerMessage');
+            
+            console.log('Modal element:', modal);
+            console.log('Message element:', message);
+            
+            if (modal && message) {
+                message.textContent = '⚠️ WARNING: Are you sure you want to PERMANENTLY DELETE customer "' + fullName + '" (' + email + ')?\n\nThis action cannot be undone and will remove all customer data from the system.\n\nConsider archiving instead if you want to preserve the data.';
+                modal.classList.add('show');
+                modal.style.display = 'flex';
+                
+                // Store customer data for the confirm action
+                modal.dataset.customerId = customerId;
+                modal.dataset.fullName = fullName;
+                modal.dataset.email = email;
+                
+                console.log('Modal should now be visible');
+            } else {
+                console.error('Modal or message element not found');
+            }
+        }
+        
+        function hideDeleteModal() {
+            const modal = document.getElementById('deleteCustomerModal');
+            if (modal) {
+                modal.classList.remove('show');
+                modal.style.display = 'none';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get users data from data attribute
+            const usersDataElement = document.getElementById('users-data');
+            const users = JSON.parse(usersDataElement.getAttribute('data-users'));
+            console.log('Users data loaded:', users);
+
+            // Function to hide dearchive modal
+            function hideDearchiveModal() {
+                const modal = document.getElementById('dearchiveCustomerModal');
+                if (modal) {
+                    modal.classList.remove('show');
+                    modal.style.display = 'none';
+                }
+            }
+
+            // Custom popup function
+            function showCustomPopup(message) {
+                const popup = document.getElementById('customPopup');
+                const messageElement = popup.querySelector('.custom-popup-message');
+                messageElement.textContent = message;
+                popup.style.display = 'block';
+                
+                setTimeout(() => {
+                    popup.style.display = 'none';
+                }, 3000);
+            }
+            document.addEventListener('click', function(e) {
+                if (e.target.closest('.dearchive-customer-btn')) {
+                    const button = e.target.closest('.dearchive-customer-btn');
+                    const customerId = button.getAttribute('data-customerid');
+                    const fullName = button.getAttribute('data-fullname');
+                    const email = button.getAttribute('data-email');
+                    
+                    showDearchiveModal(customerId, fullName, email);
+                }
+            });
+
+            // Function to show dearchive modal
+            function showDearchiveModal(customerId, fullName, email) {
+                console.log('showDearchiveModal called with:', { customerId, fullName, email });
+                
+                const modal = document.getElementById('dearchiveCustomerModal');
+                const message = document.getElementById('dearchiveCustomerMessage');
+                
+                console.log('Modal element:', modal);
+                console.log('Message element:', message);
+                
+                if (modal && message) {
+                    message.textContent = 'Are you sure you want to restore customer "' + fullName + '" (' + email + ')?\n\nThis will reactivate the customer account and restore their access.';
+                    modal.classList.add('show');
+                    modal.style.display = 'flex';
+                    
+                    // Store customer data for the confirm action
+                    modal.dataset.customerId = customerId;
+                    modal.dataset.fullName = fullName;
+                    modal.dataset.email = email;
+                    
+                    console.log('Modal should now be visible');
+                } else {
+                    console.error('Modal or message element not found');
+                }
+            }
+
+            // Function to dearchive customer (restore archived customer)
+            async function dearchiveCustomer(customerId, fullName) {
+                try {
+                    const response = await fetch('/Employee/InventoryManager/InventoryManageUsers/Customers/Dearchive', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ customerId: customerId })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        showCustomPopup('Customer "' + fullName + '" restored successfully!');
+                        // Reload customer accounts
+                        setTimeout(() => {
+                            loadCustomerAccounts();
+                        }, 1500);
+                    } else {
+                        alert('Failed to restore customer: ' + (result.message || 'Unknown error'));
+                    }
+                } catch (error) {
+                    console.error('Error restoring customer:', error);
+                    alert('Error restoring customer');
+                }
+            }
+        });
+        
+        function hideArchiveModal() {
+            const modal = document.getElementById('archiveCustomerModal');
+            if (modal) {
+                modal.classList.remove('show');
+                modal.style.display = 'none';
+            }
+        }
+        
+        // Delete Customer Modal Functions
+        function showDeleteModal(customerId, fullName, email) {
+            console.log('showDeleteModal called with:', { customerId, fullName, email });
+            const modal = document.getElementById('deleteCustomerModal');
+            const message = document.getElementById('deleteCustomerMessage');
+            
+            console.log('Modal element:', modal);
+            console.log('Message element:', message);
+            
+            if (modal && message) {
+                message.textContent = 'Are you sure you want to permanently delete customer "' + fullName + '" (' + email + ')? This action cannot be undone.';
+                modal.classList.add('show');
+                modal.style.display = 'flex';
+                
+                // Store customer data for the confirm action
+                modal.dataset.customerId = customerId;
+                modal.dataset.fullName = fullName;
+                modal.dataset.email = email;
+                
+                console.log('Modal should now be visible');
+            } else {
+                console.error('Modal or message element not found');
+            }
+        }
+        
+        function hideDeleteModal() {
+            const modal = document.getElementById('deleteCustomerModal');
+            if (modal) {
+                modal.classList.remove('show');
+                modal.style.display = 'none';
+            }
+        
+        
+        function hideDearchiveModal() {
+            const modal = document.getElementById('dearchiveCustomerModal');
+            if (modal) {
+                modal.classList.remove('show');
+                modal.style.display = 'none';
+            }
+        }}
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get users data from data attribute
+            const usersDataElement = document.getElementById('users-data');
+            const users = JSON.parse(usersDataElement.getAttribute('data-users'));
+            console.log('Users data loaded:', users);
+
+            // Handle edit user button clicks
+            document.addEventListener('click', function(e) {
+                if (e.target.closest('.edit-user-btn')) {
+                    const button = e.target.closest('.edit-user-btn');
+                    const userId = button.getAttribute('data-userid');
+                    const username = button.getAttribute('data-username');
+                    const fullName = button.getAttribute('data-fullname');
+                    const email = button.getAttribute('data-email');
+                    const roleId = button.getAttribute('data-roleid');
+                    const isActive = button.getAttribute('data-isactive');
+                    
+                    // Populate the edit modal
+                    const editUserID = document.getElementById('editUserID');
+                    const editUsername = document.getElementById('editUsername');
+                    const editFullName = document.getElementById('editFullName');
+                    const editEmail = document.getElementById('editEmail');
+                    const editPhone = document.getElementById('editPhone');
+                    const editRole = document.getElementById('editRole');
+                    const editIsActive = document.getElementById('editIsActive');
+                    
+                    if (editUserID) editUserID.value = userId;
+                    if (editUsername) editUsername.value = username;
+                    if (editFullName) editFullName.value = fullName;
+                    if (editEmail) editEmail.value = email;
+                    if (editPhone) editPhone.value = ''; // Users don't have phone numbers
+                    if (editRole) {
+                        editRole.value = roleId;
+                        editRole.style.display = 'block'; // Show role field for employees
+                        editRole.previousElementSibling.style.display = 'block'; // Show role label
+                        editRole.setAttribute('required', 'required'); // Add required attribute for users
+                    }
+                    if (editIsActive) editIsActive.value = isActive;
+                    
+                    // Show the modal
+                    document.getElementById('editUserModal').style.display = 'block';
+                }
+            });
+
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('toggle-btn')) {
+                    const userId = e.target.getAttribute('data-userid');
+                    const currentStatus = parseInt(e.target.getAttribute('data-isactive'));
+                    const newStatus = currentStatus ? 0 : 1;
+                    toggleUserStatus(userId, newStatus);
+                }
+            });
+
+            // Toggle user status function
+            function toggleUserStatus(userId, newStatus) {
+                // Find the user data from the table
+                const userRow = document.querySelector('[data-userid="' + userId + '"]').closest('tr');
+                const username = userRow.cells[1].textContent;
+                const fullName = userRow.cells[2].textContent;
+                const currentStatus = newStatus === 0 ? 1 : 0; // Current status is opposite of new status
+                
+                // Show the deactivate modal
+                showDeactivateModal(userId, username, fullName, currentStatus);
+            }
+
+            // Custom popup function
+            function showCustomPopup(message) {
+            const popup = document.getElementById('customPopup');
+            const messageElement = popup.querySelector('.custom-popup-message');
+            messageElement.textContent = message;
+            popup.style.display = 'block';
+            
+            setTimeout(() => {
+                popup.style.display = 'none';
+            }, 3000);
+        }
+
+            // Close edit user modal
+            document.getElementById('closeEditUserModal').addEventListener('click', function() {
+            document.getElementById('editUserModal').style.display = 'none';
+        });
+
+            document.getElementById('cancelEditUser').addEventListener('click', function() {
+                document.getElementById('editUserModal').style.display = 'none';
+            });
+
+            // Handle edit user form submission (for both users and customers)
+            document.getElementById('editUserForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const formData = new FormData(this);
+                const data = Object.fromEntries(formData);
+                
+                // Validate phone number for customers (11 digits)
+                const phoneField = document.getElementById('editPhone');
+                if (phoneField && phoneField.value && !/^[0-9]{11}$/.test(phoneField.value)) {
+                    alert('Phone number must be exactly 11 digits (numbers only)');
+                    return;
+                }
+                
+                // Determine if this is a customer or user based on whether role is empty
+                const isCustomer = !data.roleId || data.roleId === '';
+                const endpoint = isCustomer ? '/Employee/InventoryManager/InventoryManageUsers/Customers/Edit' : '/Employee/InventoryManager/InventoryManageUsers/Users/Edit';
+                const successMessage = isCustomer ? 'Customer updated successfully!' : 'User updated successfully!';
+                
+                // For customers, rename userId to customerId
+                if (isCustomer) {
+                    data.customerId = data.userId;
+                    delete data.userId;
+                    delete data.roleId; // Remove role for customers
+                }
+                
+                fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        showCustomPopup(successMessage);
+                        document.getElementById('editUserModal').style.display = 'none';
+                        
+                        if (isCustomer) {
+                            // Reload customer data if customer tab is active
+                            if (document.getElementById('tab-content-customer-accounts').style.display !== 'none') {
+                                loadCustomerAccounts();
+                            }
+                        } else {
+                            // Refresh the employee accounts table for users
+                            refreshEmployeeAccountsTable();
+                        }
+                    } else {
+                        alert('Failed to update: ' + (result.message || 'Unknown error'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error updating:', error);
+                    alert('Error updating');
+                });
+            });
+
+            // Add CSS for permission buttons
+            const style = document.createElement('style');
+            style.textContent = '\n                /* Tab Styles */\n                .cms-tabs { \n                    margin-bottom: 1em; \n                    border-bottom: 1px solid #ddd;\n                }\n                .cms-tab-btn { \n                    margin-right: 8px; \n                    padding: 12px 20px; \n                    cursor: pointer; \n                    border: 1px solid #ccc; \n                    background: #f7f7f7; \n                    border-radius: 4px 4px 0 0; \n                    border-bottom: none;\n                    font-weight: 500;\n                    transition: all 0.3s ease;\n                }\n                .cms-tab-btn:hover {\n                    background: #e9ecef;\n                }\n                .cms-tab-btn.active { \n                    background: #fff; \n                    border-bottom: 1px solid #fff; \n                    font-weight: bold; \n                    color: #007bff;\n                    position: relative;\n                    z-index: 1;\n                }\n                .cms-tab-content { \n                    border: 1px solid #ccc; \n                    border-top: none; \n                    padding: 1.5em; \n                    background: #fff; \n                    border-radius: 0 0 4px 4px;\n                    min-height: 400px;\n                }\n            ';
+            document.head.appendChild(style);
+
+            // Tab functionality
+            window.showTab = function(tab) {
+                const tabs = ['employee-accounts', 'customer-accounts'];
+                tabs.forEach(t => {
+                    const tabContent = document.getElementById('tab-content-' + t);
+                    const tabBtn = document.getElementById('tab-' + t);
+                    
+                    if (tabContent && tabBtn) {
+                        tabContent.style.display = (t === tab) ? '' : 'none';
+                        tabBtn.classList.toggle('active', t === tab);
+                    }
+                });
+                
+                // Load customer data when customer accounts tab is shown
+                if (tab === 'customer-accounts') {
+                    loadCustomerAccounts();
+                }
+            };
+            
+            // Function to load customer accounts
+            async function loadCustomerAccounts() {
+                try {
+                    const response = await fetch('/Employee/InventoryManager/InventoryManageUsers/Customers');
+                    const data = await response.json();
+                    
+                    const tbody = document.querySelector('#customerAccountsTable tbody');
+                    const noCustomersMsg = document.getElementById('noCustomerAccounts');
+                    
+                    if (data.success && data.customers && data.customers.length > 0) {
+                        tbody.innerHTML = '';
+                        data.customers.forEach(customer => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = 
+                                '<td>' + customer.CustomerID + '</td>' +
+                                '<td>' + (customer.FullName || 'N/A') + '</td>' +
+                                '<td>' + (customer.Email || 'N/A') + '</td>' +
+                                '<td>' + (customer.PhoneNumber || 'N/A') + '</td>' +
+                                '<td>' + (customer.CreatedAt ? new Date(customer.CreatedAt).toLocaleDateString() : 'N/A') + '</td>' +
+                                '<td>' + (customer.IsActive ? 'Active' : 'Inactive') + '</td>' +
+                                '<td>' +
+                                    '<button class="edit-user-btn" ' +
+                                        'data-customerid="' + customer.CustomerID + '" ' +
+                                        'data-fullname="' + (customer.FullName || '') + '" ' +
+                                        'data-email="' + (customer.Email || '') + '" ' +
+                                        'data-phone="' + (customer.PhoneNumber || '') + '" ' +
+                                        'data-isactive="' + (customer.IsActive ? 1 : 0) + '" ' +
+                                        'title="Edit Customer">' +
+                                        '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 20h9"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16.5 3.5a2.121 2.121 0 113 3L7 19.5 3 21l1.5-4L16.5 3.5z"/></svg>' +
+                                    '</button>' +
+                                    (customer.IsActive ? 
+                                        '<button class="archive-customer-btn" ' +
+                                            'data-customerid="' + customer.CustomerID + '" ' +
+                                            'data-fullname="' + (customer.FullName || '') + '" ' +
+                                            'data-email="' + (customer.Email || '') + '" ' +
+                                            'title="Archive Customer" ' +
+                                            'style="background-color: #ff9800; color: white; border: none; border-radius: 5px; padding: 6px 12px; margin-left: 5px; cursor: pointer;">' +
+                                            '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8l4-4m0 0l4 4m-4-4v18"/></svg>' +
+                                        '</button>' : 
+                                        '<button class="dearchive-customer-btn" ' +
+                                            'data-customerid="' + customer.CustomerID + '" ' +
+                                            'data-fullname="' + (customer.FullName || '') + '" ' +
+                                            'data-email="' + (customer.Email || '') + '" ' +
+                                            'title="Restore Customer" ' +
+                                            'style="background-color: #28a745; color: white; border: none; border-radius: 5px; padding: 6px 12px; margin-left: 5px; cursor: pointer;">' +
+                                            '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>' +
+                                        '</button>') +
+                                    '<button class="delete-customer-btn" ' +
+                                        'data-customerid="' + customer.CustomerID + '" ' +
+                                        'data-fullname="' + (customer.FullName || '') + '" ' +
+                                        'data-email="' + (customer.Email || '') + '" ' +
+                                        'title="Permanently Delete Customer" ' +
+                                        'style="background-color: #f44336; color: white; border: none; border-radius: 5px; padding: 6px 12px; margin-left: 5px; cursor: pointer;">' +
+                                        '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>' +
+                                    '</button>' +
+                                '</td>';
+                            tbody.appendChild(row);
+                        });
+                        noCustomersMsg.style.display = 'none';
+                    } else {
+                        // Show appropriate message based on whether feature is implemented
+                        if (data.message && data.message.includes('not yet implemented')) {
+                            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem; color: #666;"><i>Customer accounts feature is not yet implemented.<br>This tab will be available when customer registration is added to the system.</i></td></tr>';
+                        } else {
+                            tbody.innerHTML = '<tr><td colspan="7">No customer accounts found.</td></tr>';
+                        }
+                        noCustomersMsg.style.display = 'block';
+                    }
+                } catch (error) {
+                    console.error('Error loading customer accounts:', error);
+                    const tbody = document.querySelector('#customerAccountsTable tbody');
+                    tbody.innerHTML = '<tr><td colspan="7">Error loading customer accounts.</td></tr>';
+                }
+            }
+
+            // Deactivate User Modal Logic
+            const deactivateUserModal = document.getElementById('deactivateUserModal');
+            const confirmDeactivateBtn = document.getElementById('confirmDeactivateBtn');
+            const cancelDeactivateBtn = document.getElementById('cancelDeactivateBtn');
+            const deactivateUserMessage = document.getElementById('deactivateUserMessage');
+            let userToDeactivate = null;
+
+            // Function to show deactivate modal
+            function showDeactivateModal(userId, username, fullName, currentStatus) {
+                userToDeactivate = {
+                    id: userId,
+                    username: username,
+                    fullName: fullName,
+                    currentStatus: currentStatus
+                };
+
+                const action = currentStatus ? 'deactivate' : 'activate';
+                const actionCapitalized = currentStatus ? 'Deactivate' : 'Activate';
+                
+                deactivateUserMessage.textContent = 'Are you sure you want to ${action} ${fullName} (' + username + ')?';
+                document.querySelector('#deactivateUserModal h3').textContent = '' + actionCapitalized + ' User';
+                document.querySelector('#confirmDeactivateBtn').textContent = actionCapitalized;
+                
+                deactivateUserModal.classList.add('show');
+            }
+
+            // Confirm deactivate/activate
+            confirmDeactivateBtn.addEventListener('click', async () => {
+                if (!userToDeactivate) return;
+
+                deactivateUserModal.classList.remove('show');
+                
+                try {
+                    const newStatus = userToDeactivate.currentStatus ? 0 : 1;
+                    const response = await fetch('/Employee/InventoryManager/InventoryManageUsers/ToggleActive/' + userToDeactivate.id + '/' + newStatus, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        if (result.success) {
+                            const action = userToDeactivate.currentStatus ? 'deactivated' : 'activated';
+                            showCustomPopup('User ' + action + ' successfully!');
+                            // Reload the page to show updated data
+                            setTimeout(() => {
+                                location.reload();
+                            }, 1500);
+                        } else {
+                            alert('Failed to update user status');
+                        }
+                    } else {
+                        alert('Failed to update user status');
+                    }
+                } catch (error) {
+                    console.error('Error updating user status:', error);
+                    alert('Error updating user status');
+                }
+                
+                userToDeactivate = null;
+            });
+
+            // Cancel deactivate
+            cancelDeactivateBtn.addEventListener('click', () => {
+                deactivateUserModal.classList.remove('show');
+                userToDeactivate = null;
+            });
+
+            // Close modal if clicked outside content
+            deactivateUserModal.addEventListener('click', (event) => {
+                if (event.target === deactivateUserModal) {
+                    deactivateUserModal.classList.remove('show');
+                    userToDeactivate = null;
+                }
+            });
+
+            // Handle edit customer button clicks
+            document.addEventListener('click', function(e) {
+                if (e.target.closest('.edit-user-btn') && e.target.closest('.edit-user-btn').getAttribute('data-customerid')) {
+                    const button = e.target.closest('.edit-user-btn');
+                    const customerId = button.getAttribute('data-customerid');
+                    const fullName = button.getAttribute('data-fullname');
+                    const email = button.getAttribute('data-email');
+                    const phone = button.getAttribute('data-phone');
+                    const isActive = button.getAttribute('data-isactive');
+                    
+                    // Populate the existing edit user modal for customers
+                    const editUserID = document.getElementById('editUserID');
+                    const editUsername = document.getElementById('editUsername');
+                    const editFullName = document.getElementById('editFullName');
+                    const editEmail = document.getElementById('editEmail');
+                    const editPhone = document.getElementById('editPhone');
+                    const editRole = document.getElementById('editRole');
+                    const editIsActive = document.getElementById('editIsActive');
+                    
+                    if (editUserID) editUserID.value = customerId;
+                    if (editUsername) editUsername.value = email; // Use email as username for customers
+                    if (editFullName) editFullName.value = fullName;
+                    if (editEmail) editEmail.value = email;
+                    if (editPhone) editPhone.value = phone;
+                    if (editRole) {
+                        editRole.value = ''; // No role for customers
+                        editRole.style.display = 'none'; // Hide role field for customers
+                        editRole.previousElementSibling.style.display = 'none'; // Hide role label
+                        editRole.removeAttribute('required'); // Remove required attribute
+                    }
+                    if (editIsActive) editIsActive.value = isActive;
+                    
+                    // Show the existing user edit modal
+                    document.getElementById('editUserModal').style.display = 'block';
+                }
+            });
+            // Handle archive customer button clicks
+            document.addEventListener('click', function(e) {
+                if (e.target.closest('.archive-customer-btn')) {
+                    const button = e.target.closest('.archive-customer-btn');
+                    const customerId = button.getAttribute('data-customerid');
+                    const fullName = button.getAttribute('data-fullname');
+                    const email = button.getAttribute('data-email');
+                    
+                    showArchiveModal(customerId, fullName, email);
+                }
+            });
+
+            // Handle delete customer button clicks
+            document.addEventListener('click', function(e) {
+                if (e.target.closest('.delete-customer-btn')) {
+                    const button = e.target.closest('.delete-customer-btn');
+                    const customerId = button.getAttribute('data-customerid');
+                    const fullName = button.getAttribute('data-fullname');
+                    const email = button.getAttribute('data-email');
+                    
+                    showDeleteModal(customerId, fullName, email);
+                }
+            });
+
+            // Function to archive customer (soft delete)
+            async function archiveCustomer(customerId, fullName) {
+                try {
+                    const response = await fetch('/Employee/InventoryManager/InventoryManageUsers/Customers/Archive', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ customerId: customerId })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        showCustomPopup('Customer "' + fullName + '" archived successfully!');
+                        // Reload customer accounts
+                        setTimeout(() => {
+                            loadCustomerAccounts();
+                        }, 1500);
+                    } else {
+                        alert('Failed to archive customer: ' + (result.message || 'Unknown error'));
+                    }
+                } catch (error) {
+                    console.error('Error archiving customer:', error);
+                    alert('Error archiving customer');
+                }
+            }
+
+            // Function to permanently delete customer
+            async function deleteCustomer(customerId, fullName) {
+                try {
+                    const response = await fetch('/Employee/InventoryManager/InventoryManageUsers/Customers/Delete/' + customerId, {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        showCustomPopup('Customer "' + fullName + '" permanently deleted!');
+                        // Reload customer accounts
+                        setTimeout(() => {
+                            loadCustomerAccounts();
+                        }, 1500);
+                    } else {
+                        alert('Failed to delete customer: ' + (result.message || 'Unknown error'));
+                    }
+                } catch (error) {
+                    console.error('Error deleting customer:', error);
+                    alert('Error deleting customer');
+                }
+            }
+
+            // Handle dearchive customer button clicks
+            document.addEventListener('click', function(e) {
+                console.log('Click event detected:', e.target);
+                if (e.target.closest('.dearchive-customer-btn')) {
+                    console.log('Dearchive button clicked!');
+                    const button = e.target.closest('.dearchive-customer-btn');
+                    const customerId = button.getAttribute('data-customerid');
+                    const fullName = button.getAttribute('data-fullname');
+                    const email = button.getAttribute('data-email');
+                    
+                    console.log('Customer data:', { customerId, fullName, email });
+                    showDearchiveModal(customerId, fullName, email);
+                }
+            });
+
+            // Function to show dearchive modal
+            function showDearchiveModal(customerId, fullName, email) {
+                console.log('showDearchiveModal called with:', { customerId, fullName, email });
+                
+                const modal = document.getElementById('dearchiveCustomerModal');
+                const message = document.getElementById('dearchiveCustomerMessage');
+                
+                console.log('Modal element:', modal);
+                console.log('Message element:', message);
+                
+                if (modal && message) {
+                    message.textContent = 'Are you sure you want to restore customer "' + fullName + '" (' + email + ')?\n\nThis will reactivate the customer account and restore their access.';
+                modal.classList.add('show');
+                    modal.style.display = 'flex'; // Ensure it's displayed
+                    
+                    // Store customer data for the confirm action
+                    modal.dataset.customerId = customerId;
+                    modal.dataset.fullName = fullName;
+                    modal.dataset.email = email;
+                    
+                    console.log('Modal should now be visible');
+                } else {
+                    console.error('Modal or message element not found');
+                }
+            }
+
+            // Function to dearchive customer (restore archived customer)
+            async function dearchiveCustomer(customerId, fullName) {
+                console.log('dearchiveCustomer function called with:', { customerId, fullName });
+                try {
+                    console.log('Making API call to:', '/Employee/InventoryManager/InventoryManageUsers/Customers/Dearchive');
+                    const response = await fetch('/Employee/InventoryManager/InventoryManageUsers/Customers/Dearchive', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ customerId: customerId })
+                    });
+                    
+                    console.log('API response status:', response.status);
+                    const result = await response.json();
+                    console.log('API response result:', result);
+                    
+                    if (result.success) {
+                        console.log('Dearchive successful!');
+                        showCustomPopup('Customer "' + fullName + '" restored successfully!');
+                        // Reload customer accounts
+                        setTimeout(() => {
+                            loadCustomerAccounts();
+                        }, 1500);
+                    } else {
+                        console.error('Dearchive failed:', result.message);
+                        alert('Failed to restore customer: ' + (result.message || 'Unknown error'));
+                    }
+                } catch (error) {
+                    console.error('Error restoring customer:', error);
+                    alert('Error restoring customer');
+                }
+            }
+
+            // Function to permanently delete customer
+            async function deleteCustomer(customerId, fullName) {
+                try {
+                    const response = await fetch('/Employee/InventoryManager/InventoryManageUsers/Customers/Delete/' + customerId, {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        showCustomPopup('Customer "' + fullName + '" permanently deleted!');
+                        // Reload customer accounts
+                        setTimeout(() => {
+                            loadCustomerAccounts();
+                        }, 1500);
+                    } else {
+                        alert('Failed to delete customer: ' + (result.message || 'Unknown error'));
+                    }
+                } catch (error) {
+                    console.error('Error deleting customer:', error);
+                    alert('Error deleting customer');
+                }
+            }
+
+        
+
+            // Function to refresh employee accounts table
+            function refreshEmployeeAccountsTable() {
+                // Reload the page to show updated data
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
+            }
+        
+            // Archive Modal Event Listeners
+            const archiveModal = document.getElementById('archiveCustomerModal');
+            const confirmArchiveBtn = document.getElementById('confirmArchiveBtn');
+            const cancelArchiveBtn = document.getElementById('cancelArchiveBtn');
+            
+            console.log('Setting up archive modal event listeners...');
+            console.log('Archive modal:', archiveModal);
+            console.log('Confirm archive btn:', confirmArchiveBtn);
+            console.log('Cancel archive btn:', cancelArchiveBtn);
+            
+            if (confirmArchiveBtn) {
+                confirmArchiveBtn.addEventListener('click', async () => {
+                    console.log('Confirm archive button clicked!');
+                    const customerId = archiveModal.dataset.customerId;
+                    const fullName = archiveModal.dataset.fullName;
+                    
+                    console.log('Customer data:', { customerId, fullName });
+                    
+                    if (customerId) {
+                        hideArchiveModal();
+                        await archiveCustomer(customerId, fullName);
+                    }
+                });
+                console.log('Archive confirm event listener attached');
+            } else {
+                console.error('Confirm archive button not found!');
+            }
+            
+            if (cancelArchiveBtn) {
+                cancelArchiveBtn.addEventListener('click', () => {
+                    console.log('Cancel archive button clicked!');
+                    hideArchiveModal();
+                });
+                console.log('Archive cancel event listener attached');
+            } else {
+                console.error('Cancel archive button not found!');
+            }
+            
+            // Delete Modal Event Listeners
+            const deleteModal = document.getElementById('deleteCustomerModal');
+            const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+            const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+            
+            console.log('Setting up delete modal event listeners...');
+            console.log('Delete modal:', deleteModal);
+            console.log('Confirm delete btn:', confirmDeleteBtn);
+            console.log('Cancel delete btn:', cancelDeleteBtn);
+            
+            if (confirmDeleteBtn) {
+                confirmDeleteBtn.addEventListener('click', async () => {
+                    console.log('Confirm delete button clicked!');
+                    const customerId = deleteModal.dataset.customerId;
+                    const fullName = deleteModal.dataset.fullName;
+                    
+                    console.log('Customer data:', { customerId, fullName });
+                    
+                    if (customerId) {
+                        hideDeleteModal();
+                        await deleteCustomer(customerId, fullName);
+                    }
+                });
+                console.log('Delete confirm event listener attached');
+            } else {
+                console.error('Confirm delete button not found!');
+            }
+            
+            if (cancelDeleteBtn) {
+                cancelDeleteBtn.addEventListener('click', () => {
+                    console.log('Cancel delete button clicked!');
+                    hideDeleteModal();
+                });
+                console.log('Delete cancel event listener attached');
+            } else {
+                console.error('Cancel delete button not found!');
+            }
+            
+            // Close modals when clicking outside
+            if (archiveModal) {
+                archiveModal.addEventListener('click', (e) => {
+                    if (e.target === archiveModal) {
+                        console.log('Archive modal clicked outside - closing');
+                        hideArchiveModal();
+                    }
+                });
+            }
+            
+            if (deleteModal) {
+                deleteModal.addEventListener('click', (e) => {
+                    if (e.target === deleteModal) {
+                        console.log('Delete modal clicked outside - closing');
+                        hideDeleteModal();
+                    }
+                });
+            }
+            
+            // Dearchive Modal Event Listeners
+            const dearchiveModal = document.getElementById('dearchiveCustomerModal');
+            const confirmDearchiveBtn = document.getElementById('confirmDearchiveBtn');
+            const cancelDearchiveBtn = document.getElementById('cancelDearchiveBtn');
+            
+            console.log('Setting up dearchive modal event listeners...');
+            console.log('Dearchive modal:', dearchiveModal);
+            console.log('Confirm dearchive btn:', confirmDearchiveBtn);
+            console.log('Cancel dearchive btn:', cancelDearchiveBtn);
+            
+            if (confirmDearchiveBtn) {
+                confirmDearchiveBtn.addEventListener('click', async () => {
+                    console.log('Confirm dearchive button clicked!');
+                    const customerId = dearchiveModal.dataset.customerId;
+                    const fullName = dearchiveModal.dataset.fullName;
+                    
+                    console.log('Customer data:', { customerId, fullName });
+                    
+                    if (customerId) {
+                        hideDearchiveModal();
+                        await dearchiveCustomer(customerId, fullName);
+                    }
+                });
+                console.log('Dearchive confirm event listener attached');
+            } else {
+                console.error('Confirm dearchive button not found!');
+            }
+            
+            if (cancelDearchiveBtn) {
+                cancelDearchiveBtn.addEventListener('click', () => {
+                    console.log('Cancel dearchive button clicked!');
+                    hideDearchiveModal();
+                });
+                console.log('Dearchive cancel event listener attached');
+            } else {
+                console.error('Cancel dearchive button not found!');
+            }
+            
+            // Close dearchive modal when clicking outside
+            if (dearchiveModal) {
+                dearchiveModal.addEventListener('click', (e) => {
+                    if (e.target === dearchiveModal) {
+                        console.log('Dearchive modal clicked outside - closing');
+                        hideDearchiveModal();
+                    }
+                });
+            }
+            
+            }); // End of DOMContentLoaded
+    </script>
+
+    <!-- Custom Confirmation Modal -->
+    <div id="logoutConfirmModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Confirm Logout</h3>
+            <p>Are you sure you want to log out?</p>
+            <div class="modal-buttons">
+                <button class="modal-button confirm" id="confirmLogoutBtn">Logout</button>
+                <button class="modal-button cancel" id="cancelLogoutBtn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    
+    
+    </div>
+
+    <!-- Deactivate User Modal -->
+    <div id="deactivateUserModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Deactivate User</h3>
+            <p id="deactivateUserMessage">Are you sure you want to deactivate this user?</p>
+            <div class="modal-buttons">
+                <button class="modal-button confirm" id="confirmDeactivateBtn">Deactivate</button>
+                <button class="modal-button cancel" id="cancelDeactivateBtn">Cancel</button>
+            </div>
+        </div>
+    
+
+    <script>
+        // Custom Logout Modal Logic
+        const logoutConfirmModal = document.getElementById('logoutConfirmModal');
+        const confirmLogoutBtn = document.getElementById('confirmLogoutBtn');
+        const cancelLogoutBtn = document.getElementById('cancelLogoutBtn');
+
+        async function handleLogout(event) {
+            event.preventDefault();
+            logoutConfirmModal.classList.add('show');
+        }
+
+        confirmLogoutBtn.addEventListener('click', async () => {
+            logoutConfirmModal.classList.remove('show');
+            try {
+                const response = await fetch('/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    window.location.href = '/login';
+                } else {
+                    console.error('Logout failed');
+                    alert('Failed to logout. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error during logout:', error);
+                alert('An error occurred during logout. Please try again.');
+            }
+        });
+
+        cancelLogoutBtn.addEventListener('click', () => {
+            logoutConfirmModal.classList.remove('show');
+        });
+
+        // Close modal if clicked outside content
+        logoutConfirmModal.addEventListener('click', (event) => {
+            if (event.target === logoutConfirmModal) {
+                logoutConfirmModal.classList.remove('show');
+            }
+        });
+
+        // Global showTab function for tab navigation
+        window.showTab = function(tab) {
+            const tabs = ['employee-accounts', 'customer-accounts'];
+            tabs.forEach(t => {
+                const tabContent = document.getElementById('tab-content-' + t);
+                const tabBtn = document.getElementById('tab-' + t);
+                
+                if (tabContent && tabBtn) {
+                    tabContent.style.display = (t === tab) ? '' : 'none';
+                    tabBtn.classList.toggle('active', t === tab);
+                }
+            });
+            
+            if (tab === 'customer-accounts') {
+                loadCustomerAccounts();
+            }
+        };
+    </script>
+        <script src="/js/dark-mode.js"></script>
+</body>
+</html>

@@ -6,10 +6,18 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "build": "echo 'No build step required for Node.js'",
-    "test": "echo 'No tests specified'",
-    "lint": "echo 'No linting configured'",
-    "heroku-postbuild": "npm install --production"
+    "test": "echo \"No tests specified\" && exit 0",
+    "test:watch": "echo \"No tests specified\" && exit 0",
+    "lint": "echo \"No linter configured\" && exit 0",
+    "lint:fix": "echo \"No linter configured\" && exit 0",
+    "format": "echo \"No formatter configured\" && exit 0",
+    "logs": "echo \"Viewing backend logs...\" && tail -f logs/app.log 2>/dev/null || echo \"No log file found\"",
+    "encrypt:test": "node scripts/test-encryption.js",
+    "encrypt:migrate": "node scripts/run-encryption-migration.js",
+    "encrypt:migrate-data": "node scripts/encrypt-database-migration.js",
+    "encrypt:compact-test": "node scripts/test-compact-encryption.js",
+    "encrypt:in-place": "node scripts/in-place-encryption-migration.js",
+    "encrypt:convert-format": "node scripts/convert-encryption-format.js"
   },
   "keywords": [
     "api",
@@ -28,7 +36,7 @@
     "connect-flash": "^0.1.1",
     "connect-mssql-v2": "^6.0.0",
     "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
+    "dotenv": "^16.6.1",
     "ejs": "^3.1.10",
     "express": "^4.21.2",
     "express-rate-limit": "^8.1.0",
@@ -38,8 +46,11 @@
     "jsonwebtoken": "^9.0.2",
     "mssql": "^10.0.4",
     "multer": "^2.0.2",
-    "node-fetch": "^3.3.2",
-    "nodemailer": "^7.0.5",
+    "node-fetch": "^2.7.0",
+    "nodemailer": "^7.0.9",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0",
+    "resend": "^6.1.2",
     "stripe": "^18.3.0"
   },
   "devDependencies": {

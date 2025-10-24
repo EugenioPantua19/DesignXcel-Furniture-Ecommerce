@@ -2,7 +2,7 @@
 // This service provides a configured axios instance for all API calls
 
 import axios from 'axios';
-import apiConfig from './apiConfig';
+import apiConfig from './apiConfig.js';
 
 class ApiClient {
   constructor() {
@@ -29,12 +29,18 @@ class ApiClient {
           config.url.includes('/api/create-checkout-session') ||
           config.url.includes('/api/terms') ||
           config.url.includes('/api/public/') ||
-          config.url.includes('/api/test-webhook')
+          config.url.includes('/api/test-webhook') ||
+          config.url.includes('/api/auth/refresh-token')
         );
         
         if (!isCustomerEndpoint) {
           const token = this.getAuthToken();
           if (token) {
+            // Check if token is expired and try to refresh
+            if (this.isTokenExpired(token)) {
+              console.log('🔄 Access token expired, attempting refresh...');
+              // Don't block the request, let the response interceptor handle refresh
+            }
             config.headers.Authorization = `Bearer ${token}`;
           }
         }
@@ -58,9 +64,8 @@ class ApiClient {
           console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`);
         }
         
-        // Always log API requests in development
-        console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`);
-        console.log(`🚀 Full URL: ${config.baseURL}${config.url}`);
+        // API request interceptor
+        // Request logging disabled for production
 
         return config;
       },
@@ -175,21 +180,112 @@ class ApiClient {
         return Promise.reject(error);
       }
     );
+
+    // Setup response interceptor for automatic token refresh
+    this.client.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        const originalRequest = error.config;
+
+        // Check if error is due to expired token
+        if (error.response?.status === 401 && 
+            error.response?.data?.code === 'TOKEN_EXPIRED' && 
+            !originalRequest._retry) {
+          
+          originalRequest._retry = true;
+
+          try {
+            console.log('🔄 Attempting to refresh expired token...');
+            const newAccessToken = await this.refreshAccessToken();
+            
+            // Retry the original request with new token
+            originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+            return this.client(originalRequest);
+          } catch (refreshError) {
+            console.error('❌ Token refresh failed:', refreshError);
+            // Clear tokens and redirect to login
+            this.clearAuthToken();
+            window.location.href = '/login';
+            return Promise.reject(refreshError);
+          }
+        }
+
+        return Promise.reject(error);
+      }
+    );
   }
 
-  // Get authentication token from localStorage
+  // Get authentication token from localStorage (JWT access token only)
   getAuthToken() {
-    return localStorage.getItem('token') || localStorage.getItem('authToken');
+    return localStorage.getItem('accessToken');
   }
 
-  // Clear authentication token
+  // Get refresh token from localStorage
+  getRefreshToken() {
+    return localStorage.getItem('refreshToken');
+  }
+
+  // Set JWT tokens in localStorage
+  setTokens(tokens) {
+    if (tokens && tokens.accessToken) {
+      localStorage.setItem('accessToken', tokens.accessToken);
+    }
+    if (tokens && tokens.refreshToken) {
+      localStorage.setItem('refreshToken', tokens.refreshToken);
+    }
+  }
+
+  // Clear authentication tokens
   clearAuthToken() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('authToken');
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
+    localStorage.removeItem('userData');
+    localStorage.removeItem('authToken');
     localStorage.removeItem('rememberMe');
     localStorage.removeItem('loginTime');
     localStorage.removeItem('persistentAccount');
+  }
+
+  // Check if access token is expired
+  isTokenExpired(token) {
+    if (!token) return true;
+    
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const currentTime = Math.floor(Date.now() / 1000);
+      return payload.exp < currentTime;
+    } catch (error) {
+      return true;
+    }
+  }
+
+  // Refresh access token using refresh token
+  async refreshAccessToken() {
+    const refreshToken = this.getRefreshToken();
+    
+    if (!refreshToken) {
+      throw new Error('No refresh token available');
+    }
+
+    try {
+      const response = await this.post('/api/auth/refresh-token', {
+        refreshToken: refreshToken
+      });
+
+      if (response.success && response.accessToken) {
+        // Update access token
+        localStorage.setItem('accessToken', response.accessToken);
+        return response.accessToken;
+      } else {
+        throw new Error('Token refresh failed');
+      }
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+      // Clear tokens and redirect to login
+      this.clearAuthToken();
+      throw error;
+    }
   }
 
   // Attempt session restoration for persistent accounts
@@ -200,9 +296,14 @@ class ApiClient {
       
       if (response.success) {
         console.log('✅ Session restored successfully');
-        // Update localStorage with restored session data
-        localStorage.setItem('token', 'session-token');
+        
+        // Store JWT tokens if available
+        if (response.tokens) {
+          this.setTokens(response.tokens);
+        }
+        
         localStorage.setItem('user', JSON.stringify(response.user));
+        localStorage.setItem('userData', JSON.stringify(response.user));
         localStorage.setItem('persistentAccount', 'true');
         
         // Dispatch a custom event to notify components of session restoration

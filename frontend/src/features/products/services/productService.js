@@ -154,6 +154,7 @@ export const productService = {
 // Export individual functions for easier imports
 export const getAllProducts = productService.getAllProducts;
 export const getProductById = productService.getProductById;
+export const searchProducts = productService.searchProducts;
 export const getFeaturedProducts = productService.getFeaturedProducts;
 export const getCategories = productService.getCategories;
 export const getMaterials = productService.getMaterials;

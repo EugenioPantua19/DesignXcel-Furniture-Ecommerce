@@ -1,17 +1,18 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import ModernPageHeader from '../shared/components/layout/ModernPageHeader';
-import { ContactSection } from '../shared/components/layout';
+import PageHeader from '../shared/components/layout/PageHeader';
+import { getImageUrl } from '../shared/utils/imageUtils';
+import { Bars } from 'react-loader-spinner';
 import './projects.css';
 import api from '../shared/services/api/api';
 
 const Projects = () => {
-  const [query, setQuery] = useState('');
   const [lightboxIndex, setLightboxIndex] = useState(null);
   const [visibleCount, setVisibleCount] = useState(9);
   const [projectImages, setProjectImages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const projectRef = useRef(null);
 
   // Fetch project data from API
@@ -47,15 +48,7 @@ const Projects = () => {
     fetchProjectData();
   }, []);
 
-  const filtered = useMemo(() => {
-    return projectImages.filter((img) => {
-      const q = query.trim().toLowerCase();
-      const searchMatch = q.length === 0 || img.title.toLowerCase().includes(q) || img.description?.toLowerCase().includes(q) || img.tags?.some(t => t.toLowerCase().includes(q));
-      return searchMatch;
-    });
-  }, [query, projectImages]);
-
-  const visibleImages = filtered.slice(0, visibleCount);
+  const visibleImages = projectImages.slice(0, visibleCount);
 
   // Simple enter animations
   useEffect(() => {
@@ -70,6 +63,7 @@ const Projects = () => {
 
   const openLightboxAt = (index) => {
     setLightboxIndex(index);
+    setCurrentImageIndex(0); // Start with main image
     document.body.style.overflow = 'hidden';
   };
 
@@ -80,12 +74,38 @@ const Projects = () => {
 
   const showPrev = (e) => {
     e?.stopPropagation();
-    setLightboxIndex((prev) => (prev === null ? null : (prev - 1 + filtered.length) % filtered.length));
+    if (lightboxIndex !== null) {
+      const currentItem = projectImages[lightboxIndex];
+      const thumbnails = currentItem?.thumbnailUrls || [];
+      const allImages = [currentItem?.src, ...thumbnails].filter(Boolean);
+      
+      if (allImages.length > 1) {
+        // Navigate within current project's images
+        setCurrentImageIndex((prev) => (prev - 1 + allImages.length) % allImages.length);
+      } else {
+        // Navigate to previous project
+        setLightboxIndex((prev) => (prev - 1 + projectImages.length) % projectImages.length);
+        setCurrentImageIndex(0);
+      }
+    }
   };
 
   const showNext = (e) => {
     e?.stopPropagation();
-    setLightboxIndex((prev) => (prev === null ? null : (prev + 1) % filtered.length));
+    if (lightboxIndex !== null) {
+      const currentItem = projectImages[lightboxIndex];
+      const thumbnails = currentItem?.thumbnailUrls || [];
+      const allImages = [currentItem?.src, ...thumbnails].filter(Boolean);
+      
+      if (allImages.length > 1) {
+        // Navigate within current project's images
+        setCurrentImageIndex((prev) => (prev + 1) % allImages.length);
+      } else {
+        // Navigate to next project
+        setLightboxIndex((prev) => (prev + 1) % projectImages.length);
+        setCurrentImageIndex(0);
+      }
+    }
   };
 
   useEffect(() => {
@@ -96,13 +116,13 @@ const Projects = () => {
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [filtered.length]);
+  }, [projectImages.length]);
 
 
   return (
     <div className="projects-page">
       <div className="container">
-        <ModernPageHeader
+        <PageHeader
           breadcrumbs={[
             { label: 'Home', href: '/' },
             { label: 'Projects' }
@@ -111,43 +131,56 @@ const Projects = () => {
           subtitle="Showcasing our accomplished office furniture solutions and successful installations"
         />
 
-        <div className="projects-controls">
-          <div className="filter-row">
-            <div className="search-box">
-              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search projects..." aria-label="Search projects" />
-            </div>
-          </div>
-        </div>
-
         {/* Loading and Error States */}
         {loading && (
           <div className="loading-state">
-            <p>Loading projects...</p>
+            <div style={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'center', 
+              gap: '1rem' 
+            }}>
+              <Bars color="#F0B21B" height={80} width={80} />
+              <p>Loading our amazing projects...</p>
+            </div>
           </div>
         )}
         
         {error && (
           <div className="error-state">
-            <p>Error: {error}</p>
+            <div style={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'center', 
+              gap: '1rem' 
+            }}>
+              <div style={{ fontSize: '2rem' }}>⚠️</div>
+              <p>Oops! We couldn't load the projects right now.</p>
+              <button 
+                onClick={() => window.location.reload()} 
+                style={{
+                  background: '#F0B21B',
+                  color: '#333',
+                  border: 'none',
+                  padding: '0.75rem 1.5rem',
+                  borderRadius: '20px',
+                  cursor: 'pointer',
+                  fontWeight: '600'
+                }}
+              >
+                Try Again
+              </button>
+            </div>
           </div>
         )}
         
         {/* Modern Projects Grid */}
         {!loading && !error && (
           <div className="projects-grid" ref={projectRef}>
-            {visibleImages.length === 0 && (
-              <div className="no-results">
-                <div className="no-results-content">
-                  <div className="no-results-icon">🏢</div>
-                  <h3>No projects found</h3>
-                  <p>Try adjusting your search criteria or check back later for new projects</p>
-                </div>
-              </div>
-            )}
             {visibleImages.map((image, idx) => (
               <article key={image.id} className="project-card" onClick={() => openLightboxAt(idx)}>
                 <div className="card-image-container">
-                  <img src={image.src} alt={image.title} loading="lazy" />
+                  <img src={getImageUrl(image.src)} alt={image.title} loading="lazy" />
                   <div className="card-overlay">
                     <div className="overlay-content">
                       <span className="view-details">View Project</span>
@@ -168,7 +201,7 @@ const Projects = () => {
           </div>
         )}
 
-        {!loading && !error && visibleCount < filtered.length && (
+        {!loading && !error && visibleCount < projectImages.length && (
           <div className="load-more-wrap">
             <button className="btn" onClick={() => setVisibleCount((c) => c + 9)}>Load More Projects</button>
           </div>
@@ -187,28 +220,77 @@ const Projects = () => {
             <div className="modal-body mock-layout">
               {/* Left: Large image */}
               <figure className="mock-visual-large">
-                <img src={filtered[lightboxIndex].src} alt={filtered[lightboxIndex].title} />
+                {(() => {
+                  const currentItem = projectImages[lightboxIndex];
+                  const thumbnails = currentItem?.thumbnailUrls || [];
+                  const allImages = [currentItem?.src, ...thumbnails].filter(Boolean);
+                  const currentImage = allImages[currentImageIndex] || currentItem?.src;
+                  
+                  return (
+                    <>
+                      <img 
+                        src={getImageUrl(currentImage)} 
+                        alt={currentItem?.title} 
+                        style={{ transition: 'opacity 0.3s ease' }}
+                      />
+                      {allImages.length > 1 && (
+                        <div style={{
+                          position: 'absolute',
+                          bottom: '1rem',
+                          right: '1rem',
+                          background: 'rgba(0,0,0,0.7)',
+                          color: 'white',
+                          padding: '0.5rem 1rem',
+                          borderRadius: '20px',
+                          fontSize: '0.9rem',
+                          fontWeight: '500'
+                        }}>
+                          {currentImageIndex + 1} / {allImages.length}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </figure>
 
-              {/* Right: Horizontal thumbnails */}
+              {/* Right: Vertical thumbnails */}
               <div className="mock-thumb-row">
                 {(() => {
-                  const currentItem = filtered[lightboxIndex];
+                  const currentItem = projectImages[lightboxIndex];
                   const thumbnails = currentItem?.thumbnailUrls || [];
                   const allImages = [currentItem?.src, ...thumbnails].filter(Boolean);
                   
-                  return allImages.slice(0, 5).map((imgSrc, i) => (
+                  return allImages.slice(0, 6).map((imgSrc, i) => (
                     <button
                       key={i}
-                      className={`mini-thumb ${i === 0 ? 'active' : ''}`}
+                      className={`mini-thumb ${i === currentImageIndex ? 'active' : ''}`}
                       onClick={(e) => { 
                         e.stopPropagation(); 
-                        // For now, just show the main image
-                        // In a full implementation, you'd switch between main and thumbnail images
+                        setCurrentImageIndex(i);
                       }}
-                      aria-label={`Thumbnail ${i + 1}`}
+                      aria-label={`View image ${i + 1} of ${allImages.length}`}
+                      title={`View image ${i + 1} of ${allImages.length}`}
                     >
-                      <img src={imgSrc} alt={`Thumbnail ${i + 1}`} />
+                      <img src={getImageUrl(imgSrc)} alt={`Thumbnail ${i + 1}`} />
+                      {i === currentImageIndex && (
+                        <div style={{
+                          position: 'absolute',
+                          top: '4px',
+                          right: '4px',
+                          background: '#F0B21B',
+                          color: '#333',
+                          borderRadius: '50%',
+                          width: '20px',
+                          height: '20px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '10px',
+                          fontWeight: 'bold'
+                        }}>
+                          {i + 1}
+                        </div>
+                      )}
                     </button>
                   ));
                 })()}
@@ -216,14 +298,14 @@ const Projects = () => {
 
               {/* Bottom: Details spanning full width */}
               <div className="mock-details">
-                <h1 className="detail-heading centered">{filtered[lightboxIndex].title}</h1>
+                <h1 className="detail-heading centered">{projectImages[lightboxIndex].title}</h1>
                 <div className="detail-tags centered">
-                  {filtered[lightboxIndex].tags?.map((t) => (
+                  {projectImages[lightboxIndex].tags?.map((t) => (
                     <span key={t} className="tag">{t}</span>
                   ))}
                 </div>
-                {filtered[lightboxIndex].description && (
-                  <p className="detail-description centered-text">{filtered[lightboxIndex].description}</p>
+                {projectImages[lightboxIndex].description && (
+                  <p className="detail-description centered-text">{projectImages[lightboxIndex].description}</p>
                 )}
                 <div className="detail-actions centered">
                   <Link to="/products" className="btn" onClick={closeLightbox}>View Our Products</Link>
@@ -233,9 +315,6 @@ const Projects = () => {
           </div>
         </div>
       )}
-      
-      {/* Contact Section with Map */}
-      <ContactSection />
     </div>
   );
 };

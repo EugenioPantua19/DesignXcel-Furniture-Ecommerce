@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../../../shared/services/api/apiClient';
-import { useAuth } from '../../auth/hooks/useAuth';
+import { useAuth } from '../../../shared/hooks/useAuth';
+import { Bars } from 'react-loader-spinner';
 import { EditIcon, TrashIcon, CameraIcon, UploadIcon } from '../../../shared/components/ui/SvgIcons';
-import { LoadingSpinner, InlineLoader } from '../../../shared/components/ui';
+// LoadingSpinner and InlineLoader removed as requested
+import { getImageUrl } from '../../../shared/utils/imageUtils';
 
 const ProfileManagement = () => {
   const [profile, setProfile] = useState({ 
@@ -22,6 +24,13 @@ const ProfileManagement = () => {
   const [uploadingImage, setUploadingImage] = useState(false);
   const { user, setUser } = useAuth();
   const navigate = useNavigate();
+
+  // Monitor editingProfile state changes
+  useEffect(() => {
+    console.log('editingProfile state changed to:', editingProfile);
+  }, [editingProfile]);
+
+
 
   // Fetch profile on mount
   useEffect(() => {
@@ -213,8 +222,21 @@ const ProfileManagement = () => {
 
   const handleProfileUpdate = async e => {
     e.preventDefault();
+    
+    // Validate required fields
+    if (!profile.firstName || !profile.lastName || !profile.email) {
+      setMessage('Please fill in all required fields.');
+      return;
+    }
+    
+    if (!profile.gender) {
+      setMessage('Please select a gender.');
+      return;
+    }
+    
     setLoading(true);
     setMessage('');
+    
     try {
       const fullName = `${profile.firstName} ${profile.lastName}`.trim();
       
@@ -225,6 +247,7 @@ const ProfileManagement = () => {
           phoneNumber: profile.phone,
           gender: profile.gender
         });
+        
         if (res.success) {
           setMessage('Profile updated successfully.');
           // Update user context if available
@@ -246,6 +269,7 @@ const ProfileManagement = () => {
           phoneNumber: profile.phone,
           gender: profile.gender
         });
+        
         if (res.success) {
           setMessage('Profile updated successfully.');
           // Update user context if available
@@ -263,7 +287,7 @@ const ProfileManagement = () => {
       }
       setEditingProfile(false);
     } catch (err) {
-      setMessage('Failed to update profile.');
+      setMessage(`Failed to update profile: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -271,8 +295,30 @@ const ProfileManagement = () => {
 
   if (loading) {
     return (
-      <div style={{ padding: '40px', textAlign: 'center' }}>
-        <LoadingSpinner size="large" text="Loading your profile..." color="#F0B21B" />
+      <div style={{ 
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '60px 20px',
+        minHeight: '400px',
+        textAlign: 'center'
+      }}>
+        <Bars 
+          color="#F0B21B" 
+          height={window.innerWidth < 768 ? 32 : 40} 
+          width={window.innerWidth < 768 ? 32 : 40} 
+        />
+        <div style={{ 
+          fontSize: window.innerWidth < 768 ? '14px' : '16px', 
+          color: '#6b7280', 
+          marginTop: '16px',
+          fontWeight: '500',
+          maxWidth: '280px',
+          lineHeight: '1.5'
+        }}>
+          Loading your profile...
+        </div>
       </div>
     );
   }
@@ -292,12 +338,14 @@ const ProfileManagement = () => {
         </div>
       )}
 
+
+
       {/* Profile Picture Section */}
       <div className="profile-picture-container">
         <div className="profile-picture">
           {imagePreview || user?.profilePicture || profileImage ? (
             <img 
-              src={imagePreview || user?.profilePicture || profileImage} 
+              src={getImageUrl(imagePreview || user?.profilePicture || profileImage)} 
               alt="Profile" 
             />
           ) : (
@@ -316,29 +364,19 @@ const ProfileManagement = () => {
               disabled={uploadingImage}
             />
             <label htmlFor="profile-image-upload" className="edit-picture-btn" title="Upload new image">
-              {uploadingImage ? (
-                <LoadingSpinner size="small" color="#ffffff" />
-              ) : (
-                <CameraIcon size={16} color="#ffffff" />
-              )}
+              <CameraIcon size={16} color="#ffffff" />
             </label>
             
             {(user?.profilePicture || profileImage) && (
-              <InlineLoader 
-                isLoading={uploadingImage} 
-                text=""
-                size="small"
+              <button 
+                className="remove-picture-btn" 
+                type="button"
+                onClick={handleRemoveImage}
+                disabled={uploadingImage}
+                title="Remove image"
               >
-                <button 
-                  className="remove-picture-btn" 
-                  type="button"
-                  onClick={handleRemoveImage}
-                  disabled={uploadingImage}
-                  title="Remove image"
-                >
-                  <TrashIcon size={16} color="#ffffff" />
-                </button>
-              </InlineLoader>
+                <TrashIcon size={16} color="#ffffff" />
+              </button>
             )}
           </div>
         </div>
@@ -431,15 +469,9 @@ const ProfileManagement = () => {
         <div className="form-actions">
           {editingProfile ? (
             <>
-              <InlineLoader 
-                isLoading={loading} 
-                text="Updating..."
-                size="small"
-              >
-                <button type="submit" className="btn-primary" disabled={loading}>
-                  Update Changes
-                </button>
-              </InlineLoader>
+              <button type="submit" className="btn-primary" disabled={loading}>
+                {loading ? 'Updating...' : 'Update Changes'}
+              </button>
               <button 
                 type="button" 
                 className="btn-secondary" 
@@ -453,7 +485,12 @@ const ProfileManagement = () => {
             <button 
               type="button" 
               className="btn-primary" 
-              onClick={() => setEditingProfile(true)}
+              onClick={(e) => {
+                e.preventDefault(); // Prevent form submission
+                console.log('Edit Profile clicked - current state:', { editingProfile, loading });
+                setEditingProfile(true);
+                console.log('Set editingProfile to true');
+              }}
             >
               Edit Profile
             </button>

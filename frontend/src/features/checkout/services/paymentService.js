@@ -1,5 +1,5 @@
 import apiClient from '../../../shared/services/api/apiClient';
-import apiConfig from '../../../shared/services/api/apiConfig';
+import apiConfig from '../../../shared/services/api/apiConfig.js';
 
 class PaymentService {
     constructor() {

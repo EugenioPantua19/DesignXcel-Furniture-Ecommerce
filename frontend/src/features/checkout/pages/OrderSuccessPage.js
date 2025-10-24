@@ -1,10 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useLocation, Link, useSearchParams } from 'react-router-dom';
-import { useAuth } from '../../auth/hooks/useAuth';
+import { Bars } from 'react-loader-spinner';
+import { useAuth } from '../../../shared/hooks/useAuth';
 import paymentService from '../services/paymentService';
 import stripeService from '../services/stripeService';
 import apiClient from '../../../shared/services/api/apiClient';
 import './order-success.css';
+
+// Cart Icon Component
+const CartIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="8" cy="21" r="1" stroke="currentColor" strokeWidth="2"/>
+        <circle cx="19" cy="21" r="1" stroke="currentColor" strokeWidth="2"/>
+        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+);
 
 const OrderSuccessPage = () => {
     const { orderId } = useParams();
@@ -73,7 +83,7 @@ const OrderSuccessPage = () => {
                 total: session.amount_total,
                 paymentMethod: session.metadata?.paymentMethod || 'E-Wallet',
                 deliveryType: session.metadata?.deliveryType || 'pickup',
-                shippingCost: session.metadata?.shippingCost || '0',
+                shippingCost: session.metadata?.shippingCost || '',
                 shippingAddressId: session.metadata?.shippingAddressId || ''
             });
             
@@ -255,7 +265,7 @@ const OrderSuccessPage = () => {
             <div className="order-success-page">
                 <div className="success-container">
                     <div className="loading-state">
-                        <div className="loading-spinner"></div>
+                        <Bars color="#F0B21B" height={40} width={40} />
                         <p>Loading payment details...</p>
                     </div>
                 </div>
@@ -297,6 +307,9 @@ const OrderSuccessPage = () => {
                 {/* Order Summary */}
                 <div className="order-summary-section">
                     <div className="order-summary-header">
+                        <div className="summary-icon">
+                            <CartIcon />
+                        </div>
                         <h2>Order Summary</h2>
                     </div>
                     <div className="order-summary-content">
@@ -330,8 +343,8 @@ const OrderSuccessPage = () => {
                                 )}
                                 {paymentDetails.deliveryCost && paymentDetails.deliveryCost > 0 && (
                                     <div className="order-detail-item">
-                                        <span className="order-detail-label">Delivery Cost:</span>
-                                        <span className="order-detail-value">
+                                        <span className="order-detail-label">Shipping Cost:</span>
+                                        <span className="order-detail-value shipping-cost">
                                             {new Intl.NumberFormat('en-PH', {
                                                 style: 'currency',
                                                 currency: 'PHP'

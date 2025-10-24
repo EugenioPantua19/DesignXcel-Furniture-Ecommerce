@@ -5,7 +5,7 @@ import apiClient from '../../../shared/services/api/apiClient';
 const stripePromise = (() => {
     const publishableKey = process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY;
     
-    if (!publishableKey || publishableKey === 'pk_test_placeholder_key_replace_with_actual_stripe_key') {
+    if (!publishableKey || publishableKey === 'pk_test_your_stripe_publishable_key_here') {
         console.warn('⚠️ Stripe publishable key not configured. Payment functionality will be limited.');
         return Promise.resolve(null);
     }

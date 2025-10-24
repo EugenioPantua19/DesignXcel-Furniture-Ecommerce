@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Manager Activity Logs - Design Excellence</title>
+    <link rel="stylesheet" href="/css/Employee/Admin/AdminIndexStyles.css">
+    <link rel="stylesheet" href="/css/dark-mode.css">
+    <style>
+        /* Activity Logs specific styling */
+        .logs-section {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .logs-section h3 {
+            color: #333;
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+            padding-bottom: 10px;
+        }
+
+        #activityLogsTable {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        #activityLogsTable th,
+        #activityLogsTable td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+
+        #activityLogsTable th {
+            background-color: #f2f2f2;
+            color: #333;
+            font-weight: bold;
+        }
+
+        #activityLogsTable tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        #activityLogsTable tr:hover {
+            background-color: #f5f5f5;
+        }
+
+        .date-header {
+            background-color: #e0e0e0;
+            font-weight: bold;
+            text-align: center;
+            padding: 10px;
+            font-size: 1.1em;
+            border-bottom: 2px solid #ccc;
+            border-top: 2px solid #ccc;
+        }
+
+        .date-header td {
+            padding: 15px !important; /* Important to override table cell padding */
+        }
+
+        .error-message {
+            color: #dc3545;
+            padding: 15px;
+            margin: 10px 0;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 4px;
+            display: none;
+        }
+
+        .no-logs-message {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-style: italic;
+            display: none;
+        }
+
+        /* Filter controls */
+        .filter-controls {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            min-width: 150px;
+        }
+
+        .filter-group label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        .filter-group select,
+        .filter-group input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .filter-actions {
+            display: flex;
+            gap: 10px;
+            align-items: end;
+        }
+
+        .btn-filter {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn-filter:hover {
+            background-color: #0056b3;
+        }
+
+        .btn-clear {
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn-clear:hover {
+            background-color: #545b62;
+        }
+
+        /* Log details */
+        .log-details {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 5px;
+            font-size: 12px;
+            color: #6c757d;
+        }
+
+        .changes-display {
+            background-color: #e9ecef;
+            border-left: 3px solid #007bff;
+            padding: 8px;
+            margin-top: 5px;
+            font-family: monospace;
+            font-size: 11px;
+        }
+
+        .action-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .action-insert { background-color: #d4edda; color: #155724; }
+        .action-update { background-color: #fff3cd; color: #856404; }
+        .action-delete { background-color: #f8d7da; color: #721c24; }
+        .action-status-change { background-color: #d1ecf1; color: #0c5460; }
+        .action-cancel { background-color: #f8d7da; color: #721c24; }
+        .action-complete { background-color: #d4edda; color: #155724; }
+        .action-login { background-color: #cce5ff; color: #004085; }
+        .action-logout { background-color: #e2e3e5; color: #383d41; }
+        .action-login-failed { background-color: #f8d7da; color: #721c24; }
+        .action-test { background-color: #e2e3e5; color: #383d41; }
+
+        /* Additional styling for enhanced display */
+        .role-badge {
+            background-color: #e9ecef;
+            color: #495057;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .description {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .timestamp {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .no-changes {
+            color: #6c757d;
+            font-style: italic;
+        }
+
+        .change-item {
+            margin-bottom: 4px;
+        }
+
+        .old-value {
+            color: #dc3545;
+            text-decoration: line-through;
+        }
+
+        .new-value {
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .filter-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .filter-group {
+                min-width: auto;
+            }
+            
+            .filter-actions {
+                justify-content: center;
+            }
+            
+            #activityLogsTable {
+                font-size: 12px;
+            }
+            
+            #activityLogsTable th,
+            #activityLogsTable td {
+                padding: 8px 4px;
+            }
+        }
+
+        /* Sidebar submenu and section label styles */
+        .sidebar-section-label {
+            color: #fff;
+            font-weight: bold;
+            padding: 12px 18px 6px 18px;
+            background: #333;
+            border-top: 1px solid #444;
+            border-bottom: none;
+            margin-top: 2px;
+            margin-bottom: 0;
+            font-size: 1.08em;
+        }
+        .sidebar-submenu {
+            list-style: none;
+            margin: 0 0 0 0;
+            padding: 0 0 0 18px;
+            background: #444;
+        }
+        .sidebar-submenu li a {
+            color: #fff;
+            display: block;
+            padding: 10px 0 10px 10px;
+            text-decoration: none;
+            font-size: 1em;
+            border-bottom: 1px solid #555;
+            transition: background 0.2s;
+        }
+        .sidebar-submenu li a:hover {
+            background: #555;
+        }
+
+        /* Custom Confirmation Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            visibility: hidden;
+            opacity: 0;
+            transition: visibility 0s, opacity 0.3s ease;
+        }
+        .modal-overlay.show {
+            visibility: visible;
+            opacity: 1;
+        }
+        .modal-content {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+        .modal-overlay.show .modal-content {
+            transform: scale(1);
+        }
+        .modal-content h3 {
+            margin-top: 0;
+            color: #333;
+            font-size: 1.5em;
+            margin-bottom: 20px;
+        }
+        .modal-content p {
+            color: #555;
+            font-size: 1.1em;
+            margin-bottom: 30px;
+        }
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+        .modal-button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .modal-button.confirm {
+            background-color: #dc3545;
+            color: white;
+        }
+        .modal-button.confirm:hover {
+            background-color: #c82333;
+        }
+        .modal-button.cancel {
+            background-color: #f0f0f0;
+            color: #555;
+            border: 1px solid #ccc;
+        }
+        .modal-button.cancel:hover {
+            background-color: #e0e0e0;
+        }
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        .sidebar-menu {
+            flex-grow: 1;
+        }
+        .logout-section {
+            padding: 40px;
+            border-top: 1px solid #ddd;
+            margin-top: auto;
+            text-align: center;
+        }
+        .logout-button {
+            display: inline-block;
+            width: auto;
+            padding: 12px 25px;
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            font-weight: bold;
+            transition: background-color 0.3s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        .logout-button:hover {
+            background-color: #c82333;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar content -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h3>User Manager Panel</h3>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="/Employee/UserManager">Dashboard</a></li>
+                <li class="sidebar-section-label" style="font-weight:normal;">Inventory</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/UserManager/UserProducts">Products</a></li>
+                    <li><a href="/Employee/UserManager/UserVariations">Variations</a></li>
+                    <li><a href="/Employee/UserManager/UserMaterials">Raw Materials</a></li>
+                    <li><a href="/Employee/UserManager/UserAlerts">Alerts</a></li>
+                    <li><a href="/Employee/UserManager/UserArchived">Archived items</a></li>
+                </ul>
+                <li class="sidebar-section-label" style="font-weight:normal;">Transactions</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/UserManager/UserRates">Delivery Rates</a></li>
+                    <li><a href="/Employee/UserManager/UserWalkIn">Walk In</a></li>
+                    <li><a href="/Employee/UserManager/UserOrdersPending">Orders Pending</a></li>
+                    <li><a href="/Employee/UserManager/UserOrdersProcessing">Orders Processing</a></li>
+                    <li><a href="/Employee/UserManager/UserOrdersShipping">Orders Shipping</a></li>
+                    <li><a href="/Employee/UserManager/UserOrdersDelivery">Orders Delivery</a></li>
+                    <li><a href="/Employee/UserManager/UserOrdersReceive">Orders Receive</a></li>
+                    <li><a href="/Employee/UserManager/UserCancelledOrders">Cancelled Orders</a></li>
+                    <li><a href="/Employee/UserManager/UserCompletedOrders">Completed Orders</a></li>
+                </ul>
+                <!-- User Management Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">User Management</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/UserManager/UserManageUsers">Manage Users</a></li>
+                </ul>
+                
+                <!-- Customer Reviews Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">Customer Reviews</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/UserManager/UserReviews">Reviews</a></li>
+                </ul>
+                
+                <!-- Support & Communication Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">Support & Communication</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/UserManager/UserChatSupport">Chat Support</a></li>
+                </ul>
+                
+                <!-- Content & System Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">Content & System</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/UserManager/UserCMS">Content Management</a></li>
+                    <li><a href="/Employee/UserManager/UserLogs">Activity Logs</a></li>
+                </ul>
+            </ul>
+            <div class="logout-section">
+                <a href="/logout" class="logout-button" onclick="handleLogout(event)">Logout</a>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="header">
+                <h2>Activity Logs</h2>
+            </div>
+            <div class="content-area">
+                <div class="logs-section">
+                    <h3>System Activity Logs</h3>
+                    
+                    <!-- Enhanced Filter Controls -->
+                    <div class="filter-controls">
+                        <div class="filter-group">
+                            <label for="actionFilter">Action Type</label>
+                            <select id="actionFilter">
+                                <option value="">All Actions</option>
+                                <option value="INSERT">Create</option>
+                                <option value="UPDATE">Update</option>
+                                <option value="DELETE">Delete</option>
+                                <option value="STATUS_CHANGE">Status Change</option>
+                                <option value="CANCEL">Cancel</option>
+                                <option value="COMPLETE">Complete</option>
+                                <option value="LOGIN">Login</option>
+                                <option value="LOGOUT">Logout</option>
+                                <option value="LOGIN_FAILED">Failed Login</option>
+                                <option value="TEST">Test</option>
+                            </select>
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label for="tableFilter">Table Affected</label>
+                            <select id="tableFilter">
+                                <option value="">All Tables</option>
+                                <option value="Products">Products</option>
+                                <option value="RawMaterials">Raw Materials</option>
+                                <option value="ProductVariations">Product Variations</option>
+                                <option value="Users">Users</option>
+                                <option value="Orders">Orders</option>
+                                <option value="UserPermissions">User Permissions</option>
+                                <option value="HeroBanner">Hero Banner</option>
+                                <option value="SystemConfig">System Config</option>
+                            </select>
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label for="userFilter">User Role</label>
+                            <select id="userFilter">
+                                <option value="">All Roles</option>
+                                <option value="Admin">Admin</option>
+                                <option value="InventoryManager">Inventory Manager</option>
+                                <option value="TransactionManager">Transaction Manager</option>
+                                <option value="UserManager">User Manager</option>
+                                <option value="OrderSupport">Order Support</option>
+                            </select>
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label for="dateFromFilter">Date From</label>
+                            <input type="date" id="dateFromFilter">
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label for="dateToFilter">Date To</label>
+                            <input type="date" id="dateToFilter">
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label for="searchFilter">Search</label>
+                            <input type="text" id="searchFilter" placeholder="Search description...">
+                        </div>
+                        
+                        <div class="filter-actions">
+                            <button class="btn-filter" onclick="applyFilters()">Apply Filters</button>
+                            <button class="btn-clear" onclick="clearFilters()">Clear</button>
+                        </div>
+                    </div>
+                    
+                    <div id="errorMessage" class="error-message"></div>
+                    <table id="activityLogsTable">
+                        <thead>
+                            <tr>
+                                <th>Log ID</th>
+                                <th>User</th>
+                                <th>Role</th>
+                                <th>Action</th>
+                                <th>Table</th>
+                                <th>Details</th>
+                                <th>Changes</th>
+                                <th>Timestamp</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Activity logs will be loaded here by JavaScript -->
+                        </tbody>
+                    </table>
+                    <p id="noLogsMessage" class="no-logs-message">No activity logs found.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/Employee/Admin/AdminLogs.js"></script>
+    <script>
+        // Improved dropdown functionality for sidebar
+        document.querySelectorAll('.dropdown-toggle').forEach(item => {
+            item.addEventListener('click', event => {
+                event.preventDefault();
+                const dropdownMenu = item.nextElementSibling;
+                const isVisible = dropdownMenu.style.display === 'block';
+                
+                // Close all other dropdowns first
+                document.querySelectorAll('.dropdown-menu').forEach(menu => {
+                    menu.style.display = 'none';
+                });
+                
+                // Toggle the clicked dropdown
+                dropdownMenu.style.display = isVisible ? 'none' : 'block';
+            });
+        });
+
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function(event) {
+            const dropdowns = document.querySelectorAll('.dropdown');
+            dropdowns.forEach(dropdown => {
+                if (!dropdown.contains(event.target)) {
+                    const dropdownMenu = dropdown.querySelector('.dropdown-menu');
+                    if (dropdownMenu) {
+                        dropdownMenu.style.display = 'none';
+                    }
+                }
+            });
+        });
+
+        // Note: Filtering functionality is handled by AdminLogs.js
+    </script>
+
+    <!-- Custom Confirmation Modal -->
+    <div id="logoutConfirmModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Confirm Logout</h3>
+            <p>Are you sure you want to log out?</p>
+            <div class="modal-buttons">
+                <button class="modal-button confirm" id="confirmLogoutBtn">Logout</button>
+                <button class="modal-button cancel" id="cancelLogoutBtn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Custom Logout Modal Logic
+        const logoutConfirmModal = document.getElementById('logoutConfirmModal');
+        const confirmLogoutBtn = document.getElementById('confirmLogoutBtn');
+        const cancelLogoutBtn = document.getElementById('cancelLogoutBtn');
+
+        async function handleLogout(event) {
+            event.preventDefault();
+            logoutConfirmModal.classList.add('show');
+        }
+
+        confirmLogoutBtn.addEventListener('click', async () => {
+            logoutConfirmModal.classList.remove('show');
+            try {
+                const response = await fetch('/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    window.location.href = '/login';
+                } else {
+                    console.error('Logout failed');
+                    alert('Failed to logout. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error during logout:', error);
+                alert('An error occurred during logout. Please try again.');
+            }
+        });
+
+        cancelLogoutBtn.addEventListener('click', () => {
+            logoutConfirmModal.classList.remove('show');
+        });
+
+        // Close modal if clicked outside content
+        logoutConfirmModal.addEventListener('click', (event) => {
+            if (event.target === logoutConfirmModal) {
+                logoutConfirmModal.classList.remove('show');
+            }
+        });
+    </script>
+        <script src="/js/dark-mode.js"></script>
+</body>
+</html> 
+
+
+
+

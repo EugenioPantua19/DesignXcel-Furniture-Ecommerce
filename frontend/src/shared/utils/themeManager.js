@@ -19,16 +19,17 @@ class ThemeManager {
   async init() {
     try {
       // Load theme from backend
-      const response = await fetch('/api/theme/active');
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/theme/public`);
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
           this.currentTheme = data.activeTheme || 'default';
           this.applyTheme(this.currentTheme);
         }
+      } else {
+        this.applyTheme('default');
       }
     } catch (error) {
-      console.log('Theme manager: Using default theme');
       this.applyTheme('default');
     }
   }
@@ -57,6 +58,12 @@ class ThemeManager {
     
     // Update theme indicator if exists
     this.updateThemeIndicator(theme);
+    
+    // Handle Christmas snowfall effect
+    this.handleChristmasEffects(theme);
+    
+    // Dispatch theme change event
+    this.dispatchThemeChangeEvent(theme);
   }
 
   /**
@@ -71,7 +78,7 @@ class ThemeManager {
 
     try {
       // Save theme to backend
-      const response = await fetch('/api/theme/active', {
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/theme/public`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -138,58 +145,145 @@ class ThemeManager {
   }
 
   /**
-   * Add Christmas decorations
+   * Force refresh theme from backend
    */
-  addChristmasDecorations() {
-    if (this.currentTheme === 'christmas') {
-      // Add Christmas emojis to navigation
-      const navLinks = document.querySelectorAll('.header-nav-link');
-      navLinks.forEach((link, index) => {
-        if (!link.querySelector('.christmas-emoji')) {
-          const emoji = ['🎄', '❄️', '🎁', '🎅', '🌟'][index % 5];
-          const emojiSpan = document.createElement('span');
-          emojiSpan.className = 'christmas-emoji';
-          emojiSpan.textContent = emoji;
-          emojiSpan.style.marginRight = '8px';
-          emojiSpan.style.animation = 'christmas-sparkle 2s ease-in-out infinite';
-          link.insertBefore(emojiSpan, link.firstChild);
-        }
-      });
+  async refreshTheme() {
+    await this.init();
+  }
 
-      // Add Christmas effects to buttons
-      const buttons = document.querySelectorAll('.btn, .cta-button');
-      buttons.forEach(button => {
-        if (!button.querySelector('.christmas-effect')) {
-          const effect = document.createElement('span');
-          effect.className = 'christmas-effect';
-          effect.style.position = 'absolute';
-          effect.style.top = '0';
-          effect.style.left = '0';
-          effect.style.right = '0';
-          effect.style.bottom = '0';
-          effect.style.background = 'linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent)';
-          effect.style.animation = 'christmas-glow 3s ease-in-out infinite alternate';
-          effect.style.pointerEvents = 'none';
-          button.style.position = 'relative';
-          button.style.overflow = 'hidden';
-          button.appendChild(effect);
-        }
-      });
+  /**
+   * Dispatch theme change event
+   * @param {string} theme - Theme name
+   */
+  dispatchThemeChangeEvent(theme) {
+    const event = new CustomEvent('themeChanged', {
+      detail: { theme: theme }
+    });
+    document.dispatchEvent(event);
+  }
+
+  /**
+   * Handle Christmas theme effects
+   * @param {string} theme - Theme name
+   */
+  handleChristmasEffects(theme) {
+    if (theme === 'christmas') {
+      this.startChristmasSnowfall();
+    } else {
+      this.stopChristmasSnowfall();
     }
   }
 
   /**
-   * Remove Christmas decorations
+   * Start Christmas snowfall effect
    */
-  removeChristmasDecorations() {
-    // Remove Christmas emojis
-    const christmasEmojis = document.querySelectorAll('.christmas-emoji');
-    christmasEmojis.forEach(emoji => emoji.remove());
-
-    // Remove Christmas effects
-    const christmasEffects = document.querySelectorAll('.christmas-effect');
-    christmasEffects.forEach(effect => effect.remove());
+  startChristmasSnowfall() {
+    // Remove existing snowfall if any
+    this.stopChristmasSnowfall();
+    
+    // Create snowfall container
+    const snowfallContainer = document.createElement('div');
+    snowfallContainer.className = 'christmas-snowfall';
+    snowfallContainer.id = 'christmas-snowfall';
+    document.body.appendChild(snowfallContainer);
+    
+    // Create Christmas lights - REMOVED
+    
+    // Start creating snowflakes
+    this.createChristmasSnowflakes();
   }
+
+  /**
+   * Stop Christmas snowfall effect
+   */
+  stopChristmasSnowfall() {
+    const existingContainer = document.getElementById('christmas-snowfall');
+    if (existingContainer) {
+      existingContainer.remove();
+    }
+    
+    // Clear any existing intervals
+    if (this.christmasSnowfallInterval) {
+      clearInterval(this.christmasSnowfallInterval);
+      this.christmasSnowfallInterval = null;
+    }
+    
+    // Remove Christmas lights - REMOVED
+  }
+
+  /**
+   * Create Christmas lights in header - REMOVED
+   */
+
+  /**
+   * Create Christmas snowflakes
+   */
+  createChristmasSnowflakes() {
+    const snowflakes = ['❄']; // Single snow style
+    const container = document.getElementById('christmas-snowfall');
+    
+    if (!container) return;
+    
+    // Check for reduced motion preference
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      return;
+    }
+    
+    // Create initial snowflakes
+    for (let i = 0; i < 15; i++) {
+      setTimeout(() => this.createSingleChristmasSnowflake(container, snowflakes), i * 200);
+    }
+    
+    // Continue creating snowflakes
+    this.christmasSnowfallInterval = setInterval(() => {
+      this.createSingleChristmasSnowflake(container, snowflakes);
+    }, 1000);
+  }
+
+  /**
+   * Create a single Christmas snowflake
+   * @param {HTMLElement} container - Container element
+   * @param {Array} snowflakes - Array of snowflake symbols
+   */
+  createSingleChristmasSnowflake(container, snowflakes) {
+    if (!container) return;
+    
+    const snowflake = document.createElement('div');
+    snowflake.className = 'snowflake';
+    
+    // Random snowflake symbol
+    snowflake.textContent = snowflakes[Math.floor(Math.random() * snowflakes.length)];
+    
+    // Random position
+    snowflake.style.left = Math.random() * 100 + '%';
+    
+    // Position to start from header-main
+    const headerMain = document.querySelector('.header-main');
+    if (headerMain) {
+      const headerRect = headerMain.getBoundingClientRect();
+      snowflake.style.top = headerRect.top + 'px';
+    } else {
+      snowflake.style.top = '0px';
+    }
+    
+    // Random size
+    const sizes = ['small', 'medium', 'large'];
+    const size = sizes[Math.floor(Math.random() * sizes.length)];
+    snowflake.classList.add(size);
+    
+    // Random animation delay
+    snowflake.style.animationDelay = Math.random() * 2 + 's';
+    
+    container.appendChild(snowflake);
+    
+    // Remove snowflake after animation
+    setTimeout(() => {
+      if (snowflake.parentNode) {
+        snowflake.parentNode.removeChild(snowflake);
+      }
+    }, 12000);
+  }
+
 
   /**
    * Handle theme change events
@@ -220,6 +314,19 @@ class ThemeManager {
 
 // Create global theme manager instance
 window.themeManager = new ThemeManager();
+
+// Add global functions for testing
+window.testTheme = (theme) => {
+  if (window.themeManager) {
+    window.themeManager.applyTheme(theme);
+  }
+};
+
+window.refreshTheme = () => {
+  if (window.themeManager) {
+    window.themeManager.refreshTheme();
+  }
+};
 
 // Export for module usage
 export default ThemeManager;

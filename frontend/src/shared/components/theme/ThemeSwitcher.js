@@ -18,7 +18,7 @@ const ThemeSwitcher = ({ className = '', showLabel = true }) => {
     // Load current theme
     const loadCurrentTheme = async () => {
       try {
-        const response = await fetch('/api/theme/active');
+        const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/theme/public`);
         if (response.ok) {
           const data = await response.json();
           if (data.success) {
@@ -26,7 +26,6 @@ const ThemeSwitcher = ({ className = '', showLabel = true }) => {
           }
         }
       } catch (error) {
-        console.log('Failed to load theme, using default');
         setCurrentTheme('default');
       }
     };
@@ -39,7 +38,7 @@ const ThemeSwitcher = ({ className = '', showLabel = true }) => {
 
     setIsLoading(true);
     try {
-      const response = await fetch('/api/theme/active', {
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/theme/public`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -67,7 +66,7 @@ const ThemeSwitcher = ({ className = '', showLabel = true }) => {
         }
       }
     } catch (error) {
-      console.error('Failed to switch theme:', error);
+      // Failed to switch theme - continue with current theme
     } finally {
       setIsLoading(false);
     }
@@ -94,7 +93,7 @@ const ThemeSwitcher = ({ className = '', showLabel = true }) => {
         ))}
       </select>
       {isLoading && (
-        <span className="theme-switcher-loading">🔄</span>
+        <span className="theme-switcher-loading">Loading...</span>
       )}
     </div>
   );

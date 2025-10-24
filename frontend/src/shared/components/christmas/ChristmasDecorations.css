@@ -1,0 +1,578 @@
+/* Christmas Decorations Styles */
+
+/* Christmas Decorations Container */
+.christmas-decorations {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Christmas Header Decoration */
+.christmas-header-decoration {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 16px;
+  background: linear-gradient(90deg, #228B22 0%, #DC143C 50%, #228B22 100%);
+  border-radius: 8px;
+  margin: 8px 0;
+}
+
+.christmas-header-left,
+.christmas-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.christmas-header-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Christmas Footer Decoration */
+.christmas-footer-decoration {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 16px;
+  background: linear-gradient(90deg, #228B22 0%, #DC143C 50%, #228B22 100%);
+  border-radius: 8px;
+  margin: 8px 0;
+}
+
+.christmas-footer-left,
+.christmas-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.christmas-footer-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Christmas Page Decoration */
+.christmas-page-decoration {
+  position: fixed;
+  z-index: 1000;
+  pointer-events: none;
+  opacity: 0.7;
+  animation: christmasFloat 3s ease-in-out infinite;
+}
+
+.christmas-page-decoration-top-left {
+  top: 20px;
+  left: 20px;
+}
+
+.christmas-page-decoration-top-right {
+  top: 20px;
+  right: 20px;
+}
+
+.christmas-page-decoration-bottom-left {
+  bottom: 20px;
+  left: 20px;
+}
+
+.christmas-page-decoration-bottom-right {
+  bottom: 20px;
+  right: 20px;
+}
+
+.christmas-page-decoration-center {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+@keyframes christmasFloat {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-10px) rotate(5deg); }
+}
+
+/* Christmas Loading Spinner */
+.christmas-loading-spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.christmas-spinner-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.christmas-spinner-text {
+  color: #228B22;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* Christmas Empty State */
+.christmas-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+  background: #FFF8DC;
+  border: 2px solid #228B22;
+  border-radius: 12px;
+  margin: 20px 0;
+}
+
+.christmas-empty-decorations {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+  opacity: 0.8;
+}
+
+.christmas-empty-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.christmas-empty-title {
+  color: #228B22;
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.christmas-empty-message {
+  color: #228B22;
+  font-size: 16px;
+  margin: 0;
+  opacity: 0.8;
+}
+
+/* Christmas Messages */
+.christmas-success-message,
+.christmas-error-message,
+.christmas-info-message,
+.christmas-warning-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  margin: 8px 0;
+}
+
+.christmas-success-message {
+  background: #228B22;
+  color: #FFFFFF;
+  border: 2px solid #006400;
+}
+
+.christmas-error-message {
+  background: #DC143C;
+  color: #FFFFFF;
+  border: 2px solid #B22222;
+}
+
+.christmas-info-message {
+  background: #C0C0C0;
+  color: #228B22;
+  border: 2px solid #228B22;
+}
+
+.christmas-warning-message {
+  background: #FFD700;
+  color: #228B22;
+  border: 2px solid #228B22;
+}
+
+.christmas-success-text,
+.christmas-error-text,
+.christmas-info-text,
+.christmas-warning-text {
+  font-size: 14px;
+}
+
+/* Christmas Button */
+.christmas-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border: 2px solid;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  outline: none;
+}
+
+.christmas-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.christmas-button-primary {
+  background: #DC143C;
+  color: #FFFFFF;
+  border-color: #B22222;
+}
+
+.christmas-button-primary:hover:not(:disabled) {
+  background: #B22222;
+  border-color: #DC143C;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(220, 20, 60, 0.3);
+}
+
+.christmas-button-secondary {
+  background: #228B22;
+  color: #FFFFFF;
+  border-color: #006400;
+}
+
+.christmas-button-secondary:hover:not(:disabled) {
+  background: #006400;
+  border-color: #228B22;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(34, 139, 34, 0.3);
+}
+
+.christmas-button-outline {
+  background: transparent;
+  color: #228B22;
+  border-color: #228B22;
+}
+
+.christmas-button-outline:hover:not(:disabled) {
+  background: #228B22;
+  color: #FFFFFF;
+  transform: translateY(-2px);
+}
+
+.christmas-button-small {
+  padding: 8px 12px;
+  font-size: 12px;
+}
+
+.christmas-button-medium {
+  padding: 12px 20px;
+  font-size: 14px;
+}
+
+.christmas-button-large {
+  padding: 16px 24px;
+  font-size: 16px;
+}
+
+.christmas-button-text {
+  white-space: nowrap;
+}
+
+/* Christmas Card */
+.christmas-card {
+  position: relative;
+  background: #FFFFFF;
+  border: 2px solid #228B22;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(34, 139, 34, 0.2);
+  transition: all 0.3s ease;
+}
+
+.christmas-card:hover {
+  border-color: #DC143C;
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(220, 20, 60, 0.3);
+}
+
+.christmas-card-decoration {
+  position: absolute;
+  z-index: 1;
+  opacity: 0.8;
+  animation: christmasPulse 2s ease-in-out infinite;
+}
+
+.christmas-card-decoration-top-left {
+  top: -10px;
+  left: -10px;
+}
+
+.christmas-card-decoration-top-right {
+  top: -10px;
+  right: -10px;
+}
+
+.christmas-card-decoration-bottom-left {
+  bottom: -10px;
+  left: -10px;
+}
+
+.christmas-card-decoration-bottom-right {
+  bottom: -10px;
+  right: -10px;
+}
+
+@keyframes christmasPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+.christmas-card-header {
+  margin-bottom: 16px;
+}
+
+.christmas-card-title {
+  color: #228B22;
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.christmas-card-content {
+  color: #228B22;
+}
+
+/* Christmas Badge */
+.christmas-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.christmas-badge-default {
+  background: #228B22;
+  color: #FFFFFF;
+  border: 1px solid #006400;
+}
+
+.christmas-badge-primary {
+  background: #DC143C;
+  color: #FFFFFF;
+  border: 1px solid #B22222;
+}
+
+.christmas-badge-secondary {
+  background: #FFD700;
+  color: #228B22;
+  border: 1px solid #228B22;
+}
+
+.christmas-badge-outline {
+  background: transparent;
+  color: #228B22;
+  border: 1px solid #228B22;
+}
+
+.christmas-badge-small {
+  padding: 2px 6px;
+  font-size: 10px;
+}
+
+.christmas-badge-medium {
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.christmas-badge-large {
+  padding: 6px 12px;
+  font-size: 14px;
+}
+
+.christmas-badge-text {
+  white-space: nowrap;
+}
+
+/* Christmas Theme Specific Styles */
+body.theme-christmas .christmas-header-decoration {
+  background: linear-gradient(90deg, #228B22 0%, #DC143C 50%, #228B22 100%);
+}
+
+body.theme-christmas .christmas-footer-decoration {
+  background: linear-gradient(90deg, #228B22 0%, #DC143C 50%, #228B22 100%);
+}
+
+/* Make Christmas icons white in Christmas theme */
+body.theme-christmas .christmas-nav-decoration svg,
+body.theme-christmas .christmas-header-decoration svg,
+body.theme-christmas .christmas-footer-decoration svg {
+  color: #ffffff !important;
+  fill: #ffffff !important;
+}
+
+/* Make all Christmas icons white in Christmas theme */
+body.theme-christmas .christmas-decorations svg,
+body.theme-christmas .christmas-page-decoration svg,
+body.theme-christmas .christmas-card-decoration svg {
+  color: #ffffff !important;
+  fill: #ffffff !important;
+}
+
+body.theme-christmas .christmas-empty-state {
+  background: #FFF8DC;
+  border-color: #228B22;
+}
+
+body.theme-christmas .christmas-empty-title,
+body.theme-christmas .christmas-empty-message {
+  color: #228B22;
+}
+
+body.theme-christmas .christmas-card {
+  background: #FFFFFF;
+  border-color: #228B22;
+}
+
+body.theme-christmas .christmas-card:hover {
+  border-color: #DC143C;
+}
+
+body.theme-christmas .christmas-card-title {
+  color: #228B22;
+}
+
+body.theme-christmas .christmas-card-content {
+  color: #228B22;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .christmas-header-decoration,
+  .christmas-footer-decoration {
+    padding: 6px 12px;
+  }
+  
+  .christmas-header-left,
+  .christmas-header-right,
+  .christmas-footer-left,
+  .christmas-footer-right {
+    gap: 4px;
+  }
+  
+  .christmas-page-decoration {
+    display: none;
+  }
+  
+  .christmas-empty-state {
+    padding: 20px 16px;
+  }
+  
+  .christmas-empty-title {
+    font-size: 20px;
+  }
+  
+  .christmas-empty-message {
+    font-size: 14px;
+  }
+  
+  .christmas-button {
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+  
+  .christmas-card {
+    padding: 16px;
+  }
+  
+  .christmas-card-title {
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .christmas-header-decoration,
+  .christmas-footer-decoration {
+    padding: 4px 8px;
+  }
+  
+  .christmas-empty-state {
+    padding: 16px 12px;
+  }
+  
+  .christmas-empty-title {
+    font-size: 18px;
+  }
+  
+  .christmas-empty-message {
+    font-size: 13px;
+  }
+  
+  .christmas-button {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+  
+  .christmas-card {
+    padding: 12px;
+  }
+  
+  .christmas-card-title {
+    font-size: 16px;
+  }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  .christmas-page-decoration,
+  .christmas-card-decoration {
+    animation: none;
+  }
+  
+  .christmas-button:hover:not(:disabled) {
+    transform: none;
+  }
+  
+  .christmas-card:hover {
+    transform: none;
+  }
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+  .christmas-header-decoration,
+  .christmas-footer-decoration {
+    background: #000000;
+  }
+  
+  .christmas-empty-state {
+    background: #FFFFFF;
+    border-color: #000000;
+  }
+  
+  .christmas-empty-title,
+  .christmas-empty-message {
+    color: #000000;
+  }
+  
+  .christmas-card {
+    background: #FFFFFF;
+    border-color: #000000;
+  }
+  
+  .christmas-card-title,
+  .christmas-card-content {
+    color: #000000;
+  }
+}

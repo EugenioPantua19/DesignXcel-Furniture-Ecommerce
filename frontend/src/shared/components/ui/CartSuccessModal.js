@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useCurrency } from '../../contexts/CurrencyContext';
+import { getImageUrl } from '../../utils/imageUtils';
 import './cart-success-modal.css';
 
 const CartSuccessModal = ({ 
@@ -71,7 +72,7 @@ const CartSuccessModal = ({
           <div className="cart-success-product">
             <div className="product-preview-image">
               <img 
-                src={product.images && product.images[0] ? product.images[0] : '/logo192.png'} 
+                src={getImageUrl(product.images?.[0])} 
                 alt={product.name}
                 onError={(e) => {
                   e.target.src = '/logo192.png';

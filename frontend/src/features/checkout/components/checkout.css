@@ -785,3 +785,426 @@
     border: 1px solid #f5c6cb;
     border-radius: 4px;
 }
+
+/* =============================================================================
+   DARK MODE STYLES FOR CHECKOUT COMPONENTS
+   ============================================================================= */
+
+/* Dark mode styles for checkout page */
+body.theme-dark .checkout-page {
+    background: #1a1a1a !important;
+    color: #ffffff !important;
+}
+
+body.theme-dark .checkout-container {
+    background: transparent !important;
+}
+
+/* Dark mode styles for checkout form area */
+body.theme-dark .checkout-form-area {
+    background: #2d2d2d !important;
+    border: 1px solid #404040 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Dark mode styles for checkout sections */
+body.theme-dark .checkout-section {
+    border: 1px solid #404040 !important;
+}
+
+body.theme-dark .section-header {
+    background: #333333 !important;
+    border-bottom: 1px solid #404040 !important;
+    color: #ffffff !important;
+}
+
+body.theme-dark .section-number {
+    background: #F0B21B !important;
+    color: #000000 !important;
+}
+
+body.theme-dark .section-content {
+    background: #2d2d2d !important;
+    color: #ffffff !important;
+}
+
+/* Dark mode styles for shipping address display */
+body.theme-dark .shipping-address-display {
+    background: #333333 !important;
+    border: 1px solid #404040 !important;
+}
+
+body.theme-dark .address-label {
+    color: #aaaaaa !important;
+}
+
+body.theme-dark .default-badge {
+    background: #10b981 !important;
+    color: #ffffff !important;
+}
+
+body.theme-dark .label-badge {
+    background: #F0B21B !important;
+    color: #000000 !important;
+}
+
+/* Dark mode styles for no address message */
+body.theme-dark .no-address-message {
+    background: #333333 !important;
+    border: 2px dashed #404040 !important;
+    color: #cccccc !important;
+}
+
+/* Dark mode styles for address modal */
+body.theme-dark .address-modal {
+    background: #2d2d2d !important;
+}
+
+body.theme-dark .address-option {
+    background: #2d2d2d !important;
+    border: 2px solid #404040 !important;
+}
+
+body.theme-dark .address-option:hover {
+    border-color: #F0B21B !important;
+    background: rgba(240, 178, 27, 0.1) !important;
+}
+
+body.theme-dark .address-option.selected {
+    border-color: #F0B21B !important;
+    background: rgba(240, 178, 27, 0.1) !important;
+}
+
+body.theme-dark .address-radio {
+    border: 2px solid #F0B21B !important;
+}
+
+body.theme-dark .radio-selected {
+    background: #F0B21B !important;
+}
+
+body.theme-dark .address-name {
+    color: #ffffff !important;
+}
+
+body.theme-dark .address-details {
+    color: #cccccc !important;
+}
+
+body.theme-dark .address-full {
+    color: #ffffff !important;
+}
+
+body.theme-dark .address-phone {
+    color: #aaaaaa !important;
+}
+
+/* Dark mode styles for checkout header */
+body.theme-dark .checkout-header h1 {
+    color: #ffffff !important;
+}
+
+body.theme-dark .checkout-header p {
+    color: #cccccc !important;
+}
+
+/* Dark mode styles for order summary */
+body.theme-dark .order-summary {
+    background: #2d2d2d !important;
+    border: 1px solid #404040 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+body.theme-dark .order-summary-header {
+    border-bottom: 1px solid #404040 !important;
+}
+
+body.theme-dark .order-summary-header h3 {
+    color: #ffffff !important;
+}
+
+body.theme-dark .summary-icon {
+    color: #F0B21B !important;
+}
+
+/* Dark mode styles for cart items */
+body.theme-dark .cart-item {
+    border-bottom: 1px solid #404040 !important;
+}
+
+body.theme-dark .cart-item-image {
+    background: #333333 !important;
+    border: 1px solid #404040 !important;
+}
+
+body.theme-dark .cart-item-name {
+    color: #ffffff !important;
+}
+
+body.theme-dark .variant-pill {
+    background: #333333 !important;
+    color: #cccccc !important;
+}
+
+body.theme-dark .cart-item-quantity {
+    color: #cccccc !important;
+}
+
+body.theme-dark .cart-item-price {
+    color: #F0B21B !important;
+}
+
+body.theme-dark .discount-badge-small {
+    background: #ef4444 !important;
+    color: #ffffff !important;
+}
+
+/* Dark mode styles for order totals */
+body.theme-dark .order-totals {
+    border-top: 1px solid #404040 !important;
+}
+
+body.theme-dark .total-row {
+    color: #cccccc !important;
+}
+
+body.theme-dark .total-row.final {
+    color: #ffffff !important;
+    border-top: 1px solid #404040 !important;
+}
+
+/* Dark mode styles for place order button */
+body.theme-dark .place-order-btn {
+    background: #F0B21B !important;
+    color: #000000 !important;
+}
+
+body.theme-dark .place-order-btn:hover:not(:disabled) {
+    background: #e6a632 !important;
+    color: #000000 !important;
+}
+
+body.theme-dark .place-order-btn:disabled {
+    background: #6c757d !important;
+    color: #ffffff !important;
+}
+
+/* Dark mode styles for payment methods */
+body.theme-dark .payment-method {
+    background: #2d2d2d !important;
+    border: 2px solid #404040 !important;
+}
+
+body.theme-dark .payment-method:hover {
+    border-color: #F0B21B !important;
+    background: rgba(240, 178, 27, 0.1) !important;
+}
+
+body.theme-dark .payment-method.selected {
+    border-color: #F0B21B !important;
+    background: rgba(240, 178, 27, 0.1) !important;
+}
+
+body.theme-dark .payment-method-radio {
+    border: 2px solid #F0B21B !important;
+}
+
+body.theme-dark .payment-method.selected .payment-method-radio::after {
+    background: #F0B21B !important;
+}
+
+body.theme-dark .payment-method-name {
+    color: #ffffff !important;
+}
+
+body.theme-dark .payment-method-description {
+    color: #cccccc !important;
+}
+
+/* Dark mode styles for error alert */
+body.theme-dark .error-alert {
+    background: rgba(239, 68, 68, 0.1) !important;
+    border: 1px solid #ef4444 !important;
+}
+
+body.theme-dark .error-icon {
+    color: #ef4444 !important;
+}
+
+body.theme-dark .error-text {
+    color: #ef4444 !important;
+}
+
+/* Dark mode styles for modals */
+body.theme-dark .modal-overlay {
+    background: rgba(0, 0, 0, 0.8) !important;
+}
+
+body.theme-dark .modal-content {
+    background: #2d2d2d !important;
+    border: 1px solid #404040 !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5) !important;
+}
+
+body.theme-dark .modal-content h2 {
+    color: #ffffff !important;
+}
+
+/* Dark mode styles for buttons */
+body.theme-dark .btn-primary {
+    background: #F0B21B !important;
+    color: #000000 !important;
+}
+
+body.theme-dark .btn-primary:hover {
+    background: #e6a632 !important;
+    color: #000000 !important;
+}
+
+body.theme-dark .btn-secondary {
+    background: #333333 !important;
+    color: #ffffff !important;
+    border: 1px solid #404040 !important;
+}
+
+body.theme-dark .btn-secondary:hover {
+    background: #404040 !important;
+    border-color: #F0B21B !important;
+}
+
+body.theme-dark .btn-secondary-small {
+    background: #333333 !important;
+    color: #ffffff !important;
+    border: 1px solid #F0B21B !important;
+}
+
+body.theme-dark .btn-secondary-small:hover {
+    background: #F0B21B !important;
+    color: #000000 !important;
+}
+
+body.theme-dark .cancel-btn {
+    background: #6c757d !important;
+    color: #ffffff !important;
+}
+
+body.theme-dark .cancel-btn:hover {
+    background: #5a6268 !important;
+}
+
+body.theme-dark .confirm-btn {
+    background: #F0B21B !important;
+    color: #000000 !important;
+}
+
+body.theme-dark .confirm-btn:hover {
+    background: #e6a632 !important;
+}
+
+body.theme-dark .confirm-btn:disabled {
+    background: #6c757d !important;
+    color: #ffffff !important;
+}
+
+/* Dark mode styles for checkout form */
+body.theme-dark .checkout-form {
+    background: #2d2d2d !important;
+    border: 1px solid #404040 !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+}
+
+body.theme-dark .checkout-form-title {
+    color: #ffffff !important;
+    border-bottom: 1px solid #404040 !important;
+}
+
+body.theme-dark .checkout-form-label {
+    color: #ffffff !important;
+}
+
+body.theme-dark .checkout-form-input {
+    background: #333333 !important;
+    border: 1px solid #404040 !important;
+    color: #ffffff !important;
+}
+
+body.theme-dark .checkout-form-input:focus {
+    border-color: #F0B21B !important;
+    box-shadow: 0 0 0 2px rgba(240, 178, 27, 0.25) !important;
+}
+
+/* Dark mode styles for checkout order summary */
+body.theme-dark .checkout-order-summary {
+    background: #2d2d2d !important;
+    border: 1px solid #404040 !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+}
+
+body.theme-dark .checkout-order-title {
+    color: #ffffff !important;
+}
+
+body.theme-dark .checkout-order-item {
+    border-bottom: 1px solid #404040 !important;
+}
+
+body.theme-dark .checkout-order-image {
+    background: #333333 !important;
+}
+
+body.theme-dark .checkout-order-name {
+    color: #ffffff !important;
+}
+
+body.theme-dark .checkout-order-quantity {
+    color: #cccccc !important;
+}
+
+body.theme-dark .checkout-order-price {
+    color: #F0B21B !important;
+}
+
+body.theme-dark .checkout-order-total {
+    border-top: 1px solid #404040 !important;
+}
+
+body.theme-dark .checkout-order-total-final {
+    color: #ffffff !important;
+}
+
+/* Dark mode styles for payment methods */
+body.theme-dark .checkout-payment-method {
+    background: #2d2d2d !important;
+    border: 2px solid #404040 !important;
+}
+
+body.theme-dark .checkout-payment-method:hover {
+    border-color: #F0B21B !important;
+}
+
+body.theme-dark .checkout-payment-method.selected {
+    border-color: #F0B21B !important;
+    background: rgba(240, 178, 27, 0.1) !important;
+}
+
+/* Dark mode styles for submit button */
+body.theme-dark .checkout-submit-button {
+    background: #F0B21B !important;
+    color: #000000 !important;
+}
+
+body.theme-dark .checkout-submit-button:hover {
+    background: #e6a632 !important;
+}
+
+body.theme-dark .checkout-submit-button:disabled {
+    background: #6c757d !important;
+    color: #ffffff !important;
+}
+
+/* Dark mode styles for error message */
+body.theme-dark .checkout-error {
+    color: #ef4444 !important;
+    background: rgba(239, 68, 68, 0.1) !important;
+    border: 1px solid #ef4444 !important;
+}

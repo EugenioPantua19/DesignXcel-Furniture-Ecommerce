@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory Manager Delivery Rates - Design Excellence</title>
+    <link rel="stylesheet" href="/css/Employee/Admin/AdminIndexStyles.css">
+    <link rel="stylesheet" href="/css/dark-mode.css">
+    <style>
+        /* Custom Confirmation Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            visibility: hidden;
+            opacity: 0;
+            transition: visibility 0s, opacity 0.3s ease;
+        }
+        .modal-overlay.show {
+            visibility: visible;
+            opacity: 1;
+        }
+        .modal-content {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+        .modal-overlay.show .modal-content {
+            transform: scale(1);
+        }
+        .modal-content h3 {
+            margin-top: 0;
+            color: #333;
+            font-size: 1.5em;
+            margin-bottom: 20px;
+        }
+        .modal-content p {
+            color: #555;
+            font-size: 1.1em;
+            margin-bottom: 30px;
+        }
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+        .modal-button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .modal-button.confirm {
+            background-color: #dc3545;
+            color: white;
+        }
+        .modal-button.confirm:hover {
+            background-color: #c82333;
+        }
+        .modal-button.cancel {
+            background-color: #f0f0f0;
+            color: #555;
+            border: 1px solid #ccc;
+        }
+        .modal-button.cancel:hover {
+            background-color: #e0e0e0;
+        }
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        .sidebar-menu {
+            flex-grow: 1;
+        }
+        .logout-section {
+            padding: 40px;
+            border-top: 1px solid #ddd;
+            margin-top: auto;
+            text-align: center;
+        }
+        .logout-button {
+            display: inline-block;
+            width: auto;
+            padding: 12px 25px;
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            font-weight: bold;
+            transition: background-color 0.3s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        .logout-button:hover {
+            background-color: #c82333;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h3>Inventory Manager Panel</h3>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="/Employee/InventoryManager">Dashboard</a></li>
+                <li class="sidebar-section-label" style="font-weight:normal;">Inventory</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/InventoryManager/InventoryProducts">Products</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryVariations">Variations</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryMaterials">Raw Materials</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryAlerts">Alerts</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryArchived">Archived items</a></li>
+                </ul>
+                <li class="sidebar-section-label" style="font-weight:normal;">Transactions</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/InventoryManager/InventoryRates">Delivery Rates</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryWalkIn">Walk In</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryOrdersPending">Orders Pending</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryOrdersProcessing">Orders Processing</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryOrdersShipping">Orders Shipping</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryOrdersDelivery">Orders Delivery</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryOrdersReceive">Orders Receive</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryCancelledOrders">Cancelled Orders</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryCompletedOrders">Completed Orders</a></li>
+                </ul>
+                <!-- User Management Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">User Management</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/InventoryManager/InventoryManageUsers">Manage Users</a></li>
+                </ul>
+                
+                <!-- Customer Reviews Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">Customer Reviews</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/InventoryManager/InventoryReviews">Reviews</a></li>
+                </ul>
+                
+                <!-- Support & Communication Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">Support & Communication</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/InventoryManager/InventoryChatSupport">Chat Support</a></li>
+                </ul>
+                
+                <!-- Content & System Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">Content & System</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/InventoryManager/InventoryCMS">Content Management</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryLogs">Activity Logs</a></li>
+                </ul>
+            </ul>
+            <div class="logout-section">
+                <a href="/logout" class="logout-button" onclick="handleLogout(event)">Logout</a>
+            </div>
+        </div>
+        <div class="main-content">
+            <div class="header">
+                <h2>Delivery Rates</h2>
+            </div>
+            <div class="content-area">
+                <% if (error) { %>
+                    <div class="error-message"><%= error %></div>
+                <% } %>
+                <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:16px;margin-bottom:14px;">
+                    <h3 style="margin-top:0;">Add Delivery Type</h3>
+                    <form id="addRateForm" action="/Employee/InventoryManager/InventoryRates/Add" method="POST" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+                        <div>
+                            <label>Service Type</label>
+                            <input type="text" name="serviceType" required style="padding:8px;border:1px solid #ccc;border-radius:4px;">
+                        </div>
+                        <div>
+                            <label>Price</label>
+                            <input type="number" name="price" step="0.01" min="0" required style="padding:8px;border:1px solid #ccc;border-radius:4px;">
+                        </div>
+                        <button type="submit" style="background:#2563eb;color:#fff;border:none;border-radius:6px;padding:10px 16px;font-weight:600;">Create</button>
+                    </form>
+                </div>
+                <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:16px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <h3 style="margin-top:0;">Delivery Types</h3>
+                        <button id="reloadRates" style="background:#10b981;color:#fff;border:none;border-radius:6px;padding:8px 12px;font-weight:600;">Reload</button>
+                    </div>
+                    <div id="ratesContainer" style="overflow:auto;">
+                        <table style="width:100%;border-collapse:collapse;">
+                            <thead>
+                                <tr style="background:#f9fafb;border-bottom:1px solid #e5e7eb;">
+                                    <th style="text-align:left;padding:8px;">Service Type</th>
+                                    <th style="text-align:right;padding:8px;">Price</th>
+                                    <th style="text-align:left;padding:8px;">Created</th>
+                                    <th style="text-align:left;padding:8px;">By</th>
+                                    <th style="text-align:center;padding:8px;">Active</th>
+                                    <th style="text-align:center;padding:8px;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ratesRows"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+    (function(){
+        const rowsEl = document.getElementById('ratesRows');
+        const reloadBtn = document.getElementById('reloadRates');
+        const addForm = document.getElementById('addRateForm');
+
+        // Popup
+        let popup = document.getElementById('ratesPopup');
+        if(!popup){
+            popup = document.createElement('div');
+            popup.id = 'ratesPopup';
+            popup.style.cssText = 'display:none;position:fixed;top:24px;right:24px;background:#10b981;color:#fff;padding:12px 18px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);font-weight:600;z-index:3000;';
+            popup.textContent = 'Saved!';
+            document.body.appendChild(popup);
+        }
+        function showPopup(msg, isError){
+            popup.textContent = msg || (isError ? 'Failed' : 'Saved!');
+            popup.style.background = isError ? '#dc2626' : '#10b981';
+            popup.style.display = 'block';
+            setTimeout(()=>{ popup.style.display='none'; }, 1800);
+        }
+
+        function fmt(n){ return '₱' + Number(n||0).toLocaleString(undefined,{minimumFractionDigits:2}); }
+        function dateFmt(d){ try { return new Date(d).toLocaleString(); } catch(e){ return d; } }
+
+        async function loadRates(){
+            rowsEl.innerHTML = '<tr><td colspan="6" style="padding:12px;color:#666;">Loading...</td></tr>';
+            try {
+                const r = await fetch('/api/admin/delivery-rates');
+                const j = await r.json();
+                if(!j.success){ rowsEl.innerHTML = `<tr><td colspan="6" style="padding:12px;color:#c00;">${j.message||'Failed to load'}</td></tr>`; return; }
+                const rates = j.rates||[];
+                if(!rates.length){ rowsEl.innerHTML = '<tr><td colspan="6" style="padding:12px;color:#666;">No delivery types yet.</td></tr>'; return; }
+                rowsEl.innerHTML = rates.map(rt=>{
+                    return `<tr data-id="${rt.RateID}" style="border-bottom:1px solid #e5e7eb;">
+                        <td style="padding:8px;"><input class="svc" value="${rt.ServiceType}" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;"></td>
+                        <td style="padding:8px;text-align:right;"><input class="price" type="number" step="0.01" min="0" value="${Number(rt.Price).toFixed(2)}" style="width:120px;padding:6px;border:1px solid #ddd;border-radius:4px;text-align:right;"></td>
+                        <td style="padding:8px;">${dateFmt(rt.CreatedAt)}</td>
+                        <td style="padding:8px;">${rt.CreatedByUsername||'-'}</td>
+                        <td style="padding:8px;text-align:center;"><input class="active" type="checkbox" ${rt.IsActive? 'checked':''}></td>
+                        <td style="padding:8px;text-align:center;"><button class="save" style="background:#3b82f6;color:#fff;border:none;border-radius:6px;padding:6px 10px;font-weight:600;">Save</button></td>
+                    </tr>`;
+                }).join('');
+            } catch(e){
+                rowsEl.innerHTML = '<tr><td colspan="6" style="padding:12px;color:#c00;">Error loading</td></tr>';
+            }
+        }
+
+        rowsEl.addEventListener('click', async (e)=>{
+            if(e.target && e.target.classList.contains('save')){
+                const tr = e.target.closest('tr');
+                const id = tr.getAttribute('data-id');
+                const svc = tr.querySelector('.svc').value.trim();
+                const price = tr.querySelector('.price').value;
+                const active = tr.querySelector('.active').checked;
+                const res = await fetch(`/Employee/InventoryManager/InventoryRates/Update/${id}`, {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({ serviceType: svc, price: price, isActive: active })
+                });
+                const j = await res.json();
+                if(j.success){ showPopup('Updated'); loadRates(); } else { showPopup(j.message||'Update failed', true); }
+            }
+        });
+
+        if(reloadBtn){ reloadBtn.onclick = loadRates; }
+        loadRates();
+
+        if(addForm){
+            addForm.addEventListener('submit', async function(ev){
+                ev.preventDefault();
+                const formData = new FormData(addForm);
+                const payload = { serviceType: formData.get('serviceType'), price: formData.get('price') };
+                try {
+                    const res = await fetch(addForm.action, { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
+                    const j = await res.json();
+                    if(j.success){
+                        addForm.reset();
+                        showPopup('Delivery type created');
+                        loadRates();
+                    } else {
+                        showPopup(j.message||'Create failed', true);
+                    }
+                } catch(err){
+                    showPopup('Create failed', true);
+                }
+            });
+        }
+    })();
+    </script>
+
+    <!-- Custom Confirmation Modal -->
+    <div id="logoutConfirmModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Confirm Logout</h3>
+            <p>Are you sure you want to log out?</p>
+            <div class="modal-buttons">
+                <button class="modal-button confirm" id="confirmLogoutBtn">Logout</button>
+                <button class="modal-button cancel" id="cancelLogoutBtn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Custom Logout Modal Logic
+        const logoutConfirmModal = document.getElementById('logoutConfirmModal');
+        const confirmLogoutBtn = document.getElementById('confirmLogoutBtn');
+        const cancelLogoutBtn = document.getElementById('cancelLogoutBtn');
+
+        async function handleLogout(event) {
+            event.preventDefault();
+            logoutConfirmModal.classList.add('show');
+        }
+
+        confirmLogoutBtn.addEventListener('click', async () => {
+            logoutConfirmModal.classList.remove('show');
+            try {
+                const response = await fetch('/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    window.location.href = '/login';
+                } else {
+                    console.error('Logout failed');
+                    alert('Failed to logout. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error during logout:', error);
+                alert('An error occurred during logout. Please try again.');
+            }
+        });
+
+        cancelLogoutBtn.addEventListener('click', () => {
+            logoutConfirmModal.classList.remove('show');
+        });
+
+        // Close modal if clicked outside content
+        logoutConfirmModal.addEventListener('click', (event) => {
+            if (event.target === logoutConfirmModal) {
+                logoutConfirmModal.classList.remove('show');
+            }
+        });
+    </script>
+        <script src="/js/dark-mode.js"></script>
+</body>
+</html>
+
+
+
+
+

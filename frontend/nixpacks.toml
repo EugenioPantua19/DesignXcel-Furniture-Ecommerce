@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ["nodejs"]
+nixPkgs = ["nodejs-18_x"]
 
 [phases.install]
 cmds = ["npm ci"]
@@ -8,11 +8,4 @@ cmds = ["npm ci"]
 cmds = ["npm run build"]
 
 [start]
-cmd = "node start-railway.js"
-
-[variables]
-CI = "false"
-DISABLE_ESLINT_PLUGIN = "true"
-GENERATE_SOURCEMAP = "false"
-NODE_ENV = "production"
-PORT = "3000"
+cmd = "caddy run --config /Caddyfile --adapter caddyfile"

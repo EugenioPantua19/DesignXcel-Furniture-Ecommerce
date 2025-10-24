@@ -1,0 +1,48 @@
+{
+  "environment": "development",
+  "database": {
+    "encrypt": false,
+    "trustServerCertificate": true,
+    "pool": {
+      "max": 10,
+      "min": 0
+    }
+  },
+  "server": {
+    "cors": {
+      "origin": true
+    },
+    "session": {
+      "cookie": {
+        "secure": false,
+        "sameSite": "lax"
+      }
+    }
+  },
+  "security": {
+    "helmet": {
+      "enabled": false
+    },
+    "rateLimit": {
+      "enabled": false
+    }
+  },
+  "features": {
+    "debug": {
+      "enabled": true
+    },
+    "monitoring": {
+      "enabled": false
+    }
+  },
+  "logging": {
+    "level": "debug",
+    "file": {
+      "enabled": false
+    },
+    "console": {
+      "enabled": true,
+      "colorize": true
+    }
+  }
+}

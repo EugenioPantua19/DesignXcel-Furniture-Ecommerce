@@ -2,20 +2,23 @@
 import { useLocation, Link } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import ProductFilter from '../components/ProductFilter';
-import ModernPageHeader from '../../../shared/components/layout/ModernPageHeader';
-import { ContactSection } from '../../../shared/components/layout';
+import PageHeader from '../../../shared/components/layout/PageHeader';
+import Modal from '../../../shared/components/ui/Modal';
+import { ChristmasHeaderDecoration, ChristmasFooterDecoration } from '../../../shared/components/christmas';
 import { getAllProducts, getCategories } from '../services/productService';
+import { Bars } from 'react-loader-spinner';
 import '../../../app/pages.css';
+import '../../../shared/components/ui/modal.css';
 
 const ProductCatalog = () => {
     const location = useLocation();
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [currentTheme, setCurrentTheme] = useState('default');
     const [filters, setFilters] = useState({
         categories: [],
         priceRange: '',
-        search: '',
         sortBy: 'name',
         featured: false,
         inStock: false,
@@ -26,23 +29,45 @@ const ProductCatalog = () => {
     });
     const [filteredProducts, setFilteredProducts] = useState([]);
     const [selectedCategoryName, setSelectedCategoryName] = useState('');
+    const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
     // Parse URL parameters
     useEffect(() => {
         const searchParams = new URLSearchParams(location.search);
         const categoryParam = searchParams.get('category');
-        const searchParam = searchParams.get('search');
 
         setFilters(prev => ({
             ...prev,
-            categories: categoryParam ? [categoryParam] : [],
-            search: searchParam || ''
+            categories: categoryParam ? [categoryParam] : []
         }));
 
         if (categoryParam) {
             setSelectedCategoryName(categoryParam);
         }
     }, [location.search]);
+
+    // Detect current theme from body class
+    useEffect(() => {
+        const detectTheme = () => {
+            const bodyClasses = document.body.className;
+            if (bodyClasses.includes('theme-christmas')) {
+                setCurrentTheme('christmas');
+            } else if (bodyClasses.includes('theme-dark')) {
+                setCurrentTheme('dark');
+            } else {
+                setCurrentTheme('default');
+            }
+        };
+
+        // Initial detection
+        detectTheme();
+
+        // Listen for theme changes
+        const observer = new MutationObserver(detectTheme);
+        observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
+        return () => observer.disconnect();
+    }, []);
 
     useEffect(() => {
         loadData();
@@ -76,6 +101,7 @@ const ProductCatalog = () => {
         }
     };
 
+
     const applyFilters = () => {
         let filtered = [...products];
 
@@ -90,13 +116,6 @@ const ProductCatalog = () => {
             );
         }
 
-        // Search filter
-        if (filters.search) {
-            filtered = filtered.filter(product =>
-                product.name.toLowerCase().includes(filters.search.toLowerCase()) ||
-                product.description.toLowerCase().includes(filters.search.toLowerCase())
-            );
-        }
 
         // Price range filter
         if (filters.priceRange) {
@@ -117,11 +136,17 @@ const ProductCatalog = () => {
         }
 
         if (filters.inStock) {
-            filtered = filtered.filter(product => product.stock > 0);
+            filtered = filtered.filter(product => {
+                const currentStock = product.stockQuantity || product.stock || product.quantity || 0;
+                return currentStock > 0;
+            });
         }
 
         if (filters.outOfStock) {
-            filtered = filtered.filter(product => product.stock === 0);
+            filtered = filtered.filter(product => {
+                const currentStock = product.stockQuantity || product.stock || product.quantity || 0;
+                return currentStock === 0;
+            });
         }
 
         if (filters.customizable) {
@@ -163,9 +188,8 @@ const ProductCatalog = () => {
 
     const clearAllFilters = () => {
         setFilters({
-            category: '',
+            categories: [],
             priceRange: '',
-            search: '',
             sortBy: 'name',
             featured: false,
             inStock: false,
@@ -174,6 +198,10 @@ const ProductCatalog = () => {
             materials: [],
             outOfStock: false
         });
+    };
+
+    const handleApplyFilters = () => {
+        setIsFilterModalOpen(false);
     };
 
     const removeFilter = (filterType, value = null) => {
@@ -219,8 +247,8 @@ const ProductCatalog = () => {
             <div className="catalog-page">
                 <div className="container">
                     <div className="loading">
-                        <div className="spinner"></div>
-                        Loading products...
+                        <Bars color="#F0B21B" height={80} width={80} />
+                        <p>Loading products...</p>
                     </div>
                 </div>
             </div>
@@ -230,7 +258,8 @@ const ProductCatalog = () => {
     return (
         <div className="catalog-page">
             <div className="container">
-                <ModernPageHeader
+                {currentTheme === 'christmas' && <ChristmasHeaderDecoration />}
+                <PageHeader
                     breadcrumbs={[
                         { label: 'Home', href: '/' },
                         { label: 'Products', href: '/products' },
@@ -263,6 +292,22 @@ const ProductCatalog = () => {
                     </aside>
 
                     <main className="catalog-main">
+                        {/* Mobile Filter Toggle */}
+                        <button 
+                            className="mobile-filter-toggle"
+                            onClick={() => setIsFilterModalOpen(true)}
+                        >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                <path 
+                                    d="M3 4H21M7 8H17M10 12H14" 
+                                    stroke="currentColor" 
+                                    strokeWidth="2" 
+                                    strokeLinecap="round" 
+                                    strokeLinejoin="round"
+                                />
+                            </svg>
+                            Filter Products
+                        </button>
                         <div className="catalog-controls">
                             <div className="results-info">
                                 <span>Showing 1-12 of {filteredProducts.length} results</span>
@@ -318,10 +363,43 @@ const ProductCatalog = () => {
                         )}
                     </main>
                 </div>
+
+                {/* Mobile Filter Modal */}
+                <Modal
+                    isOpen={isFilterModalOpen}
+                    onClose={() => setIsFilterModalOpen(false)}
+                    title="Filter Products"
+                    size="fullscreen"
+                    className="filter-modal"
+                >
+                    <div className="filter-modal-content">
+                        <div className="filter-modal-body">
+                            <ProductFilter 
+                                categories={categories}
+                                products={products}
+                                filters={filters}
+                                onFilterChange={handleFilterChange}
+                                onClearFilters={clearAllFilters}
+                            />
+                        </div>
+                        <div className="filter-modal-footer">
+                            <button 
+                                className="btn btn-secondary"
+                                onClick={() => setIsFilterModalOpen(false)}
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                className="btn btn-primary"
+                                onClick={handleApplyFilters}
+                            >
+                                Apply Filters
+                            </button>
+                        </div>
+                    </div>
+                </Modal>
+                {currentTheme === 'christmas' && <ChristmasFooterDecoration />}
             </div>
-            
-            {/* Contact Section with Map */}
-            <ContactSection />
         </div>
     );
 };

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat Support - Admin</title>
     <link rel="stylesheet" href="/css/Employee/Admin/AdminIndexStyles.css">
+    <link rel="stylesheet" href="/css/dark-mode.css">
     <style>
       .chat-support-container { display: flex; height: 80vh; background: #f7f7f7; border-radius: 8px; overflow: hidden; }
       .chat-thread-list { width: 340px; background: #fff; border-right: 1px solid #eee; display: flex; flex-direction: column; }
@@ -29,6 +30,113 @@
       .chat-reply-area { padding: 18px 24px; border-top: 1px solid #eee; background: #fff; display: flex; }
       .chat-reply-input { flex: 1; border-radius: 16px; border: 1px solid #ccc; padding: 10px 16px; font-size: 1em; margin-right: 12px; }
       .chat-reply-btn { background: #F0B21B; color: #2c3e50; border: none; border-radius: 16px; padding: 10px 24px; font-weight: 600; cursor: pointer; }
+
+      /* Custom Confirmation Modal Styles */
+      .modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background-color: rgba(0, 0, 0, 0.5);
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          z-index: 1000;
+          visibility: hidden;
+          opacity: 0;
+          transition: visibility 0s, opacity 0.3s ease;
+      }
+      .modal-overlay.show {
+          visibility: visible;
+          opacity: 1;
+      }
+      .modal-content {
+          background-color: #fff;
+          padding: 30px;
+          border-radius: 8px;
+          box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+          text-align: center;
+          max-width: 400px;
+          width: 90%;
+          transform: scale(0.9);
+          transition: transform 0.3s ease;
+      }
+      .modal-overlay.show .modal-content {
+          transform: scale(1);
+      }
+      .modal-content h3 {
+          margin-top: 0;
+          color: #333;
+          font-size: 1.5em;
+          margin-bottom: 20px;
+      }
+      .modal-content p {
+          color: #555;
+          font-size: 1.1em;
+          margin-bottom: 30px;
+      }
+      .modal-buttons {
+          display: flex;
+          justify-content: center;
+          gap: 15px;
+      }
+      .modal-button {
+          padding: 12px 25px;
+          border: none;
+          border-radius: 5px;
+          cursor: pointer;
+          font-size: 1em;
+          font-weight: bold;
+          transition: background-color 0.3s, color 0.3s;
+      }
+      .modal-button.confirm {
+          background-color: #dc3545;
+          color: white;
+      }
+      .modal-button.confirm:hover {
+          background-color: #c82333;
+      }
+      .modal-button.cancel {
+          background-color: #f0f0f0;
+          color: #555;
+          border: 1px solid #ccc;
+      }
+      .modal-button.cancel:hover {
+          background-color: #e0e0e0;
+      }
+      .sidebar {
+          display: flex;
+          flex-direction: column;
+          height: 100vh;
+      }
+      .sidebar-menu {
+          flex-grow: 1;
+      }
+      .logout-section {
+          padding: 40px;
+          border-top: 1px solid #ddd;
+          margin-top: auto;
+          text-align: center;
+      }
+      .logout-button {
+          display: inline-block;
+          width: auto;
+          padding: 12px 25px;
+          background-color: #dc3545;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+          text-align: center;
+          text-decoration: none;
+          font-weight: bold;
+          transition: background-color 0.3s;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      }
+      .logout-button:hover {
+          background-color: #c82333;
+      }
     </style>
 </head>
 <body>
@@ -38,10 +146,11 @@
                 <h3>Admin Panel</h3>
             </div>
             <ul class="sidebar-menu">
-                <li><a href="/Employee/AdminIndex">Dashboard</a></li>
+                <li><a href="/Employee/AdminManager">Dashboard</a></li>
                 <li class="sidebar-section-label">Inventory</li>
                 <ul class="sidebar-submenu" style="display:block;">
                     <li><a href="/Employee/Admin/Products">Products</a></li>
+                    <li><a href="/Employee/Admin/Variations">Variations</a></li>
                     <li><a href="/Employee/Admin/RawMaterials">Raw Materials</a></li>
                     <li><a href="/Employee/Admin/Alerts">Alerts</a></li>
                     <li><a href="/Employee/Admin/Archived">Archived items</a></li>
@@ -50,6 +159,11 @@
                 <ul class="sidebar-submenu" style="display:block;">
                     <li><a href="/Employee/Admin/DeliveryRates">Delivery Rates</a></li>
                     <li><a href="/Employee/Admin/WalkIn">Walk In</a></li>
+                </ul>
+                
+                <!-- Orders Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">Orders Section</li>
+                <ul class="sidebar-submenu" style="display:block;">
                     <li><a href="/Employee/Admin/OrdersPending">Pending Orders</a></li>
                     <li><a href="/Employee/Admin/OrdersProcessing">In Process</a></li>
                     <li><a href="/Employee/Admin/OrdersShipping">Shipping</a></li>
@@ -58,11 +172,34 @@
                     <li><a href="/Employee/Admin/CancelledOrders">Cancelled Orders</a></li>
                     <li><a href="/Employee/Admin/CompletedOrders">Completed Orders</a></li>
                 </ul>
-                <li><a href="/Employee/Admin/ManageUsers">Manage Users</a></li>
-                <li><a href="/Employee/Admin/ChatSupport">Chat Support</a></li>
-                <li><a href="/Employee/Admin/CMS">Content Management</a></li>
-                <li><a href="/Employee/Admin/Logs">Activity Logs</a></li>
+                <!-- User Management Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">User Management</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/Admin/ManageUsers">Manage Users</a></li>
+                </ul>
+                
+                <!-- Customer Reviews Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">Customer Reviews</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/Admin/Reviews">Reviews</a></li>
+                </ul>
+                
+                <!-- Support & Communication Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">Support & Communication</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/Admin/ChatSupport">Chat Support</a></li>
+                </ul>
+                
+                <!-- Content & System Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">Content & System</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/Admin/CMS">Content Management</a></li>
+                    <li><a href="/Employee/Admin/Logs">Activity Logs</a></li>
+                </ul>
             </ul>
+            <div class="logout-section">
+                <a href="/logout" class="logout-button" onclick="handleLogout(event)">Logout</a>
+            </div>
         </div>
         <div class="main-content">
             <div class="header">
@@ -78,7 +215,7 @@
                   <div class="chat-thread-items">
                     <% if (threads && threads.length) { %>
                       <% threads.forEach(function(thread) { %>
-                        <div class="chat-thread-item<%= selectedThread && selectedThread.CustomerID === thread.CustomerID ? ' active' : '' %><%= thread.UnreadCount > 0 ? ' unread' : '' %>">
+                        <div class="chat-thread-item<%= selectedThread && selectedThread.CustomerID === thread.CustomerID ? ' active' : '' %><%= thread.UnreadCount > 0 ? ' unread' : '' %>" data-customer-id="<%= thread.CustomerID %>">
                           <div class="chat-thread-info">
                             <div class="chat-thread-name"><%= thread.FullName %></div>
                             <div class="chat-thread-last"><%= thread.LastMessageText %></div>
@@ -129,29 +266,53 @@
     const form = document.getElementById('chat-reply-form');
     const input = document.getElementById('chat-reply-input');
     const customerId = "<%= selectedThread ? selectedThread.CustomerID : '' %>";
+    const customerIdNumber = parseInt(customerId);
     const reloadBtn = document.getElementById('reload-messages-btn');
     const messagesArea = document.querySelector('.chat-messages-area');
 
-    form.addEventListener('submit', async function(e) {
-      e.preventDefault();
-      const message = input.value.trim();
-      if (!message) return;
-      const res = await fetch(`/api/support/chat/messages/${customerId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message })
+    // Debug logging
+    console.log('ChatSupport Debug Info:');
+    console.log('- selectedThread object:', '<%= JSON.stringify(selectedThread) %>');
+    console.log('- selectedThread type:', '<%= typeof selectedThread %>');
+    console.log('- selectedThread.CustomerID:', '<%= selectedThread ? selectedThread.CustomerID : "null" %>');
+    console.log('- customerId:', customerId);
+    console.log('- customerIdNumber:', customerIdNumber);
+    console.log('- form exists:', !!form);
+    console.log('- reloadBtn exists:', !!reloadBtn);
+    console.log('- messagesArea exists:', !!messagesArea);
+
+    // Only setup form if a thread is selected
+    if (form && customerIdNumber && !isNaN(customerIdNumber)) {
+      form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const message = input.value.trim();
+        if (!message) return;
+        const res = await fetch(`/api/support/chat/messages/${customerId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message })
+        });
+        const data = await res.json();
+        if (data.success) {
+          fetchMessagesAndUpdate(); // Just refresh messages, don't reload page
+          input.value = '';
+        } else {
+          console.error('Send message error:', data);
+          alert('Failed to send message: ' + (data.message || 'Unknown error'));
+        }
       });
-      const data = await res.json();
-      if (data.success) {
-        fetchMessagesAndUpdate(); // Just refresh messages, don't reload page
-        input.value = '';
-      } else {
-        alert('Failed to send message');
-      }
-    });
+    } else if (!customerIdNumber || isNaN(customerIdNumber)) {
+      console.log('No chat thread selected - form setup skipped');
+    } else {
+      console.warn('Chat reply form not found in DOM');
+    }
 
     async function fetchMessagesAndUpdate() {
-      if (!customerId) return;
+      if (!customerIdNumber || isNaN(customerIdNumber)) return;
+      if (!messagesArea) {
+        console.warn('Messages area not found in DOM');
+        return;
+      }
       const res = await fetch(`/api/support/chat/messages/${customerId}`);
       const data = await res.json();
       if (data.success && Array.isArray(data.messages)) {
@@ -160,19 +321,102 @@
           html = '<div style="color: #888;">No messages yet.</div>';
         } else {
           data.messages.forEach(function(msg) {
-            const rowClass = msg.SenderType === 'support' ? 'admin' : 'customer';
-            html += `<div class="chat-message-row ${rowClass}"><div class="chat-message-bubble">${msg.MessageText}</div></div>`;
+            const rowClass = msg.IsFromCustomer ? 'customer' : 'admin';
+            const messageText = msg.Message || msg.MessageText || 'No message content';
+            html += `<div class="chat-message-row ${rowClass}"><div class="chat-message-bubble">${messageText}</div></div>`;
           });
         }
         messagesArea.innerHTML = html;
         messagesArea.scrollTop = messagesArea.scrollHeight;
+      } else {
+        console.error('Failed to fetch messages:', data);
+        messagesArea.innerHTML = '<div style="color: #dc3545;">Failed to load messages: ' + (data.message || 'Unknown error') + '</div>';
       }
     }
-    // Polling every 2 seconds
-    setInterval(fetchMessagesAndUpdate, 2000);
-    // Manual reload button
-    if (reloadBtn) reloadBtn.addEventListener('click', fetchMessagesAndUpdate);
+    // Only setup polling and reload button if a thread is selected
+    if (customerIdNumber && !isNaN(customerIdNumber)) {
+      // Polling every 2 seconds
+      setInterval(fetchMessagesAndUpdate, 2000);
+      // Manual reload button
+      if (reloadBtn) {
+        reloadBtn.addEventListener('click', fetchMessagesAndUpdate);
+      } else {
+        console.warn('Reload button not found in DOM');
+      }
+    } else {
+      console.log('No chat thread selected - polling and reload button setup skipped');
+    }
+
+    // Setup click handlers for chat thread items
+    const threadItems = document.querySelectorAll('.chat-thread-item');
+    threadItems.forEach(function(item) {
+      item.addEventListener('click', function() {
+        const customerId = this.getAttribute('data-customer-id');
+        if (customerId) {
+          // Redirect to the same page with the selected thread
+          window.location.href = `/Employee/Admin/ChatSupport?thread=${customerId}`;
+        }
+      });
+    });
   });
 </script>
+
+<!-- Custom Confirmation Modal -->
+<div id="logoutConfirmModal" class="modal-overlay">
+    <div class="modal-content">
+        <h3>Confirm Logout</h3>
+        <p>Are you sure you want to log out?</p>
+        <div class="modal-buttons">
+            <button class="modal-button confirm" id="confirmLogoutBtn">Logout</button>
+            <button class="modal-button cancel" id="cancelLogoutBtn">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Custom Logout Modal Logic
+    const logoutConfirmModal = document.getElementById('logoutConfirmModal');
+    const confirmLogoutBtn = document.getElementById('confirmLogoutBtn');
+    const cancelLogoutBtn = document.getElementById('cancelLogoutBtn');
+
+    async function handleLogout(event) {
+        event.preventDefault();
+        logoutConfirmModal.classList.add('show');
+    }
+
+    confirmLogoutBtn.addEventListener('click', async () => {
+        logoutConfirmModal.classList.remove('show');
+        try {
+            const response = await fetch('/logout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                window.location.href = '/login';
+            } else {
+                console.error('Logout failed');
+                alert('Failed to logout. Please try again.');
+            }
+        } catch (error) {
+            console.error('Error during logout:', error);
+            alert('An error occurred during logout. Please try again.');
+        }
+    });
+
+    cancelLogoutBtn.addEventListener('click', () => {
+        logoutConfirmModal.classList.remove('show');
+    });
+
+    // Close modal if clicked outside content
+    logoutConfirmModal.addEventListener('click', (event) => {
+        if (event.target === logoutConfirmModal) {
+            logoutConfirmModal.classList.remove('show');
+        }
+    });
+</script>
+        <script src="/js/dark-mode.js"></script>
 </body>
-</html> 
+</html>

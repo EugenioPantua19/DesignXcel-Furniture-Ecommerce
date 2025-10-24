@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import ModernPageHeader from '../shared/components/layout/ModernPageHeader';
-import { ContactSection } from '../shared/components/layout';
+import PageHeader from '../shared/components/layout/PageHeader';
 
 const About = () => {
     const [aboutContent, setAboutContent] = useState({
@@ -40,13 +38,49 @@ const About = () => {
     useEffect(() => {
         const fetchAboutContent = async () => {
             try {
-                const response = await fetch('http://localhost:5000/api/admin/about');
+                const apiBase = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+                const response = await fetch(`${apiBase}/api/about`);
                 if (response.ok) {
                     const data = await response.json();
-                    setAboutContent(data);
+                    if (data.success && data.content) {
+                        // Map the API response to the expected format
+                        setAboutContent({
+                            StoryTitle: data.content.ourStoryTitle || 'Our Story',
+                            StorySubtitle: data.content.storySubtitle || 'Crafting Excellence Since 2000',
+                            StoryDescription: data.content.ourStoryContent || 'What began as a small workshop has grown into a leading provider of premium office furniture solutions. Our commitment to quality, innovation and customer satisfaction has been our guiding principle.',
+                            ProjectsCount: data.content.projectsCount || '2000+',
+                            ClientsCount: data.content.clientsCount || '500+',
+                            StoryImageUrl: data.content.storyImageUrl || 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=600&h=400&fit=crop',
+                            MissionTitle: data.content.missionTitle || 'Our Mission',
+                            MissionDescription: data.content.missionContent || 'We strive to transform workspaces into inspiring environments where creativity flourishes and productivity soars. Through innovative design and unwavering attention to detail, we create furniture solutions that perfectly balance form and function.',
+                            Feature1: data.content.feature1 || 'Premium Materials',
+                            Feature2: data.content.feature2 || 'Ergonomic Design',
+                            Feature3: data.content.feature3 || 'Sustainable Practices',
+                            MissionImageUrl: data.content.missionImageUrl || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=600&h=400&fit=crop',
+                            ValuesTitle: data.content.visionTitle || 'Our Values',
+                            Value1Title: data.content.value1Title || 'Innovation',
+                            Value1Description: data.content.value1Description || 'Pushing boundaries in design and functionality',
+                            Value2Title: data.content.value2Title || 'Quality',
+                            Value2Description: data.content.value2Description || 'Uncompromising commitment to excellence',
+                            Value3Title: data.content.value3Title || 'Service',
+                            Value3Description: data.content.value3Description || 'Dedicated to exceeding expectations',
+                            Value4Title: data.content.value4Title || 'Sustainability',
+                            Value4Description: data.content.value4Description || 'Committed to environmental responsibility',
+                            PhilosophyTitle: data.content.philosophyTitle || 'Design Philosophy',
+                            PhilosophySubtitle: data.content.philosophySubtitle || 'Every element of our brand reflects our commitment to clean, modern design',
+                            PhilosophyDescription: data.content.philosophyDescription || 'Our design language embraces simplicity and clarity. We use clean, modern typography that enhances readability and creates a professional, approachable aesthetic. Every font choice is carefully considered to reflect our values of innovation and quality.',
+                            Typo1Title: data.content.typo1Title || 'Clean & Modern',
+                            Typo1Description: data.content.typo1Description || 'Sans-serif fonts that provide excellent readability across all devices',
+                            Typo2Title: data.content.typo2Title || 'Consistent Hierarchy',
+                            Typo2Description: data.content.typo2Description || 'Well-defined text sizes and weights that guide user attention',
+                            Typo3Title: data.content.typo3Title || 'Accessible Design',
+                            Typo3Description: data.content.typo3Description || 'High contrast ratios and legible font sizes for all users',
+                            Layout: data.content.layout || 'default'
+                        });
+                    }
                 }
             } catch (error) {
-                console.error('Error fetching about content:', error);
+                // Error fetching about content
             }
         };
 
@@ -234,7 +268,7 @@ const About = () => {
 
     const renderMinimal = () => (
         <>
-            <section style={{ padding: '24px 0' }}>
+            <section style={{ padding: '12px 0' }}>
                 <h1 style={{ marginBottom: 8 }}>{aboutContent.StoryTitle}</h1>
                 <h3 style={{ marginTop: 0, color: '#666' }}>{aboutContent.StorySubtitle}</h3>
                 <p>{aboutContent.StoryDescription}</p>
@@ -247,7 +281,7 @@ const About = () => {
                 )}
             </section>
             <hr />
-            <section style={{ padding: '24px 0' }}>
+            <section style={{ padding: '12px 0' }}>
                 <h2 style={{ marginBottom: 8 }}>{aboutContent.MissionTitle}</h2>
                 <p>{aboutContent.MissionDescription}</p>
                 <ul style={{ marginTop: 12 }}>
@@ -260,7 +294,7 @@ const About = () => {
                 )}
             </section>
             <hr />
-            <section style={{ padding: '24px 0' }}>
+            <section style={{ padding: '12px 0' }}>
                 <h2 style={{ marginBottom: 8 }}>{aboutContent.ValuesTitle}</h2>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 16 }}>
                     <div><h4>{aboutContent.Value1Title}</h4><p>{aboutContent.Value1Description}</p></div>
@@ -270,7 +304,7 @@ const About = () => {
                 </div>
             </section>
             <hr />
-            <section style={{ padding: '24px 0' }}>
+            <section style={{ padding: '12px 0' }}>
                 <h2 style={{ marginBottom: 8 }}>{aboutContent.PhilosophyTitle}</h2>
                 {aboutContent.PhilosophySubtitle && <p style={{ color: '#666' }}>{aboutContent.PhilosophySubtitle}</p>}
                 <p>{aboutContent.PhilosophyDescription}</p>
@@ -286,18 +320,15 @@ const About = () => {
     return (
         <div className="about-page">
             <div className="container">
-                <ModernPageHeader
+                <PageHeader
                     breadcrumbs={[
                         { label: 'Home', href: '/' },
                         { label: 'About Us' }
                     ]}
                     title="About Us"
-                    subtitle="Crafting Excellence in Office Furniture Since 2000"
+                    subtitle="Learn more about our story, mission, and values"
                 />
                 {aboutContent.Layout === 'minimal' ? renderMinimal() : renderDefault()}
-                
-                {/* Contact Section with Map */}
-                <ContactSection />
             </div>
         </div>
     );

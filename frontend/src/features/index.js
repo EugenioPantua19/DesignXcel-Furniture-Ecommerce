@@ -5,6 +5,6 @@ export * from './cart';
 export * from './checkout';
 export * from './orders';
 export * from './account';
-export * from './customization';
+export * from './3d-products';
 export * from './reviews';
 export * from './admin';

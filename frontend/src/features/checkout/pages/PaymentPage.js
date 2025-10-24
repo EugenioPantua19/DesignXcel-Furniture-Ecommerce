@@ -1,16 +1,25 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../auth/hooks/useAuth';
+import { useAuth } from '../../../shared/hooks/useAuth';
 import stripeService from '../services/stripeService';
 import apiClient from '../../../shared/services/api/apiClient';
 import checkoutSessionManager from '../utils/checkoutSessionManager';
 import './payment.css';
 
+// Cart Icon Component
+const CartIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="8" cy="21" r="1" stroke="currentColor" strokeWidth="2"/>
+        <circle cx="19" cy="21" r="1" stroke="currentColor" strokeWidth="2"/>
+        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+);
+
 const Payment = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { user } = useAuth();
-    const [activeTab, setActiveTab] = useState('e_wallets');
+    const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('stripe');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -58,7 +67,9 @@ const Payment = () => {
     
     // Get shipping information from checkout
     const shippingMethod = location.state?.shippingMethod || 'pickup';
-    const shippingCost = 0; // No shipping cost
+    const shippingCost = location.state?.shippingCost || 0;
+    const subtotal = location.state?.subtotal || 0;
+    const total = location.state?.total || 0;
     const deliveryType = location.state?.deliveryType || 'pickup';
 
     // Format price in PHP
@@ -98,15 +109,31 @@ const Payment = () => {
             }
 
             // Prepare items for Stripe checkout with enhanced product information
-            const itemsForStripe = checkedItems.map(item => ({
-                name: item.product?.name || item.name || 'Product',
-                quantity: item.quantity,
-                price: item.price,
-                id: item.product?.id || item.product?.ProductID || item.id,
-                variationId: item.product?.selectedVariation?.id || null,
-                variationName: item.product?.selectedVariation?.name || null,
-                useOriginalProduct: item.product?.useOriginalProduct || false
-            }));
+            const itemsForStripe = checkedItems.map(item => {
+                const variationId = item.product?.selectedVariation?.id || null;
+                const variationName = item.product?.selectedVariation?.name || null;
+                const useOriginalProduct = item.product?.useOriginalProduct || false;
+                
+                console.log('PaymentPage: Processing cart item:', {
+                    itemName: item.product?.name || item.name,
+                    productId: item.product?.id || item.product?.ProductID || item.id,
+                    variationId: variationId,
+                    variationName: variationName,
+                    useOriginalProduct: useOriginalProduct,
+                    selectedVariation: item.product?.selectedVariation,
+                    hasVariation: !!variationId
+                });
+                
+                return {
+                    name: item.product?.name || item.name || 'Product',
+                    quantity: item.quantity,
+                    price: item.price,
+                    id: item.product?.id || item.product?.ProductID || item.id,
+                    variationId: variationId,
+                    variationName: variationName,
+                    useOriginalProduct: useOriginalProduct
+                };
+            });
             
             // No shipping cost added
             
@@ -115,6 +142,18 @@ const Payment = () => {
                 email: customerEmail,
                 deliveryType: deliveryType,
                 shippingCost: shippingCost
+            });
+            
+            // Debug: Log each item's variation data
+            itemsForStripe.forEach((item, index) => {
+                console.log(`PaymentPage: Item ${index + 1} variation data:`, {
+                    name: item.name,
+                    id: item.id,
+                    variationId: item.variationId,
+                    variationName: item.variationName,
+                    useOriginalProduct: item.useOriginalProduct,
+                    hasVariation: !!item.variationId
+                });
             });
             
             // Clear the cart before redirecting to Stripe (cart will be cleared by webhook after successful payment)
@@ -166,46 +205,6 @@ const Payment = () => {
     return (
         <div className="payment-page">
             <div className="payment-container">
-                {/* Order Summary for Checked Items */}
-                <div className="payment-order-summary">
-                    <div className="payment-summary-header">
-                        <h2>Order Summary</h2>
-                    </div>
-                    <div className="payment-summary-content">
-                        {checkedItems.length === 0 ? (
-                            <div className="no-items">No items selected for payment.</div>
-                        ) : (
-                            <>
-                                {checkedItems.map(item => (
-                                    <div key={item.id} className="payment-summary-item">
-                                        <div className="payment-item-details">
-                                            <div className="payment-item-name">{item.product?.name || 'Product'}</div>
-                                            <div className="payment-item-quantity">x{item.quantity}</div>
-                                            <div className="payment-item-price">{formatPrice(item.price * item.quantity)}</div>
-                                        </div>
-                                    
-                                        {/* Variation display in payment */}
-                                        {item.product && (item.product.useOriginalProduct || !item.product.selectedVariation) ? (
-                                            <span className="payment-variation-badge">Standard</span>
-                                        ) : item.product && item.product.selectedVariation ? (
-                                            <span className="payment-variation-badge">
-                                                Variant: {item.product.selectedVariation.name}
-                                                {item.product.selectedVariation.color ? ` · ${item.product.selectedVariation.color}` : ''}
-                                            </span>
-                                        ) : null}
-                                    </div>
-                                ))}
-                                <div className="payment-total-section">
-                                    <div className="payment-total">
-                                        <span>Total:</span>
-                                        <span>{formatPrice(checkedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0))}</span>
-                                    </div>
-                                </div>
-                            </>
-                        )}
-                    </div>
-                </div>
-
                 {/* Error Display */}
                 {error && (
                     <div className="payment-error-message">
@@ -213,107 +212,84 @@ const Payment = () => {
                     </div>
                 )}
 
-                {/* Main Payment Content */}
-                <div className="payment-main-content">
-                    <div className="payment-header">
-                        <h1>Payment Methods</h1>
-                        <p>Choose from our wide range of secure payment options for a seamless shopping experience</p>
-                    </div>
-
-                    {/* Payment Tabs */}
-                    <div className="payment-tabs">
-                        <button
-                            className={`payment-tab ${activeTab === 'e_wallets' ? 'active' : ''}`}
-                            onClick={() => setActiveTab('e_wallets')}
+                {/* Payment Methods Section */}
+                <div className="payment-methods-section">
+                    <h2 className="section-title">Select Payment Method</h2>
+                    
+                    <div className="payment-methods-list">
+                        {/* Stripe */}
+                        <div 
+                            className={`payment-method-option ${selectedPaymentMethod === 'stripe' ? 'selected' : ''}`}
+                            onClick={() => setSelectedPaymentMethod('stripe')}
                         >
-                            E-Wallets
-                        </button>
-                    </div>
-
-                    {/* Payment Content */}
-                    <div className="payment-content">
-
-                    {activeTab === 'e_wallets' && (
-                        <div className="payment-section">
-                            <div className="payment-main">
-                                <h2>E-Wallets</h2>
-                                <p>Pay quickly and securely using your preferred digital wallet. Fast, convenient, and secure transactions.</p>
-                                
-                                {/* Stripe Configuration Warning */}
-                                {error && error.includes('not configured') && (
-                                    <div className="payment-warning-message">
-                                        <strong>⚠️ Payment System Notice:</strong> The payment system is currently not configured. 
-                                        Please contact support for alternative payment methods or try again later.
-                                    </div>
-                                )}
-
-                                <div className="payment-features">
-                                    <div className="feature-item">
-                                        <span className="feature-icon"></span>
-                                        <span>Instant payments</span>
-                                    </div>
-                                    <div className="feature-item">
-                                        <span className="feature-icon"></span>
-                                        <span>Mobile-friendly</span>
-                                    </div>
-                                    <div className="feature-item">
-                                        <span className="feature-icon"></span>
-                                        <span>Encrypted transactions</span>
-                                    </div>
-                                    <div className="feature-item">
-                                        <span className="feature-icon"></span>
-                                        <span>No additional fees</span>
-                                    </div>
+                            <div className="payment-method-radio">
+                                <div className={`radio-button ${selectedPaymentMethod === 'stripe' ? 'checked' : ''}`}>
+                                    {selectedPaymentMethod === 'stripe' && <div className="radio-dot"></div>}
                                 </div>
                             </div>
-
-                            <div className="security-features">
-                                <h3>Security Features</h3>
-
-                                <div className="security-item">
-                                    <div className="security-icon">
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <path d="M12 1L3 5V11C3 16.55 6.84 21.74 12 23C17.16 21.74 21 16.55 21 11V5L12 1Z" fill="#F0B21B"/>
-                                            <path d="M9 12L11 14L15 10" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                        </svg>
-                                    </div>
-                                    <div className="security-info">
-                                        <h4>Secure Authentication</h4>
-                                        <p>Multi-factor authentication for enhanced account security</p>
-                                    </div>
-                                </div>
-
-                                <div className="security-item">
-                                    <div className="security-icon">
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <circle cx="12" cy="12" r="10" fill="#F0B21B"/>
-                                            <path d="M12 6V12L16 14" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                        </svg>
-                                    </div>
-                                    <div className="security-info">
-                                        <h4>Real-time Protection</h4>
-                                        <p>Advanced fraud detection and prevention systems</p>
-                                    </div>
-                                </div>
+                            <div className="payment-method-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                    <rect x="2" y="8" width="20" height="8" rx="2" fill="#F0B21B"/>
+                                    <rect x="2" y="14" width="20" height="2" fill="#1A1F71"/>
+                                    <text x="12" y="13" textAnchor="middle" fill="white" fontSize="6" fontWeight="bold">STRIPE</text>
+                                </svg>
                             </div>
-                            {/* Proceed Button for E-Wallets */}
-                            <div style={{ textAlign: 'right', marginTop: 24 }}>
-                                <button 
-                                    className="btn-primary" 
-                                    style={{ minWidth: 140, padding: '12px 32px', fontWeight: 600, fontSize: 16 }} 
-                                    onClick={handleEWalletPayment}
-                                    disabled={loading || checkedItems.length === 0}
-                                >
-                                    {loading ? 'Processing...' : 'Proceed to Payment'}
-                                </button>
-                            </div>
+                            <span className="payment-method-name">Stripe</span>
+                            <span className="payment-method-details">Secure payment processing</span>
                         </div>
-                    )}
-
                     </div>
                 </div>
-            </div>
 
+                {/* Order Summary Section */}
+                <div className="order-summary-section">
+                    <div className="order-summary-header">
+                        <div className="summary-icon">
+                            <CartIcon />
+                        </div>
+                        <h2 className="section-title">Order Summary</h2>
+                    </div>
+                    
+                    <div className="order-summary-content">
+                        <div className="summary-item">
+                            <span className="summary-label">Items</span>
+                            <span className="summary-value">{checkedItems.length}</span>
+                        </div>
+                        
+                        <div className="summary-item">
+                            <span className="summary-label">Sub Total</span>
+                            <span className="summary-value">{formatPrice(subtotal)}</span>
+                        </div>
+                        
+                        <div className="summary-item">
+                            <span className="summary-label">Shipping</span>
+                            <span className="summary-value">{formatPrice(shippingCost)}</span>
+                        </div>
+                        
+                        <div className="summary-item">
+                            <span className="summary-label">Taxes</span>
+                            <span className="summary-value">₱0.00</span>
+                        </div>
+                        
+                        <div className="summary-item discount">
+                            <span className="summary-label">Coupon Discount</span>
+                            <span className="summary-value">-₱100.00</span>
+                        </div>
+                        
+                        <div className="summary-item total">
+                            <span className="summary-label">Total</span>
+                            <span className="summary-value">{formatPrice(total)}</span>
+                        </div>
+                    </div>
+
+                    <button 
+                        className="confirm-payment-btn"
+                        onClick={handleEWalletPayment}
+                        disabled={loading || checkedItems.length === 0}
+                    >
+                        {loading ? 'Processing...' : 'Confirm Payment'}
+                    </button>
+                </div>
+            </div>
         </div>
     );
 };

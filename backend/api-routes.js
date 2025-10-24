@@ -73,7 +73,6 @@ module.exports = function(sql, pool) {
     // Cash on Delivery Order Creation
     router.post('/api/orders/cash-on-delivery', async (req, res) => {
         try {
-            console.log('Received cash-on-delivery order request:', req.body);
             
             // Check if user is authenticated
             if (!req.session.user || req.session.user.role !== 'Customer') {
@@ -141,20 +140,40 @@ module.exports = function(sql, pool) {
             
             const orderId = orderResult.recordset[0].OrderID;
             
-            // Add order items
+            // Add order items and decrement stock
             for (const item of items) {
                 await pool.request()
                     .input('orderId', sql.Int, orderId)
                     .input('productId', sql.Int, item.productId)
                     .input('quantity', sql.Int, item.quantity)
                     .input('price', sql.Decimal(10, 2), item.price)
+                    .input('variationId', sql.Int, item.variationId || null)
                     .query(`
-                        INSERT INTO OrderItems (OrderID, ProductID, Quantity, PriceAtPurchase)
-                        VALUES (@orderId, @productId, @quantity, @price)
+                        INSERT INTO OrderItems (OrderID, ProductID, Quantity, PriceAtPurchase, VariationID)
+                        VALUES (@orderId, @productId, @quantity, @price, @variationId)
                     `);
+
+                // Decrement stock quantities
+                
+                // Always decrement main product stock first
+                const productUpdateResult = await pool.request()
+                    .input('productId', sql.Int, item.productId)
+                    .input('quantity', sql.Int, item.quantity)
+                    .query(`UPDATE Products 
+                            SET StockQuantity = CASE WHEN StockQuantity >= @quantity THEN StockQuantity - @quantity ELSE 0 END 
+                            WHERE ProductID = @productId`);
+                
+                // Additionally decrement variation stock if this is a variation purchase
+                if (item.variationId && item.variationId !== null && item.variationId !== undefined) {
+                    const variationUpdateResult = await pool.request()
+                        .input('variationId', sql.Int, item.variationId)
+                        .input('quantity', sql.Int, item.quantity)
+                        .query(`UPDATE ProductVariations 
+                                SET Quantity = CASE WHEN Quantity >= @quantity THEN Quantity - @quantity ELSE 0 END 
+                                WHERE VariationID = @variationId`);
+                }
             }
             
-            console.log('Cash on delivery order created successfully:', orderId);
             
             res.json({ 
                 success: true, 
@@ -163,7 +182,6 @@ module.exports = function(sql, pool) {
             });
             
         } catch (error) {
-            console.error('Error creating cash-on-delivery order:', error);
             res.status(500).json({ 
                 success: false, 
                 message: 'Failed to create order',
@@ -182,7 +200,6 @@ module.exports = function(sql, pool) {
             const limit = parseInt(req.query.limit) || 4;
             const offset = (page - 1) * limit;
             
-            console.log('Backend: Fetching reviews for product ID:', productId, 'Sort:', sortBy, 'Page:', page, 'Limit:', limit);
             
             // Check if table has extended columns
             const columnCheck = await pool.request().query(`
@@ -264,14 +281,12 @@ module.exports = function(sql, pool) {
                 .input('limit', sql.Int, limit)
                 .query(query);
             
-            console.log('Backend: Reviews query result:', result.recordset);
             
             res.json({
                 success: true,
                 reviews: result.recordset
             });
         } catch (err) {
-            console.error('Backend: Error fetching product reviews:', err);
             res.status(500).json({ 
                 success: false, 
                 error: 'Failed to fetch reviews', 
@@ -280,11 +295,39 @@ module.exports = function(sql, pool) {
         }
     });
 
+    // Helper function to check if customer has completed purchase of a product
+    async function hasCompletedPurchase(customerId, productId) {
+        try {
+            if (!customerId || !productId) {
+                return false;
+            }
+            
+            const result = await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .input('productId', sql.Int, productId)
+                .query(`
+                    SELECT COUNT(*) as purchaseCount
+                    FROM OrderItems oi
+                    INNER JOIN Orders o ON oi.OrderID = o.OrderID
+                    WHERE o.CustomerID = @customerId 
+                    AND oi.ProductID = @productId 
+                    AND o.Status = 'Completed'
+                `);
+            
+            const purchaseCount = result.recordset[0].purchaseCount;
+            return purchaseCount > 0;
+        } catch (error) {
+            console.error('Error checking purchase verification:', error);
+            console.error('Error details:', error.message);
+            return false;
+        }
+    }
+
     // Add a new review for a product
     router.post('/api/products/:productId/reviews', (req, res, next) => {
         reviewUpload.array('images', 5)(req, res, (err) => {
             if (err) {
-                console.error('Multer error:', err);
+                // Multer error occurred
                 
                 if (err.code === 'LIMIT_FILE_SIZE') {
                     return res.status(400).json({ 
@@ -317,14 +360,6 @@ module.exports = function(sql, pool) {
     }, async (req, res) => {
         try {
             const productId = parseInt(req.params.productId);
-            
-            // Debug logging
-            console.log('Backend: Request headers:', req.headers);
-            console.log('Backend: Request body keys:', Object.keys(req.body));
-            console.log('Backend: Request body:', req.body);
-            console.log('Backend: Request files:', req.files);
-            console.log('Backend: Content-Type:', req.get('Content-Type'));
-            
             // Extract data from request body (handles both FormData and JSON)
             const rawRating = req.body.rating;
             let parsedRating;
@@ -339,41 +374,34 @@ module.exports = function(sql, pool) {
                 parsedRating = NaN;
             }
             
+            const parsedCustomerId = req.body.customerId ? parseInt(req.body.customerId) : null;
+            
             const reviewData = {
                 name: req.body.name,
                 email: req.body.email,
                 rating: parsedRating,
                 title: req.body.title,
                 comment: req.body.comment,
-                customerId: req.body.customerId
+                customerId: parsedCustomerId || null
             };
             
             const { name, email, rating, title, comment, customerId } = reviewData;
             
-            console.log('Backend: Adding review for product ID:', productId);
-            console.log('Backend: Raw request body:', req.body);
-            console.log('Backend: Extracted data:', { name, email, rating, title, comment, customerId });
-            console.log('Backend: Rating details:', { 
-                rating, 
-                type: typeof rating, 
-                isNaN: isNaN(rating),
-                originalRating: rawRating,
-                originalType: typeof rawRating,
-                parsedRating: parsedRating,
-                parsedType: typeof parsedRating
-            });
+            
+            // Check if customer has completed purchase of this product
+            if (customerId) {
+                const hasPurchase = await hasCompletedPurchase(customerId, productId);
+                if (!hasPurchase) {
+                    return res.status(403).json({
+                        success: false,
+                        error: 'You can only review products you have purchased and received. Please complete a purchase of this product first.',
+                        code: 'PURCHASE_REQUIRED'
+                    });
+                }
+            }
             
             // Validate input - be more specific about validation
             if (isNaN(rating) || rating < 1 || rating > 5) {
-                console.log('Rating validation failed:', { 
-                    rating, 
-                    type: typeof rating, 
-                    isNaN: isNaN(rating),
-                    lessThan1: rating < 1,
-                    greaterThan5: rating > 5,
-                    rawRating: rawRating,
-                    parsedRating: parsedRating
-                });
                 return res.status(400).json({ 
                     success: false, 
                     error: 'Rating must be between 1 and 5' 
@@ -417,12 +445,14 @@ module.exports = function(sql, pool) {
             
             // Handle uploaded images
             let imageUrls = [];
+            let imageUrlString = '';
             if (req.files && req.files.length > 0) {
                 imageUrls = req.files.map(file => {
                     // Return relative path from public directory
                     return '/uploads/reviews/' + file.filename;
                 });
-                console.log('Backend: Review images uploaded:', imageUrls);
+                imageUrlString = imageUrls.join(',');
+                // Review images uploaded successfully
             }
             
             // Check if ProductReviews table has the required columns
@@ -430,25 +460,47 @@ module.exports = function(sql, pool) {
                 SELECT COLUMN_NAME 
                 FROM INFORMATION_SCHEMA.COLUMNS 
                 WHERE TABLE_NAME = 'ProductReviews' 
-                AND COLUMN_NAME IN ('ReviewerName', 'ReviewerEmail', 'Title')
+                AND COLUMN_NAME IN ('ReviewerName', 'ReviewerEmail', 'Title', 'ImageURL')
             `);
             
             let result;
             if (columnCheck.recordset.length >= 3) {
-                // Table has extended columns
-                result = await pool.request()
-                    .input('productId', sql.Int, productId)
-                    .input('customerId', sql.Int, parseInt(customerId))
-                    .input('reviewerName', sql.NVarChar, name.trim())
-                    .input('reviewerEmail', sql.NVarChar, email.trim())
-                    .input('rating', sql.Int, rating)
-                    .input('title', sql.NVarChar, title.trim())
-                    .input('comment', sql.NVarChar, comment.trim())
-                    .query(`
-                        INSERT INTO ProductReviews (ProductID, CustomerID, ReviewerName, ReviewerEmail, Rating, Title, Comment, CreatedAt, IsActive)
-                        OUTPUT INSERTED.*
-                        VALUES (@productId, @customerId, @reviewerName, @reviewerEmail, @rating, @title, @comment, GETDATE(), 1)
-                    `);
+                // Use direct SQL query instead of stored procedure
+                
+                // Check if image support is available
+                if (columnCheck.recordset.length >= 4) {
+                    // Use the new procedure with image support
+                    result = await pool.request()
+                        .input('productId', sql.Int, productId)
+                        .input('customerId', sql.Int, parseInt(customerId))
+                        .input('rating', sql.Int, rating)
+                        .input('comment', sql.NVarChar, comment.trim())
+                        .input('reviewerName', sql.NVarChar, name.trim())
+                        .input('reviewerEmail', sql.NVarChar, email.trim())
+                        .input('title', sql.NVarChar, title.trim())
+                        .input('imageUrl', sql.NVarChar, imageUrls.length > 0 ? imageUrls[0] : null)
+                        .input('imageUrls', sql.NVarChar, imageUrlString)
+                        .query(`
+                            INSERT INTO ProductReviews (ProductID, CustomerID, ReviewerName, ReviewerEmail, Rating, Title, Comment, CreatedAt, UpdatedAt, IsActive, HelpfulCount)
+                            OUTPUT INSERTED.*
+                            VALUES (@productId, @customerId, @reviewerName, @reviewerEmail, @rating, @title, @comment, GETDATE(), GETDATE(), 1, 0)
+                        `);
+                } else {
+                    // Table has extended columns but no image support yet
+                    result = await pool.request()
+                        .input('productId', sql.Int, productId)
+                        .input('customerId', sql.Int, parseInt(customerId))
+                        .input('reviewerName', sql.NVarChar, name.trim())
+                        .input('reviewerEmail', sql.NVarChar, email.trim())
+                        .input('rating', sql.Int, rating)
+                        .input('title', sql.NVarChar, title.trim())
+                        .input('comment', sql.NVarChar, comment.trim())
+                        .query(`
+                            INSERT INTO ProductReviews (ProductID, CustomerID, ReviewerName, ReviewerEmail, Rating, Title, Comment, CreatedAt, UpdatedAt, IsActive, HelpfulCount)
+                            OUTPUT INSERTED.*
+                            VALUES (@productId, @customerId, @reviewerName, @reviewerEmail, @rating, @title, @comment, GETDATE(), GETDATE(), 1, 0)
+                        `);
+                }
             } else {
                 // Use basic columns only
                 result = await pool.request()
@@ -456,10 +508,14 @@ module.exports = function(sql, pool) {
                     .input('customerId', sql.Int, parseInt(customerId))
                     .input('rating', sql.Int, rating)
                     .input('comment', sql.NVarChar, `${title.trim()}\n\n${comment.trim()}`)
-                    .execute('AddProductReview');
+                    .query(`
+                        INSERT INTO ProductReviews (ProductID, CustomerID, Rating, Comment, CreatedAt, UpdatedAt, IsActive, HelpfulCount)
+                        OUTPUT INSERTED.*
+                        VALUES (@productId, @customerId, @rating, @comment, GETDATE(), GETDATE(), 1, 0)
+                    `);
             }
             
-            console.log('Backend: Review added successfully:', result.recordset[0]);
+            // Review added successfully
             
             res.json({
                 success: true,
@@ -467,7 +523,9 @@ module.exports = function(sql, pool) {
                 message: 'Review submitted successfully!'
             });
         } catch (err) {
-            console.error('Backend: Error adding product review:', err);
+            // Error adding product review
+            console.error('Main review submission error:', err);
+            console.error('Error stack:', err.stack);
             
             // Handle multer errors specifically
             if (err.code === 'LIMIT_FILE_SIZE') {
@@ -491,10 +549,44 @@ module.exports = function(sql, pool) {
                 });
             }
             
+            console.error('Review submission error:', err);
+            console.error('Error stack:', err.stack);
             res.status(500).json({ 
                 success: false, 
                 error: 'Failed to add review', 
                 details: err.message 
+            });
+        }
+    });
+
+    // Check if user can review a product (has completed purchase)
+    router.get('/api/products/:productId/reviews/can-review', async (req, res) => {
+        try {
+            const productId = parseInt(req.params.productId);
+            const customerId = parseInt(req.query.customerId);
+            
+            
+            if (!customerId) {
+                return res.json({
+                    success: true,
+                    canReview: false,
+                    reason: 'Customer ID is required'
+                });
+            }
+            
+            const hasPurchase = await hasCompletedPurchase(customerId, productId);
+            
+            res.json({
+                success: true,
+                canReview: hasPurchase,
+                reason: hasPurchase ? 'Customer has completed purchase' : 'Customer has not completed purchase of this product'
+            });
+        } catch (error) {
+            console.error('Error checking review eligibility:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to check review eligibility',
+                details: error.message
             });
         }
     });
@@ -504,9 +596,21 @@ module.exports = function(sql, pool) {
         try {
             const productId = parseInt(req.params.productId);
             
+            // Get review statistics using regular SQL query
             const result = await pool.request()
                 .input('productId', sql.Int, productId)
-                .execute('GetProductReviewStats');
+                .query(`
+                    SELECT 
+                        AVG(CAST(Rating AS FLOAT)) as AverageRating,
+                        COUNT(*) as TotalReviews,
+                        SUM(CASE WHEN Rating = 5 THEN 1 ELSE 0 END) as FiveStarCount,
+                        SUM(CASE WHEN Rating = 4 THEN 1 ELSE 0 END) as FourStarCount,
+                        SUM(CASE WHEN Rating = 3 THEN 1 ELSE 0 END) as ThreeStarCount,
+                        SUM(CASE WHEN Rating = 2 THEN 1 ELSE 0 END) as TwoStarCount,
+                        SUM(CASE WHEN Rating = 1 THEN 1 ELSE 0 END) as OneStarCount
+                    FROM ProductReviews 
+                    WHERE ProductID = @productId AND IsActive = 1
+                `);
             
             const stats = result.recordset[0];
             
@@ -532,7 +636,7 @@ module.exports = function(sql, pool) {
             res.status(500).json({ 
                 success: false, 
                 error: 'Failed to fetch review statistics', 
-                details: err.message 
+                details: err.message
             });
         }
     });
@@ -850,6 +954,8 @@ module.exports = function(sql, pool) {
                         p.IsActive as isActive,
                         p.Dimensions as specifications,
                         p.IsFeatured as featured,
+                        p.Model3DURL as model3d,
+                        p.Has3DModel as has3dModel,
                         COALESCE(AVG(CAST(pr.Rating AS FLOAT)), 0) as averageRating,
                         COUNT(pr.ReviewID) as reviewCount,
                         pd.DiscountID,
@@ -890,6 +996,7 @@ module.exports = function(sql, pool) {
                     GROUP BY 
                         p.ProductID, p.Name, p.Description, p.Price, p.StockQuantity, 
                         p.Category, p.ImageURL, p.ThumbnailURLs, p.DateAdded, p.IsActive, p.Dimensions, p.IsFeatured,
+                        p.Model3DURL, p.Has3DModel,
                         pd.DiscountID, pd.DiscountType, pd.DiscountValue, pd.StartDate, pd.EndDate,
                         sold.soldQuantity
                     ORDER BY p.IsFeatured DESC, p.DateAdded DESC
@@ -910,7 +1017,7 @@ module.exports = function(sql, pool) {
                         p.IsActive as isActive,
                         p.Dimensions as specifications,
                         p.IsFeatured as featured,
-                        p.Model3D as model3d,
+                        p.Model3DURL as model3d,
                         p.Has3DModel as has3dModel,
                         0 as averageRating,
                         0 as reviewCount,
@@ -979,7 +1086,7 @@ module.exports = function(sql, pool) {
                         p.IsActive as isActive,
                         p.Dimensions as specifications,
                         p.IsFeatured as featured,
-                        p.Model3D as model3d,
+                        p.Model3DURL as model3d,
                         p.Has3DModel as has3dModel,
                         COALESCE(sold.soldQuantity, 0) as soldQuantity,
                         0 as averageRating,
@@ -1317,7 +1424,7 @@ module.exports = function(sql, pool) {
                         p.IsActive as isActive,
                         p.Dimensions as specifications,
                         p.IsFeatured as featured,
-                        p.Model3D as model3d,
+                        p.Model3DURL as model3d,
                         p.Has3DModel as has3dModel,
                         COALESCE(AVG(CAST(pr.Rating AS FLOAT)), 0) as averageRating,
                         COUNT(pr.ReviewID) as reviewCount,
@@ -1347,7 +1454,7 @@ module.exports = function(sql, pool) {
                     GROUP BY 
                         p.ProductID, p.Name, p.Description, p.Price, p.StockQuantity, 
                         p.Category, p.ImageURL, p.ThumbnailURLs, p.DateAdded, p.IsActive, p.Dimensions, p.IsFeatured,
-                        p.Model3D, p.Has3DModel,
+                        p.Model3DURL, p.Has3DModel,
                         pd.DiscountID, pd.DiscountType, pd.DiscountValue, pd.StartDate, pd.EndDate
                 `;
             } else {
@@ -1366,7 +1473,7 @@ module.exports = function(sql, pool) {
                         p.IsActive as isActive,
                         p.Dimensions as specifications,
                         p.IsFeatured as featured,
-                        p.Model3D as model3d,
+                        p.Model3DURL as model3d,
                         p.Has3DModel as has3dModel,
                         0 as averageRating,
                         0 as reviewCount,
@@ -1472,7 +1579,6 @@ module.exports = function(sql, pool) {
     router.get('/api/products/:productId/variations', async (req, res) => {
         try {
             const productId = parseInt(req.params.productId);
-            console.log('Backend: Fetching variations for product ID:', productId);
             
             // Check if ProductVariations table exists
             const tableCheck = await pool.request().query(`
@@ -1510,7 +1616,6 @@ module.exports = function(sql, pool) {
                     ORDER BY pv.CreatedAt DESC
                 `);
             
-            console.log('Backend: Variations query result:', result.recordset.length, 'variations found');
             
             // Process variations data (keep imageUrl relative so frontend/proxy can resolve)
             const variations = result.recordset.map(variation => ({
@@ -1523,7 +1628,6 @@ module.exports = function(sql, pool) {
                 variations: variations
             });
         } catch (err) {
-            console.error('Backend: Error fetching product variations:', err);
             res.status(500).json({ 
                 success: false, 
                 error: 'Failed to fetch variations', 
@@ -2353,6 +2457,292 @@ module.exports = function(sql, pool) {
             res.status(500).json({
                 success: false,
                 message: 'Failed to upload background image'
+            });
+        }
+    });
+
+    // --- Admin Alerts API Endpoints ---
+    
+    // Get system alerts
+    router.get('/api/admin/alerts/system', async (req, res) => {
+        try {
+            // Check if user is authenticated and has admin permissions
+            if (!req.session.user || req.session.user.role !== 'Admin') {
+                return res.status(401).json({ 
+                    success: false, 
+                    message: 'Unauthorized - Admin access required' 
+                });
+            }
+            
+            // Mock system alerts data for now
+            const systemAlerts = [
+                {
+                    id: 1,
+                    title: 'Database Connection Pool Low',
+                    message: 'Database connection pool is running low on available connections.',
+                    severity: 'warning',
+                    source: 'Database Monitor',
+                    timestamp: new Date().toISOString()
+                },
+                {
+                    id: 2,
+                    title: 'High Memory Usage',
+                    message: 'Server memory usage has exceeded 80% of available capacity.',
+                    severity: 'critical',
+                    source: 'System Monitor',
+                    timestamp: new Date(Date.now() - 300000).toISOString()
+                },
+                {
+                    id: 3,
+                    title: 'Backup Completed Successfully',
+                    message: 'Daily database backup completed successfully.',
+                    severity: 'info',
+                    source: 'Backup Service',
+                    timestamp: new Date(Date.now() - 3600000).toISOString()
+                }
+            ];
+            
+            res.json({
+                success: true,
+                alerts: systemAlerts
+            });
+        } catch (error) {
+            console.error('Error fetching system alerts:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to fetch system alerts',
+                details: error.message
+            });
+        }
+    });
+    
+    // Get security alerts
+    router.get('/api/admin/alerts/security', async (req, res) => {
+        try {
+            // Check if user is authenticated and has admin permissions
+            if (!req.session.user || req.session.user.role !== 'Admin') {
+                return res.status(401).json({ 
+                    success: false, 
+                    message: 'Unauthorized - Admin access required' 
+                });
+            }
+            
+            // Mock security alerts data for now
+            const securityAlerts = [
+                {
+                    id: 1,
+                    title: 'Multiple Failed Login Attempts',
+                    message: 'Multiple failed login attempts detected from IP address.',
+                    severity: 'high',
+                    ipAddress: '192.168.1.100',
+                    userName: 'Unknown',
+                    timestamp: new Date().toISOString()
+                },
+                {
+                    id: 2,
+                    title: 'Suspicious Activity Detected',
+                    message: 'Unusual access pattern detected from user account.',
+                    severity: 'medium',
+                    ipAddress: '10.0.0.50',
+                    userName: 'john.doe@example.com',
+                    timestamp: new Date(Date.now() - 600000).toISOString()
+                },
+                {
+                    id: 3,
+                    title: 'Password Reset Request',
+                    message: 'Password reset requested for user account.',
+                    severity: 'info',
+                    ipAddress: '203.0.113.45',
+                    userName: 'jane.smith@example.com',
+                    timestamp: new Date(Date.now() - 1200000).toISOString()
+                }
+            ];
+            
+            res.json({
+                success: true,
+                alerts: securityAlerts
+            });
+        } catch (error) {
+            console.error('Error fetching security alerts:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to fetch security alerts',
+                details: error.message
+            });
+        }
+    });
+    
+    // Get performance alerts
+    router.get('/api/admin/alerts/performance', async (req, res) => {
+        try {
+            // Check if user is authenticated and has admin permissions
+            if (!req.session.user || req.session.user.role !== 'Admin') {
+                return res.status(401).json({ 
+                    success: false, 
+                    message: 'Unauthorized - Admin access required' 
+                });
+            }
+            
+            // Mock performance alerts data for now
+            const performanceAlerts = [
+                {
+                    id: 1,
+                    title: 'High CPU Usage',
+                    message: 'CPU usage has exceeded 85% for the past 5 minutes.',
+                    severity: 'warning',
+                    metric: 'CPU Usage',
+                    value: '87%',
+                    timestamp: new Date().toISOString()
+                },
+                {
+                    id: 2,
+                    title: 'Slow Database Queries',
+                    message: 'Several database queries are taking longer than expected.',
+                    severity: 'medium',
+                    metric: 'Query Time',
+                    value: '2.5s avg',
+                    timestamp: new Date(Date.now() - 300000).toISOString()
+                },
+                {
+                    id: 3,
+                    title: 'Disk Space Warning',
+                    message: 'Available disk space is running low.',
+                    severity: 'high',
+                    metric: 'Disk Space',
+                    value: '15% free',
+                    timestamp: new Date(Date.now() - 600000).toISOString()
+                }
+            ];
+            
+            res.json({
+                success: true,
+                alerts: performanceAlerts
+            });
+        } catch (error) {
+            console.error('Error fetching performance alerts:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to fetch performance alerts',
+                details: error.message
+            });
+        }
+    });
+    
+    // Get user activity alerts
+    router.get('/api/admin/alerts/user-activity', async (req, res) => {
+        try {
+            // Check if user is authenticated and has admin permissions
+            if (!req.session.user || req.session.user.role !== 'Admin') {
+                return res.status(401).json({ 
+                    success: false, 
+                    message: 'Unauthorized - Admin access required' 
+                });
+            }
+            
+            // Mock user activity alerts data for now
+            const userActivityAlerts = [
+                {
+                    id: 1,
+                    title: 'Unusual Login Time',
+                    message: 'User logged in at an unusual time (3:00 AM).',
+                    severity: 'medium',
+                    userName: 'alice.johnson@example.com',
+                    userId: 123,
+                    activity: 'Login',
+                    timestamp: new Date().toISOString()
+                },
+                {
+                    id: 2,
+                    title: 'Multiple Account Access',
+                    message: 'User accessed account from multiple locations simultaneously.',
+                    severity: 'high',
+                    userName: 'bob.wilson@example.com',
+                    userId: 456,
+                    activity: 'Concurrent Sessions',
+                    timestamp: new Date(Date.now() - 900000).toISOString()
+                },
+                {
+                    id: 3,
+                    title: 'Large Order Placed',
+                    message: 'User placed an unusually large order.',
+                    severity: 'info',
+                    userName: 'charlie.brown@example.com',
+                    userId: 789,
+                    activity: 'Order Placement',
+                    timestamp: new Date(Date.now() - 1800000).toISOString()
+                }
+            ];
+            
+            res.json({
+                success: true,
+                alerts: userActivityAlerts
+            });
+        } catch (error) {
+            console.error('Error fetching user activity alerts:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to fetch user activity alerts',
+                details: error.message
+            });
+        }
+    });
+    
+    // Dismiss alert
+    router.post('/api/admin/alerts/:alertId/dismiss', async (req, res) => {
+        try {
+            const alertId = parseInt(req.params.alertId);
+            
+            // Check if user is authenticated and has admin permissions
+            if (!req.session.user || req.session.user.role !== 'Admin') {
+                return res.status(401).json({ 
+                    success: false, 
+                    message: 'Unauthorized - Admin access required' 
+                });
+            }
+            
+            // For now, just return success (in a real implementation, you'd update the database)
+            console.log(`Alert ${alertId} dismissed by admin ${req.session.user.id}`);
+            
+            res.json({
+                success: true,
+                message: 'Alert dismissed successfully'
+            });
+        } catch (error) {
+            console.error('Error dismissing alert:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to dismiss alert',
+                details: error.message
+            });
+        }
+    });
+    
+    // Acknowledge alert
+    router.post('/api/admin/alerts/:alertId/acknowledge', async (req, res) => {
+        try {
+            const alertId = parseInt(req.params.alertId);
+            
+            // Check if user is authenticated and has admin permissions
+            if (!req.session.user || req.session.user.role !== 'Admin') {
+                return res.status(401).json({ 
+                    success: false, 
+                    message: 'Unauthorized - Admin access required' 
+                });
+            }
+            
+            // For now, just return success (in a real implementation, you'd update the database)
+            console.log(`Alert ${alertId} acknowledged by admin ${req.session.user.id}`);
+            
+            res.json({
+                success: true,
+                message: 'Alert acknowledged successfully'
+            });
+        } catch (error) {
+            console.error('Error acknowledging alert:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to acknowledge alert',
+                details: error.message
             });
         }
     });

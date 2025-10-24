@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../../auth/hooks/useAuth';
+import { useAuth } from '../../../shared/hooks/useAuth';
 import { useCurrency } from '../../../shared/contexts/CurrencyContext';
 import apiClient from '../../../shared/services/api/apiClient';
 import ConfirmationModal from '../../../shared/components/ui/ConfirmationModal';
+import PageHeader from '../../../shared/components/layout/PageHeader';
+import { getImageUrl } from '../../../shared/utils/imageUtils';
+import { Bars } from 'react-loader-spinner';
 import './orders.css';
 
 const Orders = () => {
@@ -113,14 +116,17 @@ const Orders = () => {
             const res = await apiClient.put(`/api/customer/orders/${orderId}/cancel`);
             if (res.success) {
                 setOrders(prev => prev.map(order => 
-                    order.OrderID === orderId ? { ...order, Status: 'Cancelled' } : order
+                    order.OrderID === orderId 
+                        ? { ...order, Status: 'Cancelled' }
+                        : order
                 ));
+                setShowSuccessModal({ open: true, message: 'Order cancelled successfully' });
             } else {
-                alert(res.message || 'Failed to cancel order.');
+                setShowSuccessModal({ open: true, message: 'Failed to cancel order' });
             }
         } catch (err) {
-            alert('Failed to cancel order. Please try again.');
             console.error('Error cancelling order:', err);
+            setShowSuccessModal({ open: true, message: 'Failed to cancel order' });
         } finally {
             setCancelling(prev => ({ ...prev, [orderId]: false }));
         }
@@ -134,15 +140,17 @@ const Orders = () => {
             const res = await apiClient.put(`/api/customer/orders/${orderId}/receive`);
             if (res.success) {
                 setOrders(prev => prev.map(order => 
-                    order.OrderID === orderId ? { ...order, Status: 'Completed' } : order
+                    order.OrderID === orderId 
+                        ? { ...order, Status: 'Delivered' }
+                        : order
                 ));
-                setShowSuccessModal({ open: true, message: 'Order marked as completed successfully!' });
+                setShowSuccessModal({ open: true, message: 'Order marked as received' });
             } else {
-                alert(res.message || 'Failed to mark order as received.');
+                setShowSuccessModal({ open: true, message: 'Failed to mark order as received' });
             }
         } catch (err) {
-            alert('Failed to mark order as received. Please try again.');
             console.error('Error receiving order:', err);
+            setShowSuccessModal({ open: true, message: 'Failed to mark order as received' });
         } finally {
             setReceiving(prev => ({ ...prev, [orderId]: false }));
         }
@@ -218,7 +226,7 @@ const Orders = () => {
         return (
             <div className="orders-page">
                 <div className="loading-state">
-                    <div className="loading-spinner"></div>
+                    <Bars color="#F0B21B" height={80} width={80} />
                     <p>Loading your orders...</p>
                 </div>
             </div>
@@ -244,218 +252,165 @@ const Orders = () => {
 
     return (
         <div className="orders-page">
-            {/* Simple Header */}
-            <div className="orders-header">
-                <h1>My Orders</h1>
-                <p>Track and manage your orders</p>
-            </div>
+            <PageHeader
+                breadcrumbs={[
+                    { label: 'Home', href: '/' },
+                    { label: 'Account', href: '/account' },
+                    { label: 'My Orders' }
+                ]}
+                title="My Orders"
+                subtitle={`${orders.length} orders`}
+            />
 
-            {/* Simple Filters */}
-            <div className="orders-filters">
-                <div className="search-input">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="2"/>
-                        <path d="m21 21-4.35-4.35" stroke="currentColor" strokeWidth="2"/>
-                    </svg>
-                    <input
-                        type="text"
-                        placeholder="Search orders..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                </div>
-                <div className="sort-controls">
-                    <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-                        <option value="date">Order Date</option>
-                        <option value="amount">Total Amount</option>
-                        <option value="status">Status</option>
-                    </select>
-                    <button 
-                        className="sort-btn"
-                        onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                    >
-                        {sortOrder === 'asc' ? '↑' : '↓'}
-                    </button>
-                </div>
-            </div>
-
-            {/* Simple Tabs */}
-            <div className="orders-tabs">
-                <button
-                    className={`tab ${activeTab === 'all' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('all')}
-                >
-                    All ({orders.length})
-                </button>
-                <button
-                    className={`tab ${activeTab === 'pending' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('pending')}
-                >
-                    Pending ({orders.filter(o => o.Status === 'Pending' || o.Status === 'Processing').length})
-                </button>
-                <button
-                    className={`tab ${activeTab === 'shipped' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('shipped')}
-                >
-                    Shipped ({orders.filter(o => o.Status === 'Shipping' || o.Status === 'Delivering').length})
-                </button>
-                <button
-                    className={`tab ${activeTab === 'completed' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('completed')}
-                >
-                    Completed ({orders.filter(o => o.Status === 'Completed' || o.Status === 'Delivered').length})
-                </button>
-                <button
-                    className={`tab ${activeTab === 'cancelled' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('cancelled')}
-                >
-                    Cancelled ({orders.filter(o => o.Status === 'Cancelled').length})
-                </button>
-            </div>
-
-            {/* Simple Orders List */}
-            <div className="orders-list">
-                {filteredOrders.length === 0 ? (
-                    <div className="empty-state">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M21 16V8C20.9996 7.64927 20.9071 7.30481 20.7315 7.00116C20.556 6.69751 20.3037 6.44536 20 6.27L13 2.27C12.696 2.09446 12.3511 2.00205 12 2.00205C11.6489 2.00205 11.304 2.09446 11 2.27L4 6.27C3.69626 6.44536 3.44398 6.69751 3.26846 7.00116C3.09294 7.30481 3.00036 7.64927 3 8V16C3.00036 16.3507 3.09294 16.6952 3.26846 16.9988C3.44398 17.3025 3.69626 17.5546 4 17.73L11 21.73C11.304 21.9055 11.6489 21.9979 12 21.9979C12.3511 21.9979 12.696 21.9055 13 21.73L20 17.73C20.3037 17.5546 20.556 17.3025 20.7315 16.9988C20.9071 16.6952 20.9996 16.3507 21 16Z" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <polyline points="3.27,6.96 12,12.01 20.73,6.96" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <div className="orders-container">
+                {/* Simple Search and Filter */}
+                <div className="orders-controls">
+                    <div className="search-box">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="2"/>
+                            <path d="m21 21-4.35-4.35" stroke="currentColor" strokeWidth="2"/>
                         </svg>
-                        <h3>No orders found</h3>
-                        <p>
-                            {searchTerm 
-                                ? 'No orders match your search criteria.' 
-                                : 'You haven\'t placed any orders yet.'
-                            }
-                        </p>
-                        {!searchTerm && (
-                            <Link to="/products" className="btn btn-primary">
-                                Start Shopping
-                            </Link>
-                        )}
+                        <input
+                            type="text"
+                            placeholder="Search orders..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
                     </div>
-                ) : (
-                    filteredOrders.map(order => (
-                        <div key={order.OrderID} className="order-card">
-                            <div className="order-header">
-                                <div className="order-info">
-                                    <h3>Order #{order.OrderID}</h3>
-                                    <p className="order-date">
-                                        {new Date(order.OrderDate).toLocaleDateString('en-US', {
-                                            year: 'numeric',
-                                            month: 'long',
-                                            day: 'numeric',
-                                            hour: '2-digit',
-                                            minute: '2-digit'
-                                        })}
-                                    </p>
-                                </div>
-                                <div className="order-status">
-                                    <span className={getStatusBadgeClass(order.Status)}>
-                                        {getStatusIcon(order.Status)} {order.Status}
-                                    </span>
-                                </div>
-                            </div>
+                    
+                    <div className="filter-tabs">
+                        <button
+                            className={`tab ${activeTab === 'all' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('all')}
+                        >
+                            All ({orders.length})
+                        </button>
+                        <button
+                            className={`tab ${activeTab === 'pending' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('pending')}
+                        >
+                            Pending ({orders.filter(o => o.Status === 'Pending' || o.Status === 'Processing').length})
+                        </button>
+                        <button
+                            className={`tab ${activeTab === 'shipped' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('shipped')}
+                        >
+                            Shipped ({orders.filter(o => o.Status === 'Shipping' || o.Status === 'Delivering').length})
+                        </button>
+                        <button
+                            className={`tab ${activeTab === 'completed' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('completed')}
+                        >
+                            Completed ({orders.filter(o => o.Status === 'Completed' || o.Status === 'Delivered').length})
+                        </button>
+                    </div>
+                </div>
 
-                            <div className="order-content">
+                {/* Orders List */}
+                <div className="orders-list">
+                    {filteredOrders.length === 0 ? (
+                        <div className="empty-state">
+                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M21 16V8C20.9996 7.64927 20.9071 7.30481 20.7315 7.00116C20.556 6.69751 20.3037 6.44536 20 6.27L13 2.27C12.696 2.09446 12.3511 2.00205 12 2.00205C11.6489 2.00205 11.304 2.09446 11 2.27L4 6.27C3.69626 6.44536 3.44398 6.69751 3.26846 7.00116C3.09294 7.30481 3.00036 7.64927 3 8V16C3.00036 16.3507 3.09294 16.6952 3.26846 16.9988C3.44398 17.3025 3.69626 17.5546 4 17.73L11 21.73C11.304 21.9055 11.6489 21.9979 12 21.9979C12.3511 21.9979 12.696 21.9055 13 21.73L20 17.73C20.3037 17.5546 20.556 17.3025 20.7315 16.9988C20.9071 16.6952 20.9996 16.3507 21 16Z" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                <polyline points="3.27,6.96 12,12.01 20.73,6.96" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                            <h3>No orders found</h3>
+                            <p>
+                                {searchTerm 
+                                    ? 'No orders match your search criteria.' 
+                                    : 'You haven\'t placed any orders yet.'
+                                }
+                            </p>
+                            {!searchTerm && (
+                                <Link to="/products" className="btn btn-primary">
+                                    Start Shopping
+                                </Link>
+                            )}
+                        </div>
+                    ) : (
+                        filteredOrders.map(order => (
+                            <div key={order.OrderID} className="order-card">
+                                <div className="order-header">
+                                    <div className="order-info">
+                                        <h3>Order #{order.OrderID}</h3>
+                                        <p className="order-date">
+                                            {new Date(order.OrderDate).toLocaleDateString('en-US', {
+                                                month: 'short',
+                                                day: 'numeric',
+                                                year: 'numeric'
+                                            })}
+                                        </p>
+                                    </div>
+                                    <div className={`${getStatusBadgeClass(order.Status)}`}>
+                                        {getStatusIcon(order.Status)}
+                                        <span>{order.Status}</span>
+                                    </div>
+                                </div>
+
                                 <div className="order-items">
-                                    {order.items && order.items.slice(0, 3).map((item, index) => (
+                                    {order.items?.slice(0, 3).map((item, index) => (
                                         <div key={index} className="order-item">
                                             <div className="item-image">
-                                                {item.image ? (
-                                                    <img src={item.image} alt={item.name} />
-                                                ) : (
-                                                    <div className="placeholder-image">
-                                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke="#9ca3af" strokeWidth="2"/>
-                                                            <circle cx="8.5" cy="8.5" r="1.5" stroke="#9ca3af" strokeWidth="2"/>
-                                                            <polyline points="21,15 16,10 5,21" stroke="#9ca3af" strokeWidth="2"/>
-                                                        </svg>
-                                                    </div>
-                                                )}
+                                                <img 
+                                                    src={getImageUrl(item.image)} 
+                                                    alt={item.name}
+                                                    onError={(e) => {
+                                                        e.target.src = '/logo192.png';
+                                                    }}
+                                                />
                                             </div>
                                             <div className="item-details">
                                                 <h4>{item.name}</h4>
-                                                <p>Quantity: {item.quantity}</p>
-                                            </div>
-                                            <div className="item-price">
-                                                {formatPrice(item.price * item.quantity)}
+                                                <p>Qty: {item.quantity}</p>
+                                                <p className="item-price">₱{item.price?.toLocaleString()}</p>
                                             </div>
                                         </div>
                                     ))}
-                                    {order.items && order.items.length > 3 && (
+                                    {order.items?.length > 3 && (
                                         <div className="more-items">
                                             +{order.items.length - 3} more items
                                         </div>
                                     )}
                                 </div>
 
-                                <div className="order-actions">
-                                    <button
-                                        className="btn btn-secondary"
-                                        onClick={() => setShowDetailsModal({ open: true, order })}
-                                    >
-                                        View Details
-                                    </button>
-                                    
-                                    {order.Status === 'Pending' && (
-                                        <button
-                                            className="btn btn-danger"
-                                            onClick={() => setShowCancelModal({ open: true, orderId: order.OrderID })}
-                                            disabled={cancelling[order.OrderID]}
+                                <div className="order-footer">
+                                    <div className="order-total">
+                                        <span>Total: ₱{parseFloat(order.TotalAmount).toLocaleString()}</span>
+                                    </div>
+                                    <div className="order-actions">
+                                        <button 
+                                            className="btn btn-outline"
+                                            onClick={() => setShowDetailsModal({ open: true, order })}
                                         >
-                                            {cancelling[order.OrderID] ? 'Cancelling...' : 'Cancel Order'}
+                                            View Details
                                         </button>
-                                    )}
-
-                                    {order.Status === 'Delivering' && (
-                                        <button
-                                            className="btn btn-primary"
-                                            onClick={() => handleReceiveOrder(order.OrderID)}
-                                            disabled={receiving[order.OrderID]}
-                                        >
-                                            {receiving[order.OrderID] ? 'Processing...' : 'Mark as Received'}
-                                        </button>
-                                    )}
+                                        {order.Status === 'Pending' && (
+                                            <button 
+                                                className="btn btn-danger"
+                                                onClick={() => setShowCancelModal({ open: true, orderId: order.OrderID })}
+                                                disabled={cancelling[order.OrderID]}
+                                            >
+                                                {cancelling[order.OrderID] ? 'Cancelling...' : 'Cancel'}
+                                            </button>
+                                        )}
+                                        {(order.Status === 'Shipping' || order.Status === 'Delivering') && (
+                                            <button 
+                                                className="btn btn-success"
+                                                onClick={() => handleReceiveOrder(order.OrderID)}
+                                                disabled={receiving[order.OrderID]}
+                                            >
+                                                {receiving[order.OrderID] ? 'Processing...' : 'Mark as Received'}
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    ))
-                )}
-            </div>
-
-            {/* Simple Summary */}
-            <div className="orders-summary">
-                <div className="summary-stats">
-                    <div className="stat-item">
-                        <div className="stat-number">{orders.length}</div>
-                        <div className="stat-label">Total Orders</div>
-                    </div>
-                    <div className="stat-item">
-                        <div className="stat-number">
-                            {orders.filter(o => o.Status === 'Pending' || o.Status === 'Processing').length}
-                        </div>
-                        <div className="stat-label">Pending</div>
-                    </div>
-                    <div className="stat-item">
-                        <div className="stat-number">
-                            {orders.filter(o => o.Status === 'Completed' || o.Status === 'Delivered').length}
-                        </div>
-                        <div className="stat-label">Completed</div>
-                    </div>
-                </div>
-                
-                <div className="quick-actions">
-                    <Link to="/products" className="btn btn-primary">
-                        Continue Shopping
-                    </Link>
-                    <Link to="/account" className="btn btn-secondary">
-                        Account Settings
-                    </Link>
+                        ))
+                    )}
                 </div>
             </div>
 
-            {/* Cancel Confirmation Modal */}
+            {/* Modals */}
             <ConfirmationModal
                 isOpen={showCancelModal.open}
                 onClose={() => setShowCancelModal({ open: false, orderId: null })}
@@ -464,19 +419,90 @@ const Orders = () => {
                 message="Are you sure you want to cancel this order? This action cannot be undone."
                 confirmText="Yes, Cancel Order"
                 cancelText="Keep Order"
-                type="danger"
             />
 
-            {/* Order Details Modal */}
-            {showDetailsModal.open && showDetailsModal.order && (
-                <OrderDetailsModal
-                    order={showDetailsModal.order}
-                    onClose={() => setShowDetailsModal({ open: false, order: null })}
-                    formatPrice={formatPrice}
-                />
-            )}
+            <ConfirmationModal
+                isOpen={showDetailsModal.open}
+                onClose={() => setShowDetailsModal({ open: false, order: null })}
+                onConfirm={() => setShowDetailsModal({ open: false, order: null })}
+                title={`Order #${showDetailsModal.order?.OrderID} Details`}
+                message={
+                    showDetailsModal.order ? (
+                        <div className="order-details-modal">
+                            {/* Order Summary */}
+                            <div className="order-summary-section">
+                                <h4>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M9 12H15M9 16H15M17 21H7C5.89543 21 5 20.1046 5 19V5C5 3.89543 5.89543 3 7 3H12.5858C12.851 3 13.1054 3.10536 13.2929 3.29289L19.7071 9.70711C19.8946 9.89464 20 10.149 20 10.4142V19C20 20.1046 19.1046 21 18 21H17ZM17 21V9H13V5H7V19H17Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                    </svg>
+                                    Order Summary
+                                </h4>
+                                <div className="summary-grid">
+                                    <div className="summary-item">
+                                        <span className="label">Order Date:</span>
+                                        <span className="value">{new Date(showDetailsModal.order.OrderDate).toLocaleDateString('en-US', {
+                                            weekday: 'short',
+                                            year: 'numeric',
+                                            month: 'short',
+                                            day: 'numeric'
+                                        })}</span>
+                                    </div>
+                                    <div className="summary-item">
+                                        <span className="label">Status:</span>
+                                        <span className={`value status ${getStatusBadgeClass(showDetailsModal.order.Status).split(' ')[1]}`}>
+                                            {getStatusIcon(showDetailsModal.order.Status)}
+                                            {showDetailsModal.order.Status}
+                                        </span>
+                                    </div>
+                                    <div className="summary-item">
+                                        <span className="label">Total Amount:</span>
+                                        <span className="value total">₱{parseFloat(showDetailsModal.order.TotalAmount).toLocaleString()}</span>
+                                    </div>
+                                </div>
+                            </div>
 
-            {/* Success Modal */}
+                            {/* Order Items */}
+                            <div className="order-items-section">
+                                <h4>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M20 7L4 7M10 11H6M14 15H6M4 3H20C20.5523 3 21 3.44772 21 4V20C21 20.5523 20.5523 21 20 21H4C3.44772 21 3 20.5523 3 20V4C3 3.44772 3.44772 3 4 3Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                    </svg>
+                                    Order Items ({showDetailsModal.order.items?.length} items)
+                                </h4>
+                                <div className="items-list">
+                                    {showDetailsModal.order.items?.map((item, index) => (
+                                        <div key={index} className="item-row">
+                                            <div className="item-image">
+                                                <img 
+                                                    src={getImageUrl(item.image)} 
+                                                    alt={item.name}
+                                                    onError={(e) => {
+                                                        e.target.src = '/logo192.png';
+                                                    }}
+                                                />
+                                            </div>
+                                            <div className="item-info">
+                                                <h5>{item.name}</h5>
+                                                <div className="item-meta">
+                                                    <span className="quantity">Qty: {item.quantity}</span>
+                                                    <span className="price">₱{item.price?.toLocaleString()}</span>
+                                                </div>
+                                                <div className="item-total">
+                                                    ₱{(item.price * item.quantity).toLocaleString()}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    ) : ''
+                }
+                confirmText="Close"
+                cancelText=""
+                showCancel={false}
+            />
+
             <ConfirmationModal
                 isOpen={showSuccessModal.open}
                 onClose={() => setShowSuccessModal({ open: false, message: '' })}
@@ -484,133 +510,9 @@ const Orders = () => {
                 title="Success"
                 message={showSuccessModal.message}
                 confirmText="OK"
-                type="success"
+                cancelText=""
                 showCancel={false}
             />
-        </div>
-    );
-};
-
-// Order Details Modal Component
-const OrderDetailsModal = ({ order, onClose, formatPrice }) => {
-    if (!order) return null;
-
-    return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal-content order-details-modal" onClick={(e) => e.stopPropagation()}>
-                <div className="modal-header">
-                    <h2>Order #{order.OrderID} Details</h2>
-                    <button className="modal-close" onClick={onClose}>×</button>
-                </div>
-
-                <div className="modal-body">
-                    <div className="order-details-section">
-                        <h3>Order Information</h3>
-                        <div className="detail-grid">
-                            <div className="detail-item">
-                                <span className="detail-label">Order Date:</span>
-                                <span className="detail-value">
-                                    {new Date(order.OrderDate).toLocaleString('en-US')}
-                                </span>
-                            </div>
-                            <div className="detail-item">
-                                <span className="detail-label">Status:</span>
-                                <span className="detail-value">{order.Status}</span>
-                            </div>
-                            <div className="detail-item">
-                                <span className="detail-label">Payment Method:</span>
-                                <span className="detail-value">{order.PaymentMethod || 'N/A'}</span>
-                            </div>
-                            <div className="detail-item">
-                                <span className="detail-label">Total Amount:</span>
-                                <span className="detail-value total-amount">
-                                    {formatPrice(order.TotalAmount)}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {order.user && (
-                        <div className="order-details-section">
-                            <h3>Customer Information</h3>
-                            <div className="detail-grid">
-                                <div className="detail-item">
-                                    <span className="detail-label">Name:</span>
-                                    <span className="detail-value">{order.user.fullName || 'N/A'}</span>
-                                </div>
-                                <div className="detail-item">
-                                    <span className="detail-label">Email:</span>
-                                    <span className="detail-value">{order.user.email || 'N/A'}</span>
-                                </div>
-                                <div className="detail-item">
-                                    <span className="detail-label">Phone:</span>
-                                    <span className="detail-value">{order.user.phoneNumber || 'N/A'}</span>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {order.address && (
-                        <div className="order-details-section">
-                            <h3>Shipping Address</h3>
-                            <div className="address-details">
-                                <p>
-                                    {order.address.Label ? `${order.address.Label}: ` : ''}
-                                    {[
-                                        order.address.HouseNumber,
-                                        order.address.Street,
-                                        order.address.Barangay,
-                                        order.address.City,
-                                        order.address.Province,
-                                        order.address.Region,
-                                        order.address.PostalCode,
-                                        order.address.Country
-                                    ].filter(Boolean).join(', ')}
-                                </p>
-                            </div>
-                        </div>
-                    )}
-
-                    {order.items && order.items.length > 0 && (
-                        <div className="order-details-section">
-                            <h3>Order Items</h3>
-                            <div className="items-list">
-                                {order.items.map((item, index) => (
-                                    <div key={index} className="order-item-detail">
-                                        <div className="item-image">
-                                            {item.image ? (
-                                                <img src={item.image} alt={item.name} />
-                                            ) : (
-                                                <div className="placeholder-image">
-                                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke="#9ca3af" strokeWidth="2"/>
-                                                        <circle cx="8.5" cy="8.5" r="1.5" stroke="#9ca3af" strokeWidth="2"/>
-                                                        <polyline points="21,15 16,10 5,21" stroke="#9ca3af" strokeWidth="2"/>
-                                                    </svg>
-                                                </div>
-                                            )}
-                                        </div>
-                                        <div className="item-info">
-                                            <h4>{item.name}</h4>
-                                            <p>Quantity: {item.quantity}</p>
-                                            <p>Price: {formatPrice(item.price)} each</p>
-                                        </div>
-                                        <div className="item-total">
-                                            {formatPrice(item.price * item.quantity)}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                <div className="modal-footer">
-                    <button className="btn btn-secondary" onClick={onClose}>
-                        Close
-                    </button>
-                </div>
-            </div>
         </div>
     );
 };

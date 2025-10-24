@@ -1,6 +1,5 @@
 // Admin Routes - Require admin authentication
 import React from 'react';
-import { Route } from 'react-router-dom';
 import AdminRoute from '../../features/auth/components/AdminRoute';
 
 // Admin feature pages

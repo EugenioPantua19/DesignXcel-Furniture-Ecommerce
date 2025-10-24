@@ -3,6 +3,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const sql = require('mssql');
+// All encryption removed - using plain text storage
 
 module.exports = function(sql, pool) {
     const router = express.Router();
@@ -84,6 +85,42 @@ module.exports = function(sql, pool) {
         }
     });
 
+    // Configure multer for testimonials uploads
+    const testimonialsStorage = multer.diskStorage({
+        destination: function (req, file, cb) {
+            const uploadDir = path.join(__dirname, 'public', 'uploads');
+            const testimonialsDir = path.join(uploadDir, 'testimonials');
+            
+            // Ensure directory exists
+            if (!fs.existsSync(uploadDir)) {
+                fs.mkdirSync(uploadDir, { recursive: true });
+            }
+            if (!fs.existsSync(testimonialsDir)) {
+                fs.mkdirSync(testimonialsDir, { recursive: true });
+            }
+            
+            cb(null, testimonialsDir);
+        },
+        filename: function (req, file, cb) {
+            const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+            cb(null, 'testimonial-' + uniqueSuffix + path.extname(file.originalname));
+        }
+    });
+    
+    const testimonialsUpload = multer({ 
+        storage: testimonialsStorage,
+        limits: {
+            fileSize: 10 * 1024 * 1024 // 10MB limit
+        },
+        fileFilter: function (req, file, cb) {
+            if (file.mimetype.startsWith('image/')) {
+                cb(null, true);
+            } else {
+                cb(new Error('Only image files are allowed!'), false);
+            }
+        }
+    });
+
     // Configure multer for theme background uploads
     const themeStorage = multer.diskStorage({
         destination: function (req, file, cb) {
@@ -147,7 +184,13 @@ module.exports = function(sql, pool) {
             }
         }),
         limits: {
-            fileSize: 10 * 1024 * 1024 // 10MB limit for product images
+            fileSize: function (req, file) {
+                // 30MB limit for 3D models, 10MB for other files
+                if (file.fieldname === 'model3d') {
+                    return 30 * 1024 * 1024; // 30MB for 3D models
+                }
+                return 10 * 1024 * 1024; // 10MB for images and other files
+            }
         },
         fileFilter: function (req, file, cb) {
             if (file.fieldname === 'model3d') {
@@ -255,6 +298,8 @@ module.exports = function(sql, pool) {
     const crypto = require('crypto');
     const jwtUtils = require('./utils/jwtUtils');
     const { jwtAuth, optionalJwtAuth, requireRole, requireUserType } = require('./middleware/jwtAuth');
+    const { checkPermission, checkAnyPermission } = require('./middleware/permissionCheck');
+    
 
     /**
      * Enhanced middleware to check if user is logged in (supports both session and JWT)
@@ -469,11 +514,30 @@ module.exports = function(sql, pool) {
             console.log('  - OTP_EMAIL_USER:', process.env.OTP_EMAIL_USER ? 'Set' : 'Not set');
             console.log('  - OTP_EMAIL_PASS:', process.env.OTP_EMAIL_PASS ? 'Set' : 'Not set');
             
+            // Check if email credentials are properly configured
+            const emailUser = process.env.OTP_EMAIL_USER;
+            const emailPass = process.env.OTP_EMAIL_PASS;
+            
+            // Development fallback: if email credentials are not configured, just log the OTP
+            if (!emailUser || emailUser === 'your_gmail_username@gmail.com' || !emailPass || emailPass === 'your_gmail_app_password') {
+                console.log('📧 Email credentials not configured. OTP for development:', otp);
+                console.log(`📧 Would send OTP to ${email}: ${otp}`);
+                
+                // In development, we'll still return success but log the OTP
+                res.json({ 
+                    success: true, 
+                    message: 'OTP generated successfully (email not configured)',
+                    otp: process.env.NODE_ENV === 'development' ? otp : undefined,
+                    development: true
+                });
+                return;
+            }
+            
             const transporter = nodemailer.createTransport({
                 service: 'gmail',
                 auth: {
-                    user: process.env.OTP_EMAIL_USER,
-                    pass: process.env.OTP_EMAIL_PASS
+                    user: emailUser,
+                    pass: emailPass
                 }
             });
             
@@ -503,7 +567,7 @@ module.exports = function(sql, pool) {
             console.log('📧 Using HTML template:', htmlContent.length > 0 ? 'Yes' : 'No');
             
             const mailOptions = {
-                from: process.env.OTP_EMAIL_USER,
+                from: emailUser,
                 to: email,
                 subject: 'Your Design Excellence OTP Code',
                 html: htmlContent,
@@ -602,19 +666,17 @@ module.exports = function(sql, pool) {
     });
 
     // Inventory Manager - Products
-    router.get('/Employee/InventoryManager/InventoryProducts', isAuthenticated, async (req, res) => {
+    router.get('/Employee/InventoryManager/InventoryProducts', isAuthenticated, checkPermission('inventory_products'), async (req, res) => {
         try {
             await pool.connect();
             const page = parseInt(req.query.page) || 1;
             const limit = 10;
             const offset = (page - 1) * limit;
-            
-            // Get total count
+
             const countResult = await pool.request().query('SELECT COUNT(*) as count FROM Products WHERE IsActive = 1');
             const total = countResult.recordset[0].count;
             const totalPages = Math.ceil(total / limit);
-            
-            // Get paginated products with discount information
+
             const result = await pool.request().query(`
                 SELECT 
                     p.*,
@@ -655,7 +717,7 @@ module.exports = function(sql, pool) {
     });
 
     // Inventory Manager - Add Product
-    router.post('/Employee/InventoryManager/InventoryProducts/Add', isAuthenticated, hasEmployeeAccess, productUpload.fields([
+    router.post('/Employee/InventoryManager/InventoryProducts/Add', isAuthenticated, checkPermission('inventory_products'), productUpload.fields([
         { name: 'image', maxCount: 1 },
         { name: 'thumbnail1', maxCount: 1 },
         { name: 'thumbnail2', maxCount: 1 },
@@ -679,6 +741,7 @@ module.exports = function(sql, pool) {
                     .input('price', sql.Decimal(10, 2), price)
                     .input('stockquantity', sql.Int, stockquantity)
                     .input('category', sql.NVarChar, category)
+                    .input('dimensions', sql.NVarChar, dimensionsJson)
                     .query(`
                         INSERT INTO Products (Name, Description, Price, StockQuantity, Category, DateAdded, IsActive)
                         VALUES (@name, @description, @price, @stockquantity, @category, GETDATE(), 1)
@@ -763,7 +826,7 @@ module.exports = function(sql, pool) {
     });
 
     // Inventory Manager - Edit Product
-    router.post('/Employee/InventoryManager/InventoryProducts/Edit', isAuthenticated, hasEmployeeAccess, productUpload.fields([
+    router.post('/Employee/InventoryManager/InventoryProducts/Edit', isAuthenticated, checkPermission('inventory_products'), productUpload.fields([
         { name: 'image', maxCount: 1 },
         { name: 'thumbnail1', maxCount: 1 },
         { name: 'thumbnail2', maxCount: 1 },
@@ -799,10 +862,11 @@ module.exports = function(sql, pool) {
                     .input('price', sql.Decimal(10, 2), price)
                     .input('stockquantity', sql.Int, stockquantity)
                     .input('category', sql.NVarChar, category)
+                    .input('dimensions', sql.NVarChar, dimensionsJson)
                     .query(`
                         UPDATE Products 
                         SET Name = @name, Description = @description, Price = @price, 
-                            StockQuantity = @stockquantity, Category = @category, UpdatedAt = GETDATE()
+                            StockQuantity = @stockquantity, Category = @category, Dimensions = @dimensions, UpdatedAt = GETDATE()
                         WHERE ProductID = @productId
                     `);
                 
@@ -907,7 +971,7 @@ module.exports = function(sql, pool) {
     });
 
     // Inventory Manager - Delete Product
-    router.post('/Employee/InventoryManager/InventoryProducts/Delete/:id', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/Employee/InventoryManager/InventoryProducts/Delete/:id', isAuthenticated, checkPermission('inventory_products'), async (req, res) => {
         try {
             await pool.connect();
             
@@ -930,6 +994,16 @@ module.exports = function(sql, pool) {
                 .input('id', sql.Int, productId)
                 .query('UPDATE Products SET IsActive = 0 WHERE ProductID = @id');
             
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'UPDATE',
+                'Products',
+                productId.toString(),
+                `InventoryManager archived product "${productName}" (ID: ${productId})`,
+                JSON.stringify({ IsActive: { old: 1, new: 0 } })
+            );
+            
             req.flash('success', `Product "${productName}" has been archived. You can restore it from the Archived page.`);
             res.redirect('/Employee/InventoryManager/InventoryProducts');
         } catch (err) {
@@ -940,7 +1014,7 @@ module.exports = function(sql, pool) {
     });
 
     // Inventory Manager - Product Discount Management API
-    router.post('/api/inventory/products/:id/discount', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/api/inventory/products/:id/discount', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const { id } = req.params;
@@ -1003,7 +1077,7 @@ module.exports = function(sql, pool) {
         }
     });
 
-    router.delete('/api/inventory/products/:id/discount', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.delete('/api/inventory/products/:id/discount', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const { id } = req.params;
@@ -1022,6 +1096,16 @@ module.exports = function(sql, pool) {
                 .input('productId', sql.Int, id)
                 .query('UPDATE ProductDiscounts SET IsActive = 0 WHERE ProductID = @productId AND IsActive = 1');
             
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'UPDATE',
+                'ProductDiscounts',
+                id,
+                `InventoryManager removed discount for product ID: ${id}`,
+                JSON.stringify({ IsActive: { old: 1, new: 0 } })
+            );
+            
             res.json({ success: true, message: 'Discount removed successfully!' });
         } catch (err) {
             console.error('Error removing product discount:', err);
@@ -1030,7 +1114,7 @@ module.exports = function(sql, pool) {
     });
 
     // Inventory Manager - Materials
-    router.get('/Employee/InventoryManager/InventoryMaterials', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/Employee/InventoryManager/InventoryMaterials', isAuthenticated, checkPermission('inventory_materials'), async (req, res) => {
         try {
             await pool.connect();
             const result = await pool.request().query('SELECT * FROM RawMaterials WHERE IsActive = 1');
@@ -1043,19 +1127,31 @@ module.exports = function(sql, pool) {
     });
 
     // Inventory Manager - Add Raw Material
-    router.post('/Employee/InventoryManager/InventoryMaterials/Add', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/Employee/InventoryManager/InventoryMaterials/Add', isAuthenticated, checkPermission('inventory_materials'), async (req, res) => {
         try {
             await pool.connect();
             const { name, quantity, unit } = req.body;
             
-            await pool.request()
+            const result = await pool.request()
                 .input('name', sql.NVarChar, name)
                 .input('quantity', sql.Int, quantity)
                 .input('unit', sql.NVarChar, unit)
                 .query(`
                     INSERT INTO RawMaterials (Name, QuantityAvailable, Unit, LastUpdated, IsActive)
+                    OUTPUT INSERTED.MaterialID
                     VALUES (@name, @quantity, @unit, GETDATE(), 1)
                 `);
+            
+            const materialId = result.recordset[0].MaterialID;
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'INSERT',
+                'RawMaterials',
+                materialId,
+                `Created new material: "${name}" (ID: ${materialId})`
+            );
             
             req.flash('success', 'Raw material added successfully!');
             res.redirect('/Employee/InventoryManager/InventoryMaterials');
@@ -1067,10 +1163,17 @@ module.exports = function(sql, pool) {
     });
 
     // Inventory Manager - Edit Raw Material
-    router.post('/Employee/InventoryManager/InventoryMaterials/Edit', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/Employee/InventoryManager/InventoryMaterials/Edit', isAuthenticated, checkPermission('inventory_materials'), async (req, res) => {
         try {
             await pool.connect();
             const { materialid, name, quantity, unit } = req.body;
+            
+            // Get old data for change tracking
+            const oldDataResult = await pool.request()
+                .input('materialId', sql.Int, materialid)
+                .query(`SELECT Name, QuantityAvailable, Unit FROM RawMaterials WHERE MaterialID = @materialId`);
+            
+            const oldData = oldDataResult.recordset[0];
             
             await pool.request()
                 .input('materialId', sql.Int, materialid)
@@ -1083,6 +1186,20 @@ module.exports = function(sql, pool) {
                     WHERE MaterialID = @materialId
                 `);
             
+            // Capture changes for logging
+            const newData = { Name: name, QuantityAvailable: quantity, Unit: unit };
+            const changes = JSON.stringify({ oldData, newData });
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'UPDATE',
+                'RawMaterials',
+                materialid,
+                `Updated material: "${name}" (ID: ${materialid})`,
+                changes
+            );
+            
             req.flash('success', 'Raw material updated successfully!');
             res.redirect('/Employee/InventoryManager/InventoryMaterials');
         } catch (err) {
@@ -1093,7 +1210,7 @@ module.exports = function(sql, pool) {
     });
 
     // Inventory Manager - Delete Raw Material
-    router.post('/Employee/InventoryManager/InventoryMaterials/Delete/:id', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/Employee/InventoryManager/InventoryMaterials/Delete/:id', isAuthenticated, checkPermission('inventory_materials'), async (req, res) => {
         try {
             await pool.connect();
             
@@ -1121,8 +1238,9 @@ module.exports = function(sql, pool) {
                 req.session.user.id,
                 'DELETE',
                 'RawMaterials',
-                materialId.toString(),
-                `InventoryManager archived raw material: "${materialName}" (ID: ${materialId})`
+                materialId,
+                `Deleted material: "${materialName}" (ID: ${materialId})`,
+                JSON.stringify({ IsActive: { old: 1, new: 0 } })
             );
             
             req.flash('success', `Raw material "${materialName}" has been archived. You can restore it from the Archived page.`);
@@ -1135,12 +1253,12 @@ module.exports = function(sql, pool) {
     });
 
     // Inventory Manager - Variations
-    router.get('/Employee/InventoryManager/InventoryVariations', isAuthenticated, hasEmployeeAccess, (req, res) => {
+    router.get('/Employee/InventoryManager/InventoryVariations', isAuthenticated, checkPermission('inventory_variations'), (req, res) => {
         res.render('Employee/InventoryManager/InventoryVariations', { user: req.session.user });
     });
 
     // Inventory Manager: Add Product Variation
-    router.post('/Employee/InventoryManager/InventoryVariations/Add', isAuthenticated, hasEmployeeAccess, variationUpload.single('variationImage'), async (req, res) => {
+    router.post('/Employee/InventoryManager/InventoryVariations/Add', isAuthenticated, checkPermission('inventory_variations'), variationUpload.single('variationImage'), async (req, res) => {
         try {
             await pool.connect();
             const { variationName, color, quantity, productID, isActive } = req.body;
@@ -1160,16 +1278,19 @@ module.exports = function(sql, pool) {
                 .input('isActive', sql.Bit, isActive === '1' ? 1 : 0)
                 .query(`
                     INSERT INTO ProductVariations (ProductID, VariationName, Color, Quantity, VariationImageURL, IsActive)
+                    OUTPUT INSERTED.VariationID
                     VALUES (@productID, @variationName, @color, @quantity, @imageUrl, @isActive)
                 `);
+            
+            const variationID = result.recordset[0].VariationID;
             
             // Log the activity
             await logActivity(
                 req.session.user.id,
                 'INSERT',
                 'ProductVariations',
-                null,
-                `InventoryManager added new product variation: "${variationName}" (Color: ${color || 'N/A'}, Quantity: ${quantity}) for Product ID: ${productID}`
+                variationID,
+                `Added new product variation: "${variationName}" (Color: ${color || 'N/A'}, Quantity: ${quantity}) for Product ID: ${productID}`
             );
             
             res.json({
@@ -1186,10 +1307,21 @@ module.exports = function(sql, pool) {
     });
 
     // Inventory Manager: Edit Product Variation
-    router.post('/Employee/InventoryManager/InventoryVariations/Edit', isAuthenticated, hasEmployeeAccess, variationUpload.single('variationImage'), async (req, res) => {
+    router.post('/Employee/InventoryManager/InventoryVariations/Edit', isAuthenticated, checkPermission('inventory_variations'), variationUpload.single('variationImage'), async (req, res) => {
         try {
             await pool.connect();
             const { variationID, variationName, color, quantity, isActive } = req.body;
+            
+            // Get current variation data before updating
+            const oldVariationResult = await pool.request()
+                .input('variationID', sql.Int, parseInt(variationID))
+                .query('SELECT VariationName, Color, Quantity, IsActive FROM ProductVariations WHERE VariationID = @variationID');
+            
+            if (oldVariationResult.recordset.length === 0) {
+                return res.json({ success: false, message: 'Variation not found' });
+            }
+            
+            const oldVariation = oldVariationResult.recordset[0];
             
             // Handle image upload - only update if new image provided
             let updateQuery = `
@@ -1233,7 +1365,13 @@ module.exports = function(sql, pool) {
                 'UPDATE',
                 'ProductVariations',
                 variationID.toString(),
-                `InventoryManager updated product variation ID ${variationID}: "${variationName}" (Color: ${color || 'N/A'}, Quantity: ${quantity})`
+                `InventoryManager updated product variation ID ${variationID}: "${variationName}" (Color: ${color || 'N/A'}, Quantity: ${quantity})`,
+                JSON.stringify({ 
+                    VariationName: { old: oldVariation.VariationName, new: variationName },
+                    Color: { old: oldVariation.Color || 'N/A', new: color || 'N/A' },
+                    Quantity: { old: oldVariation.Quantity, new: parseInt(quantity) },
+                    IsActive: { old: oldVariation.IsActive, new: isActive === '1' ? 1 : 0 }
+                })
             );
             
             res.json({
@@ -1250,13 +1388,13 @@ module.exports = function(sql, pool) {
     });
 
     // Inventory Manager: Delete Product Variation
-    router.post('/Employee/InventoryManager/InventoryVariations/Delete/:id', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/Employee/InventoryManager/InventoryVariations/Delete/:id', isAuthenticated, checkPermission('inventory_variations'), async (req, res) => {
         try {
             await pool.connect();
-            const variationId = parseInt(req.params.id);
+            const variationID = parseInt(req.params.id);
             
             await pool.request()
-                .input('variationID', sql.Int, variationId)
+                .input('variationID', sql.Int, variationID)
                 .query(`
                     UPDATE ProductVariations 
                     SET IsActive = 0 
@@ -1268,8 +1406,9 @@ module.exports = function(sql, pool) {
                 req.session.user.id,
                 'DELETE',
                 'ProductVariations',
-                variationId.toString(),
-                `InventoryManager deleted product variation ID ${variationId}`
+                variationID.toString(),
+                `InventoryManager deleted product variation ID ${variationID}`,
+                JSON.stringify({ IsActive: { old: 1, new: 0 } })
             );
             
             res.json({
@@ -1286,7 +1425,7 @@ module.exports = function(sql, pool) {
     });
 
     // Inventory Manager - Archived
-    router.get('/Employee/InventoryManager/InventoryArchived', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/Employee/InventoryManager/InventoryArchived', isAuthenticated, checkPermission('inventory_archived'), async (req, res) => {
         try {
             await pool.connect();
             
@@ -1342,32 +1481,32 @@ module.exports = function(sql, pool) {
     });
 
     // Inventory Manager - Alerts
-    router.get('/Employee/InventoryManager/InventoryAlerts', isAuthenticated, hasEmployeeAccess, (req, res) => {
+    router.get('/Employee/InventoryManager/InventoryAlerts', isAuthenticated, checkPermission('inventory_alerts'), (req, res) => {
         res.render('Employee/InventoryManager/InventoryAlerts', { user: req.session.user });
     });
 
     // Inventory Manager - Logs
-    router.get('/Employee/InventoryManager/InventoryLogs', isAuthenticated, hasEmployeeAccess, (req, res) => {
+    router.get('/Employee/InventoryManager/InventoryLogs', isAuthenticated, checkPermission('content_logs'), (req, res) => {
         res.render('Employee/InventoryManager/InventoryLogs', { user: req.session.user });
     });
 
     // Inventory Manager - CMS
-    router.get('/Employee/InventoryManager/InventoryCMS', isAuthenticated, hasEmployeeAccess, (req, res) => {
+    router.get('/Employee/InventoryManager/InventoryCMS', isAuthenticated, checkPermission('content_cms'), (req, res) => {
         res.render('Employee/InventoryManager/InventoryCMS', { user: req.session.user });
     });
 
     // Inventory Manager - Reviews
-    router.get('/Employee/InventoryManager/InventoryReviews', isAuthenticated, hasEmployeeAccess, (req, res) => {
+    router.get('/Employee/InventoryManager/InventoryReviews', isAuthenticated, checkPermission('reviews_reviews'), (req, res) => {
         res.render('Employee/InventoryManager/InventoryReviews', { user: req.session.user });
     });
 
     // Inventory Manager - Delivery Rates
-    router.get('/Employee/InventoryManager/InventoryRates', isAuthenticated, hasEmployeeAccess, (req, res) => {
+    router.get('/Employee/InventoryManager/InventoryRates', isAuthenticated, checkPermission('transactions_delivery_rates'), (req, res) => {
         res.render('Employee/InventoryManager/InventoryRates', { user: req.session.user });
     });
 
     // Inventory Manager: Add Delivery Rate
-    router.post('/Employee/InventoryManager/InventoryRates/Add', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/Employee/InventoryManager/InventoryRates/Add', isAuthenticated, checkPermission('transactions_delivery_rates'), async (req, res) => {
         try {
             await pool.connect();
             const { serviceType, price } = req.body || {};
@@ -1423,7 +1562,7 @@ module.exports = function(sql, pool) {
     });
 
     // Inventory Manager: Update Delivery Rate
-    router.post('/Employee/InventoryManager/InventoryRates/Update/:rateId', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/Employee/InventoryManager/InventoryRates/Update/:rateId', isAuthenticated, checkPermission('transactions_delivery_rates'), async (req, res) => {
         try {
             await pool.connect();
             const rateId = parseInt(req.params.rateId);
@@ -1472,7 +1611,7 @@ module.exports = function(sql, pool) {
     });
 
     // Inventory Manager - Walk-In Orders
-    router.get('/Employee/InventoryManager/InventoryWalkIn', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/Employee/InventoryManager/InventoryWalkIn', isAuthenticated, checkPermission('transactions_walk_in'), async (req, res) => {
         try {
             await pool.connect();
             
@@ -1510,20 +1649,22 @@ module.exports = function(sql, pool) {
     });
 
     // Inventory Manager - Manage Users
-    router.get('/Employee/InventoryManager/InventoryManageUsers', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/Employee/InventoryManager/InventoryManageUsers', isAuthenticated, checkPermission('users_manage_users'), async (req, res) => {
         try {
             await pool.connect();
             
-            // Query users with roles
+            // Query users with roles - using LEFT JOIN to include users even if they don't have a valid role
             const result = await pool.request().query(`
                 SELECT u.UserID, u.Username, u.FullName, u.Email, u.RoleID, r.RoleName, u.IsActive, u.CreatedAt
                 FROM Users u
-                JOIN Roles r ON u.RoleID = r.RoleID
+                LEFT JOIN Roles r ON u.RoleID = r.RoleID
                 ORDER BY u.CreatedAt DESC
             `);
-            const users = result.recordset;
             
-            res.render('Employee/InventoryManager/InventoryManageUsers', { user: req.session.user, users });
+            // Decrypt user data before sending to frontend using transparent encryption service
+            const decryptedUsers = result.recordset;
+            
+            res.render('Employee/InventoryManager/InventoryManageUsers', { user: req.session.user, users: decryptedUsers });
         } catch (err) {
             console.error('Error fetching inventory manager users:', err);
             res.render('Employee/InventoryManager/InventoryManageUsers', { user: req.session.user, users: [], error: 'Failed to load users.' });
@@ -1531,7 +1672,7 @@ module.exports = function(sql, pool) {
     });
 
     // Inventory Manager - Chat Support
-    router.get('/Employee/InventoryManager/InventoryChatSupport', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/Employee/InventoryManager/InventoryChatSupport', isAuthenticated, checkPermission('chat_chat_support'), async (req, res) => {
         console.log('=== InventoryManager ChatSupport Route Called ===');
         let threads = [];
         let selectedThread = null;
@@ -1640,7 +1781,16 @@ module.exports = function(sql, pool) {
     ];
 
     invManagerOrderRoutes.forEach(({ route, status }) => {
-        router.get(`/Employee/InventoryManager/${route}`, isAuthenticated, hasEmployeeAccess, async (req, res) => {
+        // Map route to permission
+        let permission = 'orders_orders_pending'; // default
+        if (route.includes('Processing')) permission = 'orders_orders_processing';
+        else if (route.includes('Shipping')) permission = 'orders_orders_shipping';
+        else if (route.includes('Delivery')) permission = 'orders_orders_delivery';
+        else if (route.includes('Receive')) permission = 'orders_orders_receive';
+        else if (route.includes('Cancelled')) permission = 'orders_orders_cancelled';
+        else if (route.includes('Completed')) permission = 'orders_orders_completed';
+        
+        router.get(`/Employee/InventoryManager/${route}`, isAuthenticated, checkPermission(permission), async (req, res) => {
             try {
                 await pool.connect();
                 const ordersResult = await pool.request()
@@ -1673,8 +1823,35 @@ module.exports = function(sql, pool) {
                 
                 const orders = ordersResult.recordset;
                 
-                // Fetch items for each order
+                // Decrypt customer and address data for each order
                 for (let order of orders) {
+                    // Decrypt customer data
+                    // Customer data is already plain text
+                    
+                    // Decrypt address data
+                    // Return address data as plain text
+                    const addressData = {
+                        Label: order.AddressLabel,
+                        HouseNumber: order.HouseNumber,
+                        Street: order.Street,
+                        Barangay: order.Barangay,
+                        City: order.City,
+                        Province: order.Province,
+                        Region: order.Region,
+                        PostalCode: order.PostalCode,
+                        Country: order.Country
+                    };
+                    order.AddressLabel = addressData.Label;
+                    order.HouseNumber = addressData.HouseNumber;
+                    order.Street = addressData.Street;
+                    order.Barangay = addressData.Barangay;
+                    order.City = addressData.City;
+                    order.Province = addressData.Province;
+                    order.Region = addressData.Region;
+                    order.PostalCode = addressData.PostalCode;
+                    order.Country = addressData.Country;
+                    
+                    // Fetch items for each order
                     const itemsResult = await pool.request()
                         .input('orderId', sql.Int, order.OrderID)
                         .query(`
@@ -1709,7 +1886,7 @@ module.exports = function(sql, pool) {
     // =============================================================================
 
     // POST route for reactivating archived products (used by InventoryArchived.ejs form)
-    router.post('/Employee/InventoryManager/InventoryArchived/ReactivateProduct/:id', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/Employee/InventoryManager/InventoryArchived/ReactivateProduct/:id', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             
@@ -1742,7 +1919,8 @@ module.exports = function(sql, pool) {
                 'UPDATE',
                 'Products',
                 productId.toString(),
-                `InventoryManager reactivated product: "${product.Name}" (ID: ${productId})`
+                `InventoryManager reactivated product: "${product.Name}" (ID: ${productId})`,
+                JSON.stringify({ IsActive: { old: 0, new: 1 } })
             );
             
             req.flash('success', `Product "${product.Name}" has been reactivated and is now available on the Products page.`);
@@ -1755,7 +1933,7 @@ module.exports = function(sql, pool) {
     });
 
     // POST route for reactivating archived raw materials (used by InventoryArchived.ejs form)
-    router.post('/Employee/InventoryManager/InventoryArchived/ReactivateMaterial/:id', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/Employee/InventoryManager/InventoryArchived/ReactivateMaterial/:id', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             
@@ -1788,7 +1966,8 @@ module.exports = function(sql, pool) {
                 'UPDATE',
                 'RawMaterials',
                 materialId.toString(),
-                `InventoryManager reactivated raw material: "${material.Name}" (ID: ${materialId})`
+                `InventoryManager reactivated raw material: "${material.Name}" (ID: ${materialId})`,
+                JSON.stringify({ IsActive: { old: 0, new: 1 } })
             );
             
             req.flash('success', `Raw material "${material.Name}" has been reactivated and is now available on the Raw Materials page.`);
@@ -1805,7 +1984,7 @@ module.exports = function(sql, pool) {
     // =============================================================================
 
     // InventoryManager Alerts Data API endpoint
-    router.get('/Employee/InventoryManager/Alerts/Data', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/Employee/InventoryManager/Alerts/Data', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             
@@ -1840,19 +2019,26 @@ module.exports = function(sql, pool) {
         }
     });
 
-    // InventoryManager Logs Data API endpoint
-    router.get('/Employee/InventoryManager/Logs/Data', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    // InventoryManager Logs Data API endpoint with filtering support
+    router.get('/Employee/InventoryManager/Logs/Data', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const currentUserRole = req.session.user.role;
             
-            // InventoryManager can see logs related to inventory management:
-            // - Product operations (Products table)
-            // - Raw materials operations (RawMaterials table)
-            // - Stock updates
-            // - Orders related to inventory
-            // - Their own actions and Admin actions
-            const result = await pool.request().query(`
+            // Get query parameters for filtering
+            const {
+                action,
+                tableAffected,
+                userRole,
+                dateFrom,
+                dateTo,
+                search,
+                limit = 1000,
+                offset = 0
+            } = req.query;
+            
+            // Build dynamic query with filters
+            let query = `
                 SELECT 
                     al.LogID,
                     al.UserID,
@@ -1867,17 +2053,58 @@ module.exports = function(sql, pool) {
                 FROM ActivityLogs al
                 JOIN Users u ON al.UserID = u.UserID
                 JOIN Roles r ON u.RoleID = r.RoleID
-                WHERE 
-                    -- Show inventory-related actions
-                    (al.TableAffected IN ('Products', 'RawMaterials', 'ProductMaterials', 'OrderItems', 'Orders') 
-                     AND al.Action IN ('INSERT', 'UPDATE', 'DELETE'))
-                    OR
-                    -- Show actions by Admin and InventoryManager roles
-                    (r.RoleName IN ('Admin', 'InventoryManager'))
-                ORDER BY al.Timestamp DESC
-            `);
-            const logs = result.recordset;
-            res.json({ success: true, logs: logs });
+                WHERE 1=1
+            `;
+            
+            const request = pool.request();
+            
+            // Add filters
+            if (action) {
+                query += ` AND al.Action = @action`;
+                request.input('action', sql.NVarChar, action);
+            }
+            
+            if (tableAffected) {
+                query += ` AND al.TableAffected = @tableAffected`;
+                request.input('tableAffected', sql.NVarChar, tableAffected);
+            }
+            
+            if (userRole) {
+                query += ` AND r.RoleName = @userRole`;
+                request.input('userRole', sql.NVarChar, userRole);
+            }
+            
+            if (dateFrom) {
+                query += ` AND al.Timestamp >= @dateFrom`;
+                request.input('dateFrom', sql.DateTime, new Date(dateFrom));
+            }
+            
+            if (dateTo) {
+                query += ` AND al.Timestamp <= @dateTo`;
+                request.input('dateTo', sql.DateTime, new Date(dateTo));
+            }
+            
+            if (search) {
+                query += ` AND (al.Description LIKE @search OR u.FullName LIKE @search OR r.RoleName LIKE @search)`;
+                request.input('search', sql.NVarChar, `%${search}%`);
+            }
+            
+            // Add ordering and pagination
+            query += ` ORDER BY al.Timestamp DESC OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY`;
+            request.input('offset', sql.Int, parseInt(offset));
+            request.input('limit', sql.Int, parseInt(limit));
+            
+            const result = await request.query(query);
+            
+            // Decrypt user FullName before sending to frontend using transparent encryption service
+            const decryptedLogs = result.recordset.map(log => {
+                return {
+                    ...log,
+                    FullName: log.FullName
+                };
+            });
+            
+            res.json({ success: true, logs: decryptedLogs });
         } catch (err) {
             console.error('Error fetching InventoryManager activity logs data:', err);
             res.status(500).json({ success: false, message: 'Failed to retrieve activity logs data.', error: err.message });
@@ -1885,16 +2112,16 @@ module.exports = function(sql, pool) {
     });
 
     // Manager Index Routes - All roles can access by default
-    router.get('/Employee/Transaction/TransactionManager', isAuthenticated, hasEmployeeAccess, 
+    router.get('/Employee/Transaction/TransactionManager', isAuthenticated, 
         (req, res) => handleEmployeeRoute(req, res, 'transactions', 'Employee/Transaction/TransactionManager'));
 
-    router.get('/Employee/Inventory/InventoryManager', isAuthenticated, hasEmployeeAccess, 
+    router.get('/Employee/Inventory/InventoryManager', isAuthenticated, 
         (req, res) => handleEmployeeRoute(req, res, 'inventory', 'Employee/Inventory/InventoryManager'));
 
-    router.get('/Employee/UserManager/UserManager', isAuthenticated, hasEmployeeAccess, 
+    router.get('/Employee/UserManager/UserManager', isAuthenticated, 
         (req, res) => handleEmployeeRoute(req, res, 'user_management', 'Employee/UserManager/UserManager'));
 
-    router.get('/Employee/Support/SupportManager', isAuthenticated, hasEmployeeAccess, 
+    router.get('/Employee/Support/SupportManager', isAuthenticated, 
         (req, res) => handleEmployeeRoute(req, res, 'support', 'Employee/Support/SupportManager'));
 
     // =============================================================================
@@ -1912,42 +2139,63 @@ module.exports = function(sql, pool) {
     });
 
     // Transaction Manager - Products
-    router.get('/Employee/TransactionManager/TransactionProducts', isAuthenticated, async (req, res) => {
+    router.get('/Employee/TransactionManager/TransactionProducts', isAuthenticated, checkPermission('inventory_products'), async (req, res) => {
         try {
             await pool.connect();
+            const page = parseInt(req.query.page) || 1;
+            const limit = 10;
+            const offset = (page - 1) * limit;
+
+            const countResult = await pool.request().query('SELECT COUNT(*) as count FROM Products WHERE IsActive = 1');
+            const total = countResult.recordset[0].count;
+            const totalPages = Math.ceil(total / limit);
+
             const result = await pool.request().query(`
-                SELECT p.*, 
-                       COALESCE(SUM(oi.Quantity), 0) as TotalSold,
-                       COALESCE(AVG(r.Rating), 0) as AverageRating,
-                       COUNT(r.ReviewID) as ReviewCount
+                SELECT 
+                    p.*,
+                    pd.DiscountID,
+                    pd.DiscountType,
+                    pd.DiscountValue,
+                    pd.StartDate as DiscountStartDate,
+                    pd.EndDate as DiscountEndDate,
+                    pd.IsActive as DiscountIsActive,
+                    CASE 
+                        WHEN pd.DiscountType = 'percentage' THEN 
+                            p.Price - (p.Price * pd.DiscountValue / 100)
+                        WHEN pd.DiscountType = 'fixed' THEN 
+                            CASE WHEN p.Price - pd.DiscountValue < 0 THEN 0 ELSE p.Price - pd.DiscountValue END
+                        ELSE p.Price
+                    END as DiscountedPrice,
+                    CASE 
+                        WHEN pd.DiscountType = 'percentage' THEN 
+                            p.Price * pd.DiscountValue / 100
+                        WHEN pd.DiscountType = 'fixed' THEN 
+                            CASE WHEN pd.DiscountValue > p.Price THEN p.Price ELSE pd.DiscountValue END
+                        ELSE 0
+                    END as DiscountAmount
                 FROM Products p
-                LEFT JOIN OrderItems oi ON p.ProductID = oi.ProductID
-                LEFT JOIN Reviews r ON p.ProductID = r.ProductID
-                WHERE p.IsArchived = 0
-                GROUP BY p.ProductID, p.Name, p.Description, p.Price, p.StockQuantity, p.Category, p.ImageURL, p.CreatedAt, p.UpdatedAt, p.IsArchived
-                ORDER BY p.CreatedAt DESC
+                LEFT JOIN ProductDiscounts pd ON p.ProductID = pd.ProductID 
+                    AND pd.IsActive = 1 
+                    AND GETDATE() BETWEEN pd.StartDate AND pd.EndDate
+                WHERE p.IsActive = 1
+                ORDER BY p.ProductID DESC
+                OFFSET ${offset} ROWS FETCH NEXT ${limit} ROWS ONLY
             `);
-            res.render('Employee/TransactionManager/TransactionProducts', { 
-                user: req.session.user, 
-                products: result.recordset 
-            });
+            const products = result.recordset;
+            res.render('Employee/TransactionManager/TransactionProducts', { user: req.session.user, products, page, totalPages });
         } catch (err) {
             console.error('Error fetching products:', err);
-            res.render('Employee/TransactionManager/TransactionProducts', { 
-                user: req.session.user, 
-                products: [], 
-                error: 'Failed to load products.' 
-            });
+            res.render('Employee/TransactionManager/TransactionProducts', { user: req.session.user, products: [], page: 1, totalPages: 1 });
         }
     });
 
     // Transaction Manager - Materials
-    router.get('/Employee/TransactionManager/TransactionMaterials', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/Employee/TransactionManager/TransactionMaterials', isAuthenticated, checkPermission('inventory_materials'), async (req, res) => {
         try {
             await pool.connect();
             const result = await pool.request().query(`
                 SELECT * FROM RawMaterials 
-                WHERE IsArchived = 0 
+                WHERE IsActive = 1 
                 ORDER BY Name ASC
             `);
             res.render('Employee/TransactionManager/TransactionMaterials', { 
@@ -1965,60 +2213,93 @@ module.exports = function(sql, pool) {
     });
 
     // Transaction Manager - Variations
-    router.get('/Employee/TransactionManager/TransactionVariations', isAuthenticated, hasEmployeeAccess, (req, res) => {
+    router.get('/Employee/TransactionManager/TransactionVariations', isAuthenticated, checkPermission('inventory_variations'), (req, res) => {
         res.render('Employee/TransactionManager/TransactionVariations', { user: req.session.user });
     });
 
     // Transaction Manager - Archived
-    router.get('/Employee/TransactionManager/TransactionArchived', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/Employee/TransactionManager/TransactionArchived', isAuthenticated, checkPermission('inventory_archived'), async (req, res) => {
         try {
             await pool.connect();
-            const result = await pool.request().query(`
-                SELECT * FROM Products 
-                WHERE IsArchived = 1 
-                ORDER BY UpdatedAt DESC
+            
+            // Fetch archived products
+            const productsResult = await pool.request().query(`
+                SELECT 
+                    ProductID,
+                    Name,
+                    Description,
+                    Price,
+                    StockQuantity,
+                    Category,
+                    DateAdded,
+                    IsActive
+                FROM Products
+                WHERE IsActive = 0
+                ORDER BY DateAdded DESC
             `);
+            
+            // Fetch archived raw materials
+            const materialsResult = await pool.request().query(`
+                SELECT 
+                    MaterialID,
+                    Name,
+                    QuantityAvailable,
+                    Unit,
+                    LastUpdated,
+                    IsActive
+                FROM RawMaterials
+                WHERE IsActive = 0
+                ORDER BY LastUpdated DESC
+            `);
+            
+            // Categories are stored as a column in Products table, not a separate table
+            const categoriesResult = { recordset: [] };
+            
             res.render('Employee/TransactionManager/TransactionArchived', { 
                 user: req.session.user, 
-                products: result.recordset 
+                archivedProducts: productsResult.recordset,
+                archivedMaterials: materialsResult.recordset,
+                archivedCategories: categoriesResult.recordset
             });
         } catch (err) {
-            console.error('Error fetching archived products:', err);
+            console.error('Error fetching archived items:', err);
             res.render('Employee/TransactionManager/TransactionArchived', { 
                 user: req.session.user, 
-                products: [], 
-                error: 'Failed to load archived products.' 
+                archivedProducts: [],
+                archivedMaterials: [],
+                archivedCategories: [],
+                error: 'Failed to load archived items.' 
             });
         }
     });
 
     // Transaction Manager - Alerts
-    router.get('/Employee/TransactionManager/TransactionAlerts', isAuthenticated, hasEmployeeAccess, (req, res) => {
+    router.get('/Employee/TransactionManager/TransactionAlerts', isAuthenticated, checkPermission('inventory_alerts'), (req, res) => {
         res.render('Employee/TransactionManager/TransactionAlerts', { user: req.session.user });
     });
 
     // Transaction Manager - Logs
-    router.get('/Employee/TransactionManager/TransactionLogs', isAuthenticated, hasEmployeeAccess, (req, res) => {
+    router.get('/Employee/TransactionManager/TransactionLogs', isAuthenticated, checkPermission('content_logs'), (req, res) => {
         res.render('Employee/TransactionManager/TransactionLogs', { user: req.session.user });
     });
 
     // Transaction Manager - CMS
-    router.get('/Employee/TransactionManager/TransactionCMS', isAuthenticated, hasEmployeeAccess, (req, res) => {
+    router.get('/Employee/TransactionManager/TransactionCMS', isAuthenticated, checkPermission('content_cms'), (req, res) => {
         res.render('Employee/TransactionManager/TransactionCMS', { user: req.session.user });
     });
 
     // Transaction Manager - Reviews
-    router.get('/Employee/TransactionManager/TransactionReviews', isAuthenticated, hasEmployeeAccess, (req, res) => {
+    router.get('/Employee/TransactionManager/TransactionReviews', isAuthenticated, checkPermission('reviews_reviews'), (req, res) => {
         res.render('Employee/TransactionManager/TransactionReviews', { user: req.session.user });
     });
 
     // Transaction Manager - Delivery Rates
-    router.get('/Employee/TransactionManager/TransactionRates', isAuthenticated, hasEmployeeAccess, (req, res) => {
+    router.get('/Employee/TransactionManager/TransactionRates', isAuthenticated, checkPermission('transactions_delivery_rates'), (req, res) => {
         res.render('Employee/TransactionManager/TransactionRates', { user: req.session.user });
     });
 
     // Transaction Manager - Walk In
-    router.get('/Employee/TransactionManager/TransactionWalkIn', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/Employee/TransactionManager/TransactionWalkIn', isAuthenticated, checkPermission('transactions_walk_in'), async (req, res) => {
         try {
             await pool.connect();
             const result = await pool.request().query(`
@@ -2027,20 +2308,20 @@ module.exports = function(sql, pool) {
             `);
             res.render('Employee/TransactionManager/TransactionWalkIn', { 
                 user: req.session.user, 
-                walkInOrders: result.recordset 
+                bulkOrders: result.recordset 
             });
         } catch (err) {
             console.error('Error fetching walk-in orders:', err);
             res.render('Employee/TransactionManager/TransactionWalkIn', { 
                 user: req.session.user, 
-                walkInOrders: [], 
+                bulkOrders: [], 
                 error: 'Failed to load walk-in orders.' 
             });
         }
     });
 
     // Transaction Manager - Manage Users
-    router.get('/Employee/TransactionManager/TransactionManageUsers', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/Employee/TransactionManager/TransactionManageUsers', isAuthenticated, checkPermission('users_manage_users'), async (req, res) => {
         try {
             await pool.connect();
             const result = await pool.request().query(`
@@ -2049,9 +2330,13 @@ module.exports = function(sql, pool) {
                 LEFT JOIN Roles r ON u.RoleID = r.RoleID 
                 ORDER BY u.CreatedAt DESC
             `);
+            
+            // Decrypt user data before sending to frontend using transparent encryption service
+            const decryptedUsers = result.recordset;
+            
             res.render('Employee/TransactionManager/TransactionManageUsers', { 
                 user: req.session.user, 
-                users: result.recordset 
+                users: decryptedUsers 
             });
         } catch (err) {
             console.error('Error fetching users:', err);
@@ -2064,7 +2349,7 @@ module.exports = function(sql, pool) {
     });
 
     // Transaction Manager - Chat Support
-    router.get('/Employee/TransactionManager/TransactionChatSupport', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/Employee/TransactionManager/TransactionChatSupport', isAuthenticated, checkPermission('chat_chat_support'), async (req, res) => {
         let threads = [];
         let selectedThread = null;
         let messages = [];
@@ -2085,8 +2370,10 @@ module.exports = function(sql, pool) {
             threads = threadsResult.recordset;
             
             // If a specific thread is selected, fetch its messages
-            if (req.query.threadId) {
-                const threadId = req.query.threadId;
+            // Accept both ?thread= and ?threadId= for compatibility with the view
+            const selectedThreadParam = req.query.thread || req.query.threadId;
+            if (selectedThreadParam) {
+                const threadId = selectedThreadParam;
                 
                 // Get thread info
                 const threadResult = await pool.request()
@@ -2151,13 +2438,22 @@ module.exports = function(sql, pool) {
         { route: 'TransactionOrdersProcessing', status: 'Processing' },
         { route: 'TransactionOrdersShipping', status: 'Shipping' },
         { route: 'TransactionOrdersDelivery', status: 'Delivery' },
-        { route: 'TransactionOrdersReceive', status: 'Receive' },
+        { route: 'TransactionOrdersReceive', status: 'Received' },
         { route: 'TransactionCancelledOrders', status: 'Cancelled' },
         { route: 'TransactionCompletedOrders', status: 'Completed' }
     ];
 
     transManagerOrderRoutes.forEach(({ route, status }) => {
-        router.get(`/Employee/TransactionManager/${route}`, isAuthenticated, hasEmployeeAccess, async (req, res) => {
+        // Map route to permission
+        let permission = 'orders_orders_pending'; // default
+        if (route.includes('Processing')) permission = 'orders_orders_processing';
+        else if (route.includes('Shipping')) permission = 'orders_orders_shipping';
+        else if (route.includes('Delivery')) permission = 'orders_orders_delivery';
+        else if (route.includes('Receive')) permission = 'orders_orders_receive';
+        else if (route.includes('Cancelled')) permission = 'orders_orders_cancelled';
+        else if (route.includes('Completed')) permission = 'orders_orders_completed';
+        
+        router.get(`/Employee/TransactionManager/${route}`, isAuthenticated, checkPermission(permission), async (req, res) => {
             try {
                 await pool.connect();
                 const result = await pool.request()
@@ -2167,7 +2463,7 @@ module.exports = function(sql, pool) {
                         FROM Orders o
                         LEFT JOIN Customers c ON o.CustomerID = c.CustomerID
                         WHERE o.Status = @status
-                        ORDER BY o.CreatedAt DESC
+                        ORDER BY o.OrderDate DESC
                     `);
                 res.render(`Employee/TransactionManager/${route}`, { 
                     user: req.session.user, 
@@ -2185,7 +2481,7 @@ module.exports = function(sql, pool) {
     });
 
     // Transaction Manager - Alerts Data API
-    router.get('/Employee/TransactionManager/Alerts/Data', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/Employee/TransactionManager/Alerts/Data', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             
@@ -2193,7 +2489,7 @@ module.exports = function(sql, pool) {
             const productsResult = await pool.request().query(`
                 SELECT ProductID, Name, StockQuantity 
                 FROM Products 
-                WHERE IsArchived = 0 AND StockQuantity <= 10
+                WHERE IsActive = 1 AND StockQuantity <= 10
                 ORDER BY StockQuantity ASC
             `);
             
@@ -2201,7 +2497,7 @@ module.exports = function(sql, pool) {
             const materialsResult = await pool.request().query(`
                 SELECT MaterialID, Name, QuantityAvailable, Unit 
                 FROM RawMaterials 
-                WHERE IsArchived = 0 AND QuantityAvailable <= 10
+                WHERE IsActive = 1 AND QuantityAvailable <= 10
                 ORDER BY QuantityAvailable ASC
             `);
             
@@ -2219,22 +2515,717 @@ module.exports = function(sql, pool) {
         }
     });
 
-    // Transaction Manager - Logs Data API
-    router.get('/Employee/TransactionManager/Logs/Data', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    // Transaction Manager - Logs Data API endpoint with filtering support
+    router.get('/Employee/TransactionManager/Logs/Data', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
-            const result = await pool.request().query(`
-                SELECT TOP 100 * FROM ActivityLogs 
-                ORDER BY CreatedAt DESC
-            `);
-            res.json({
-                success: true,
-                logs: result.recordset
+            const currentUserRole = req.session.user.role;
+            
+            // Get query parameters for filtering
+            const {
+                action,
+                tableAffected,
+                userRole,
+                dateFrom,
+                dateTo,
+                search,
+                limit = 1000,
+                offset = 0
+            } = req.query;
+            
+            // Build dynamic query with filters
+            let query = `
+                SELECT 
+                    al.LogID,
+                    al.UserID,
+                    u.FullName,
+                    r.RoleName,
+                    al.Action,
+                    al.TableAffected,
+                    al.RecordID,
+                    al.Description,
+                    al.Changes,
+                    al.Timestamp
+                FROM ActivityLogs al
+                JOIN Users u ON al.UserID = u.UserID
+                JOIN Roles r ON u.RoleID = r.RoleID
+                WHERE 1=1
+            `;
+            
+            const request = pool.request();
+            
+            // Add filters
+            if (action) {
+                query += ` AND al.Action = @action`;
+                request.input('action', sql.NVarChar, action);
+            }
+            
+            if (tableAffected) {
+                query += ` AND al.TableAffected = @tableAffected`;
+                request.input('tableAffected', sql.NVarChar, tableAffected);
+            }
+            
+            if (userRole) {
+                query += ` AND r.RoleName = @userRole`;
+                request.input('userRole', sql.NVarChar, userRole);
+            }
+            
+            if (dateFrom) {
+                query += ` AND al.Timestamp >= @dateFrom`;
+                request.input('dateFrom', sql.DateTime, new Date(dateFrom));
+            }
+            
+            if (dateTo) {
+                query += ` AND al.Timestamp <= @dateTo`;
+                request.input('dateTo', sql.DateTime, new Date(dateTo));
+            }
+            
+            if (search) {
+                query += ` AND (al.Description LIKE @search OR u.FullName LIKE @search OR r.RoleName LIKE @search)`;
+                request.input('search', sql.NVarChar, `%${search}%`);
+            }
+            
+            // Add ordering and pagination
+            query += ` ORDER BY al.Timestamp DESC OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY`;
+            request.input('offset', sql.Int, parseInt(offset));
+            request.input('limit', sql.Int, parseInt(limit));
+            
+            const result = await request.query(query);
+            
+            // Decrypt user FullName before sending to frontend using transparent encryption service
+            const decryptedLogs = result.recordset.map(log => {
+                return {
+                    ...log,
+                    FullName: log.FullName
+                };
             });
+            
+            res.json({ success: true, logs: decryptedLogs });
         } catch (err) {
-            console.error('Error fetching logs data:', err);
-            res.json({
-                success: false,
+            console.error('Error fetching TransactionManager activity logs data:', err);
+            res.status(500).json({ success: false, message: 'Failed to retrieve activity logs data.', error: err.message });
+        }
+    });
+
+    // =============================================================================
+    // TRANSACTION MANAGER CRUD ROUTES
+    // =============================================================================
+
+    // Transaction Manager - Products CRUD
+    router.post('/Employee/TransactionManager/TransactionProducts/Add', isAuthenticated, productUpload.fields([
+        { name: 'image', maxCount: 1 },
+        { name: 'thumbnail1', maxCount: 1 },
+        { name: 'thumbnail2', maxCount: 1 },
+        { name: 'thumbnail3', maxCount: 1 },
+        { name: 'thumbnail4', maxCount: 1 },
+        { name: 'model3d', maxCount: 1 }
+    ]), async (req, res) => {
+        try {
+            await pool.connect();
+            const { name, description, price, stockquantity, category, requiredMaterials } = req.body;
+            
+            // Start transaction
+            const transaction = new sql.Transaction(pool);
+            await transaction.begin();
+            
+            try {
+                // Insert product
+                const productResult = await transaction.request()
+                    .input('name', sql.NVarChar, name)
+                    .input('description', sql.NVarChar, description)
+                    .input('price', sql.Decimal(10, 2), parseFloat(price))
+                    .input('stockquantity', sql.Int, parseInt(stockquantity))
+                    .input('category', sql.NVarChar, category)
+                    .input('dimensions', sql.NVarChar, dimensionsJson)
+                    .input('image', sql.NVarChar, req.files?.image ? `/uploads/products/${req.files.image[0].filename}` : null)
+                    .input('thumbnails', sql.NVarChar, req.files ? JSON.stringify([
+                        req.files.thumbnail1?.[0]?.filename ? `/uploads/products/${req.files.thumbnail1[0].filename}` : null,
+                        req.files.thumbnail2?.[0]?.filename ? `/uploads/products/${req.files.thumbnail2[0].filename}` : null,
+                        req.files.thumbnail3?.[0]?.filename ? `/uploads/products/${req.files.thumbnail3[0].filename}` : null,
+                        req.files.thumbnail4?.[0]?.filename ? `/uploads/products/${req.files.thumbnail4[0].filename}` : null
+                    ].filter(Boolean)) : null)
+                    .input('model3d', sql.NVarChar, req.files?.model3d ? `/uploads/products/models/${req.files.model3d[0].filename}` : null)
+                    .query(`
+                        INSERT INTO Products (Name, Description, Price, StockQuantity, Category, ImageURL, Thumbnails, Model3DURL, CreatedAt, IsArchived)
+                        OUTPUT INSERTED.ProductID
+                        VALUES (@name, @description, @price, @stockquantity, @category, @image, @thumbnails, @model3d, GETDATE(), 0)
+                    `);
+                
+                const productId = productResult.recordset[0].ProductID;
+                
+                // Handle required materials if provided
+                if (requiredMaterials && requiredMaterials.length > 0) {
+                    for (const materialId of requiredMaterials) {
+                        await transaction.request()
+                            .input('productId', sql.Int, productId)
+                            .input('materialId', sql.Int, parseInt(materialId))
+                            .query(`
+                                INSERT INTO ProductMaterials (ProductID, MaterialID, CreatedAt)
+                                VALUES (@productId, @materialId, GETDATE())
+                            `);
+                    }
+                }
+                
+                await transaction.commit();
+                
+                // Log the activity
+                await logActivity(
+                    req.session.user.id,
+                    'INSERT',
+                    'Products',
+                    productId,
+                    `Created new product: "${name}" (ID: ${productId})`
+                );
+                
+                res.json({ success: true, message: 'Product added successfully', productId });
+            } catch (error) {
+                await transaction.rollback();
+                throw error;
+            }
+        } catch (err) {
+            console.error('Error adding product:', err);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to add product',
+                error: err.message
+            });
+        }
+    });
+
+    router.post('/Employee/TransactionManager/TransactionProducts/Edit', isAuthenticated, productUpload.fields([
+        { name: 'image', maxCount: 1 },
+        { name: 'thumbnail1', maxCount: 1 },
+        { name: 'thumbnail2', maxCount: 1 },
+        { name: 'thumbnail3', maxCount: 1 },
+        { name: 'thumbnail4', maxCount: 1 },
+        { name: 'model3d', maxCount: 1 }
+    ]), async (req, res) => {
+        try {
+            await pool.connect();
+            const { productId, name, description, price, stockquantity, category, requiredMaterials } = req.body;
+            
+            // Start transaction
+            const transaction = new sql.Transaction(pool);
+            await transaction.begin();
+            
+            try {
+                // Get current product data for logging
+                const currentProduct = await transaction.request()
+                    .input('productId', sql.Int, productId)
+                    .query('SELECT * FROM Products WHERE ProductID = @productId');
+                
+                if (currentProduct.recordset.length === 0) {
+                    throw new Error('Product not found');
+                }
+                
+                const oldProduct = currentProduct.recordset[0];
+                
+                // Prepare update data
+                const updateData = {
+                    name: name || oldProduct.Name,
+                    description: description || oldProduct.Description,
+                    price: price ? parseFloat(price) : oldProduct.Price,
+                    stockquantity: stockquantity ? parseInt(stockquantity) : oldProduct.StockQuantity,
+                    category: category || oldProduct.Category,
+                    image: req.files?.image ? `/uploads/products/${req.files.image[0].filename}` : oldProduct.ImageURL,
+                    thumbnails: req.files ? JSON.stringify([
+                        req.files.thumbnail1?.[0]?.filename ? `/uploads/products/${req.files.thumbnail1[0].filename}` : null,
+                        req.files.thumbnail2?.[0]?.filename ? `/uploads/products/${req.files.thumbnail2[0].filename}` : null,
+                        req.files.thumbnail3?.[0]?.filename ? `/uploads/products/${req.files.thumbnail3[0].filename}` : null,
+                        req.files.thumbnail4?.[0]?.filename ? `/uploads/products/${req.files.thumbnail4[0].filename}` : null
+                    ].filter(Boolean)) : oldProduct.Thumbnails,
+                    model3d: req.files?.model3d ? `/uploads/products/models/${req.files.model3d[0].filename}` : oldProduct.Model3DURL
+                };
+                
+                // Update product
+                await transaction.request()
+                    .input('productId', sql.Int, productId)
+                    .input('name', sql.NVarChar, updateData.name)
+                    .input('description', sql.NVarChar, updateData.description)
+                    .input('price', sql.Decimal(10, 2), updateData.price)
+                    .input('stockquantity', sql.Int, updateData.stockquantity)
+                    .input('category', sql.NVarChar, updateData.category)
+                    .input('image', sql.NVarChar, updateData.image)
+                    .input('thumbnails', sql.NVarChar, updateData.thumbnails)
+                    .input('model3d', sql.NVarChar, updateData.model3d)
+                    .query(`
+                        UPDATE Products 
+                        SET Name = @name, Description = @description, Price = @price, 
+                            StockQuantity = @stockquantity, Category = @category, 
+                            ImageURL = @image, Thumbnails = @thumbnails, Model3DURL = @model3d,
+                            UpdatedAt = GETDATE()
+                        WHERE ProductID = @productId
+                    `);
+                
+                // Update required materials if provided
+                if (requiredMaterials !== undefined) {
+                    // Remove existing materials
+                    await transaction.request()
+                        .input('productId', sql.Int, productId)
+                        .query('DELETE FROM ProductMaterials WHERE ProductID = @productId');
+                    
+                    // Add new materials
+                    if (requiredMaterials && requiredMaterials.length > 0) {
+                        for (const materialId of requiredMaterials) {
+                            await transaction.request()
+                                .input('productId', sql.Int, productId)
+                                .input('materialId', sql.Int, parseInt(materialId))
+                                .query(`
+                                    INSERT INTO ProductMaterials (ProductID, MaterialID, CreatedAt)
+                                    VALUES (@productId, @materialId, GETDATE())
+                                `);
+                        }
+                    }
+                }
+                
+                await transaction.commit();
+                
+                // Log the activity
+                await logActivity(
+                    req.session.user.id,
+                    'UPDATE',
+                    'Products',
+                    productId,
+                    `Updated product: "${name}" (ID: ${productId})`
+                );
+                
+                res.json({ success: true, message: 'Product updated successfully' });
+            } catch (error) {
+                await transaction.rollback();
+                throw error;
+            }
+        } catch (err) {
+            console.error('Error updating product:', err);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to update product',
+                error: err.message
+            });
+        }
+    });
+
+    router.post('/Employee/TransactionManager/TransactionProducts/Delete/:id', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const productId = req.params.id;
+            
+            // Get product info for logging
+            const productResult = await pool.request()
+                .input('productId', sql.Int, productId)
+                .query('SELECT Name FROM Products WHERE ProductID = @productId');
+            
+            if (productResult.recordset.length === 0) {
+                return res.status(404).json({ success: false, message: 'Product not found' });
+            }
+            
+            const productName = productResult.recordset[0].Name;
+            
+            // Archive the product instead of deleting
+            await pool.request()
+                .input('productId', sql.Int, productId)
+                .query('UPDATE Products SET IsActive = 0, UpdatedAt = GETDATE() WHERE ProductID = @productId');
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'DELETE',
+                'Products',
+                productId,
+                `Deleted product: "${productName}" (ID: ${productId})`,
+                JSON.stringify({ IsActive: { old: 1, new: 0 } })
+            );
+            
+            res.json({ success: true, message: 'Product archived successfully' });
+        } catch (err) {
+            console.error('Error archiving product:', err);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to archive product',
+                error: err.message
+            });
+        }
+    });
+
+    // Transaction Manager - Materials CRUD
+    router.post('/Employee/TransactionManager/TransactionMaterials/Add', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const { name, quantity, unit } = req.body;
+            
+            const result = await pool.request()
+                .input('name', sql.NVarChar, name)
+                .input('quantity', sql.Int, quantity)
+                .input('unit', sql.NVarChar, unit)
+                .query(`
+                    INSERT INTO RawMaterials (Name, QuantityAvailable, Unit, LastUpdated, IsActive)
+                    OUTPUT INSERTED.MaterialID
+                    VALUES (@name, @quantity, @unit, GETDATE(), 1)
+                `);
+            
+            const materialId = result.recordset[0].MaterialID;
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'INSERT',
+                'RawMaterials',
+                materialId,
+                `Created new material: "${name}" (ID: ${materialId})`
+            );
+            
+            res.json({ success: true, message: 'Material added successfully', materialId });
+        } catch (err) {
+            console.error('Error adding material:', err);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to add material',
+                error: err.message
+            });
+        }
+    });
+
+    router.post('/Employee/TransactionManager/TransactionMaterials/Edit', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const { materialId, name, quantity, unit } = req.body;
+            
+            await pool.request()
+                .input('materialId', sql.Int, materialId)
+                .input('name', sql.NVarChar, name)
+                .input('quantity', sql.Int, quantity)
+                .input('unit', sql.NVarChar, unit)
+                .query(`
+                    UPDATE RawMaterials 
+                    SET Name = @name, QuantityAvailable = @quantity, Unit = @unit, LastUpdated = GETDATE()
+                    WHERE MaterialID = @materialId
+                `);
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'UPDATE',
+                'RawMaterials',
+                materialId,
+                `Updated material: "${name}" (ID: ${materialId})`
+            );
+            
+            res.json({ success: true, message: 'Material updated successfully' });
+        } catch (err) {
+            console.error('Error updating material:', err);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to update material',
+                error: err.message
+            });
+        }
+    });
+
+    router.post('/Employee/TransactionManager/TransactionMaterials/Delete/:id', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const materialId = req.params.id;
+            
+            // Get material info for logging
+            const materialResult = await pool.request()
+                .input('materialId', sql.Int, materialId)
+                .query('SELECT Name FROM RawMaterials WHERE MaterialID = @materialId');
+            
+            if (materialResult.recordset.length === 0) {
+                return res.status(404).json({ success: false, message: 'Material not found' });
+            }
+            
+            const materialName = materialResult.recordset[0].Name;
+            
+            // Deactivate the material instead of deleting
+            await pool.request()
+                .input('materialId', sql.Int, materialId)
+                .query('UPDATE RawMaterials SET IsActive = 0, LastUpdated = GETDATE() WHERE MaterialID = @materialId');
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'DELETE',
+                'RawMaterials',
+                materialId,
+                `Deleted material: "${materialName}" (ID: ${materialId})`,
+                JSON.stringify({ IsActive: { old: 1, new: 0 } })
+            );
+            
+            res.json({ success: true, message: 'Material deactivated successfully' });
+        } catch (err) {
+            console.error('Error deactivating material:', err);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to deactivate material',
+                error: err.message
+            });
+        }
+    });
+
+    // Transaction Manager - Variations CRUD
+    router.post('/Employee/TransactionManager/TransactionVariations/Add', isAuthenticated, variationUpload.single('variationImage'), async (req, res) => {
+        try {
+            await pool.connect();
+            const { variationName, color, quantity, productID, isActive } = req.body;
+            
+            // Handle image upload
+            let imageUrl = null;
+            if (req.file) {
+                imageUrl = `/uploads/variations/${req.file.filename}`;
+            }
+            
+            const result = await pool.request()
+                .input('productID', sql.Int, parseInt(productID))
+                .input('variationName', sql.NVarChar, variationName)
+                .input('color', sql.NVarChar, color || null)
+                .input('quantity', sql.Int, parseInt(quantity))
+                .input('imageUrl', sql.NVarChar, imageUrl)
+                .input('isActive', sql.Bit, isActive === '1' ? 1 : 0)
+                .query(`
+                    INSERT INTO ProductVariations (ProductID, VariationName, Color, Quantity, VariationImageURL, IsActive)
+                    OUTPUT INSERTED.VariationID
+                    VALUES (@productID, @variationName, @color, @quantity, @imageUrl, @isActive)
+                `);
+            
+            const variationID = result.recordset[0].VariationID;
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'INSERT',
+                'ProductVariations',
+                variationID,
+                `Variation "${variationName}" created`
+            );
+            
+            res.json({ success: true, message: 'Variation added successfully', variationID });
+        } catch (err) {
+            console.error('Error adding variation:', err);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to add variation',
+                error: err.message
+            });
+        }
+    });
+
+    router.post('/Employee/TransactionManager/TransactionVariations/Edit', isAuthenticated, variationUpload.single('variationImage'), async (req, res) => {
+        try {
+            await pool.connect();
+            const { variationID, variationName, color, quantity, productID, isActive } = req.body;
+            
+            // Handle image upload
+            let imageUrl = null;
+            if (req.file) {
+                // Get current variation image URL before updating
+                const currentVariation = await pool.request()
+                    .input('variationID', sql.Int, variationID)
+                    .query('SELECT VariationImageURL FROM ProductVariations WHERE VariationID = @variationID');
+                
+                const currentImageUrl = currentVariation.recordset[0]?.VariationImageURL;
+                
+                // Delete old variation image
+                await deleteOldImageFile(currentImageUrl);
+                
+                imageUrl = `/uploads/variations/${req.file.filename}`;
+            } else {
+                // If no new image uploaded, keep existing image
+                const existingResult = await pool.request()
+                    .input('variationID', sql.Int, variationID)
+                    .query('SELECT VariationImageURL FROM ProductVariations WHERE VariationID = @variationID');
+                
+                if (existingResult.recordset.length > 0) {
+                    imageUrl = existingResult.recordset[0].VariationImageURL;
+                }
+            }
+            
+            await pool.request()
+                .input('variationID', sql.Int, variationID)
+                .input('variationName', sql.NVarChar, variationName)
+                .input('color', sql.NVarChar, color || null)
+                .input('quantity', sql.Int, parseInt(quantity))
+                .input('imageUrl', sql.NVarChar, imageUrl)
+                .input('isActive', sql.Bit, isActive === '1' ? 1 : 0)
+                .query(`
+                    UPDATE ProductVariations 
+                    SET VariationName = @variationName, Color = @color, Quantity = @quantity, 
+                        VariationImageURL = @imageUrl, IsActive = @isActive
+                    WHERE VariationID = @variationID
+                `);
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'UPDATE',
+                'ProductVariations',
+                variationID,
+                `Variation "${variationName}" updated`
+            );
+            
+            res.json({ success: true, message: 'Variation updated successfully' });
+        } catch (err) {
+            console.error('Error updating variation:', err);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to update variation',
+                error: err.message
+            });
+        }
+    });
+
+    router.post('/Employee/TransactionManager/TransactionVariations/Delete/:id', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const variationID = req.params.id;
+            
+            // Get variation info for logging
+            const variationResult = await pool.request()
+                .input('variationID', sql.Int, variationID)
+                .query('SELECT VariationName FROM ProductVariations WHERE VariationID = @variationID');
+            
+            if (variationResult.recordset.length === 0) {
+                return res.status(404).json({ success: false, message: 'Variation not found' });
+            }
+            
+            const variationName = variationResult.recordset[0].VariationName;
+            
+            // Deactivate the variation instead of deleting
+            await pool.request()
+                .input('variationID', sql.Int, variationID)
+                .query('UPDATE ProductVariations SET IsActive = 0 WHERE VariationID = @variationID');
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'DELETE',
+                'ProductVariations',
+                variationID,
+                `Variation "${variationName}" deactivated`,
+                JSON.stringify({ IsActive: { old: 1, new: 0 } })
+            );
+            
+            res.json({ success: true, message: 'Variation deactivated successfully' });
+        } catch (err) {
+            console.error('Error deactivating variation:', err);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to deactivate variation',
+                error: err.message
+            });
+        }
+    });
+
+    // Transaction Manager - Delivery Rates CRUD
+    router.post('/Employee/TransactionManager/TransactionRates/Add', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const { serviceType, basePrice, isActive } = req.body;
+            
+            const result = await pool.request()
+                .input('serviceType', sql.NVarChar, serviceType)
+                .input('basePrice', sql.Decimal(10, 2), parseFloat(basePrice))
+                .input('isActive', sql.Bit, isActive === '1' ? 1 : 0)
+                .input('createdByUserID', sql.Int, req.session.user?.id || null)
+                .input('createdByUsername', sql.NVarChar, req.session.user?.username || 'System')
+                .query(`
+                    INSERT INTO DeliveryRates (ServiceType, Price, IsActive, CreatedAt, CreatedByUserID, CreatedByUsername)
+                    OUTPUT INSERTED.RateID
+                    VALUES (@serviceType, @basePrice, @isActive, GETDATE(), @createdByUserID, @createdByUsername)
+                `);
+            
+            const rateId = result.recordset[0].RateID;
+            
+            res.json({ success: true, message: 'Delivery rate added successfully', rateId });
+        } catch (err) {
+            console.error('Error adding delivery rate:', err);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to add delivery rate',
+                error: err.message
+            });
+        }
+    });
+
+    router.post('/Employee/TransactionManager/TransactionRates/Update/:rateId', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const { rateId } = req.params;
+            const { serviceType, basePrice, isActive } = req.body;
+            
+            await pool.request()
+                .input('rateId', sql.Int, rateId)
+                .input('serviceType', sql.NVarChar, serviceType)
+                .input('basePrice', sql.Decimal(10, 2), parseFloat(basePrice))
+                .input('isActive', sql.Bit, isActive === '1' ? 1 : 0)
+                .query(`
+                    UPDATE DeliveryRates 
+                    SET ServiceType = @serviceType, Price = @basePrice, IsActive = @isActive
+                    WHERE RateID = @rateId
+                `);
+            
+            res.json({ success: true, message: 'Delivery rate updated successfully' });
+        } catch (err) {
+            console.error('Error updating delivery rate:', err);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to update delivery rate',
+                error: err.message
+            });
+        }
+    });
+
+    // Transaction Manager - Stock Update
+    router.post('/Employee/TransactionManager/TransactionProducts/UpdateStock', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const { productId, newStock } = req.body;
+            
+            // Get current stock quantity before updating
+            const currentStockResult = await pool.request()
+                .input('productId', sql.Int, productId)
+                .query('SELECT StockQuantity FROM Products WHERE ProductID = @productId');
+            
+            if (currentStockResult.recordset.length === 0) {
+                return res.json({ 
+                    success: false, 
+                    message: 'Product not found.' 
+                });
+            }
+            
+            const oldStock = currentStockResult.recordset[0].StockQuantity;
+            
+            await pool.request()
+                .input('productId', sql.Int, productId)
+                .input('newStock', sql.Int, newStock)
+                .query(`
+                    UPDATE Products 
+                    SET StockQuantity = @newStock, UpdatedAt = GETDATE()
+                    WHERE ProductID = @productId
+                `);
+            
+            // Log the activity with actual changes
+            const changes = JSON.stringify({
+                StockQuantity: {
+                    old: oldStock,
+                    new: newStock
+                }
+            });
+            
+            await logActivity(
+                req.session.user.id,
+                'UPDATE',
+                'Products',
+                productId,
+                `TransactionManager updated stock quantity from ${oldStock} to ${newStock} for product ID: ${productId}`,
+                changes
+            );
+            
+            res.json({ success: true, message: 'Stock updated successfully' });
+        } catch (err) {
+            console.error('Error updating stock:', err);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to update stock',
                 error: err.message
             });
         }
@@ -2255,42 +3246,63 @@ module.exports = function(sql, pool) {
     });
 
     // User Manager - Products
-    router.get('/Employee/UserManager/UserProducts', isAuthenticated, async (req, res) => {
+    router.get('/Employee/UserManager/UserProducts', isAuthenticated, checkPermission('inventory_products'), async (req, res) => {
         try {
             await pool.connect();
+            const page = parseInt(req.query.page) || 1;
+            const limit = 10;
+            const offset = (page - 1) * limit;
+
+            const countResult = await pool.request().query('SELECT COUNT(*) as count FROM Products WHERE IsActive = 1');
+            const total = countResult.recordset[0].count;
+            const totalPages = Math.ceil(total / limit);
+
             const result = await pool.request().query(`
-                SELECT p.*, 
-                       COALESCE(SUM(oi.Quantity), 0) as TotalSold,
-                       COALESCE(AVG(r.Rating), 0) as AverageRating,
-                       COUNT(r.ReviewID) as ReviewCount
+                SELECT 
+                    p.*,
+                    pd.DiscountID,
+                    pd.DiscountType,
+                    pd.DiscountValue,
+                    pd.StartDate as DiscountStartDate,
+                    pd.EndDate as DiscountEndDate,
+                    pd.IsActive as DiscountIsActive,
+                    CASE 
+                        WHEN pd.DiscountType = 'percentage' THEN 
+                            p.Price - (p.Price * pd.DiscountValue / 100)
+                        WHEN pd.DiscountType = 'fixed' THEN 
+                            CASE WHEN p.Price - pd.DiscountValue < 0 THEN 0 ELSE p.Price - pd.DiscountValue END
+                        ELSE p.Price
+                    END as DiscountedPrice,
+                    CASE 
+                        WHEN pd.DiscountType = 'percentage' THEN 
+                            p.Price * pd.DiscountValue / 100
+                        WHEN pd.DiscountType = 'fixed' THEN 
+                            CASE WHEN pd.DiscountValue > p.Price THEN p.Price ELSE pd.DiscountValue END
+                        ELSE 0
+                    END as DiscountAmount
                 FROM Products p
-                LEFT JOIN OrderItems oi ON p.ProductID = oi.ProductID
-                LEFT JOIN Reviews r ON p.ProductID = r.ProductID
-                WHERE p.IsArchived = 0
-                GROUP BY p.ProductID, p.Name, p.Description, p.Price, p.StockQuantity, p.Category, p.ImageURL, p.CreatedAt, p.UpdatedAt, p.IsArchived
-                ORDER BY p.CreatedAt DESC
+                LEFT JOIN ProductDiscounts pd ON p.ProductID = pd.ProductID 
+                    AND pd.IsActive = 1 
+                    AND GETDATE() BETWEEN pd.StartDate AND pd.EndDate
+                WHERE p.IsActive = 1
+                ORDER BY p.ProductID DESC
+                OFFSET ${offset} ROWS FETCH NEXT ${limit} ROWS ONLY
             `);
-            res.render('Employee/UserManager/UserProducts', { 
-                user: req.session.user, 
-                products: result.recordset 
-            });
+            const products = result.recordset;
+            res.render('Employee/UserManager/UserProducts', { user: req.session.user, products, page, totalPages });
         } catch (err) {
             console.error('Error fetching products:', err);
-            res.render('Employee/UserManager/UserProducts', { 
-                user: req.session.user, 
-                products: [], 
-                error: 'Failed to load products.' 
-            });
+            res.render('Employee/UserManager/UserProducts', { user: req.session.user, products: [], page: 1, totalPages: 1 });
         }
     });
 
     // User Manager - Materials
-    router.get('/Employee/UserManager/UserMaterials', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/Employee/UserManager/UserMaterials', isAuthenticated, checkPermission('inventory_materials'), async (req, res) => {
         try {
             await pool.connect();
             const result = await pool.request().query(`
                 SELECT * FROM RawMaterials 
-                WHERE IsArchived = 0 
+                WHERE IsActive = 1 
                 ORDER BY Name ASC
             `);
             res.render('Employee/UserManager/UserMaterials', { 
@@ -2308,60 +3320,93 @@ module.exports = function(sql, pool) {
     });
 
     // User Manager - Variations
-    router.get('/Employee/UserManager/UserVariations', isAuthenticated, hasEmployeeAccess, (req, res) => {
+    router.get('/Employee/UserManager/UserVariations', isAuthenticated, checkPermission('inventory_variations'), (req, res) => {
         res.render('Employee/UserManager/UserVariations', { user: req.session.user });
     });
 
     // User Manager - Archived
-    router.get('/Employee/UserManager/UserArchived', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/Employee/UserManager/UserArchived', isAuthenticated, checkPermission('inventory_archived'), async (req, res) => {
         try {
             await pool.connect();
-            const result = await pool.request().query(`
-                SELECT * FROM Products 
-                WHERE IsArchived = 1 
-                ORDER BY UpdatedAt DESC
+            
+            // Fetch archived products
+            const productsResult = await pool.request().query(`
+                SELECT 
+                    ProductID,
+                    Name,
+                    Description,
+                    Price,
+                    StockQuantity,
+                    Category,
+                    DateAdded,
+                    IsActive
+                FROM Products
+                WHERE IsActive = 0
+                ORDER BY DateAdded DESC
             `);
+            
+            // Fetch archived raw materials
+            const materialsResult = await pool.request().query(`
+                SELECT 
+                    MaterialID,
+                    Name,
+                    QuantityAvailable,
+                    Unit,
+                    LastUpdated,
+                    IsActive
+                FROM RawMaterials
+                WHERE IsActive = 0
+                ORDER BY LastUpdated DESC
+            `);
+            
+            // Categories are stored as a column in Products table, not a separate table
+            const categoriesResult = { recordset: [] };
+            
             res.render('Employee/UserManager/UserArchived', { 
                 user: req.session.user, 
-                products: result.recordset 
+                archivedProducts: productsResult.recordset,
+                archivedMaterials: materialsResult.recordset,
+                archivedCategories: categoriesResult.recordset
             });
         } catch (err) {
-            console.error('Error fetching archived products:', err);
+            console.error('Error fetching archived items:', err);
             res.render('Employee/UserManager/UserArchived', { 
                 user: req.session.user, 
-                products: [], 
-                error: 'Failed to load archived products.' 
+                archivedProducts: [],
+                archivedMaterials: [],
+                archivedCategories: [],
+                error: 'Failed to load archived items.' 
             });
         }
     });
 
     // User Manager - Alerts
-    router.get('/Employee/UserManager/UserAlerts', isAuthenticated, hasEmployeeAccess, (req, res) => {
+    router.get('/Employee/UserManager/UserAlerts', isAuthenticated, checkPermission('inventory_alerts'), (req, res) => {
         res.render('Employee/UserManager/UserAlerts', { user: req.session.user });
     });
 
     // User Manager - Logs
-    router.get('/Employee/UserManager/UserLogs', isAuthenticated, hasEmployeeAccess, (req, res) => {
+    router.get('/Employee/UserManager/UserLogs', isAuthenticated, checkPermission('content_logs'), (req, res) => {
         res.render('Employee/UserManager/UserLogs', { user: req.session.user });
     });
 
     // User Manager - CMS
-    router.get('/Employee/UserManager/UserCMS', isAuthenticated, hasEmployeeAccess, (req, res) => {
+    router.get('/Employee/UserManager/UserCMS', isAuthenticated, checkPermission('content_cms'), (req, res) => {
         res.render('Employee/UserManager/UserCMS', { user: req.session.user });
     });
 
     // User Manager - Reviews
-    router.get('/Employee/UserManager/UserReviews', isAuthenticated, hasEmployeeAccess, (req, res) => {
+    router.get('/Employee/UserManager/UserReviews', isAuthenticated, checkPermission('reviews_reviews'), (req, res) => {
         res.render('Employee/UserManager/UserReviews', { user: req.session.user });
     });
 
     // User Manager - Delivery Rates
-    router.get('/Employee/UserManager/UserRates', isAuthenticated, hasEmployeeAccess, (req, res) => {
+    router.get('/Employee/UserManager/UserRates', isAuthenticated, checkPermission('transactions_delivery_rates'), (req, res) => {
         res.render('Employee/UserManager/UserRates', { user: req.session.user });
     });
 
     // User Manager - Walk In
-    router.get('/Employee/UserManager/UserWalkIn', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/Employee/UserManager/UserWalkIn', isAuthenticated, checkPermission('transactions_walk_in'), async (req, res) => {
         try {
             await pool.connect();
             const result = await pool.request().query(`
@@ -2370,20 +3415,20 @@ module.exports = function(sql, pool) {
             `);
             res.render('Employee/UserManager/UserWalkIn', { 
                 user: req.session.user, 
-                walkInOrders: result.recordset 
+                bulkOrders: result.recordset 
             });
         } catch (err) {
             console.error('Error fetching walk-in orders:', err);
             res.render('Employee/UserManager/UserWalkIn', { 
                 user: req.session.user, 
-                walkInOrders: [], 
+                bulkOrders: [], 
                 error: 'Failed to load walk-in orders.' 
             });
         }
     });
 
     // User Manager - Manage Users
-    router.get('/Employee/UserManager/UserManageUsers', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/Employee/UserManager/UserManageUsers', isAuthenticated, checkPermission('users_manage_users'), async (req, res) => {
         try {
             await pool.connect();
             const result = await pool.request().query(`
@@ -2392,9 +3437,13 @@ module.exports = function(sql, pool) {
                 LEFT JOIN Roles r ON u.RoleID = r.RoleID 
                 ORDER BY u.CreatedAt DESC
             `);
+            
+            // Decrypt user data before sending to frontend using transparent encryption service
+            const decryptedUsers = result.recordset;
+            
             res.render('Employee/UserManager/UserManageUsers', { 
                 user: req.session.user, 
-                users: result.recordset 
+                users: decryptedUsers 
             });
         } catch (err) {
             console.error('Error fetching users:', err);
@@ -2407,7 +3456,7 @@ module.exports = function(sql, pool) {
     });
 
     // User Manager - Chat Support
-    router.get('/Employee/UserManager/UserChatSupport', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/Employee/UserManager/UserChatSupport', isAuthenticated, checkPermission('chat_chat_support'), async (req, res) => {
         let threads = [];
         let selectedThread = null;
         let messages = [];
@@ -2494,13 +3543,22 @@ module.exports = function(sql, pool) {
         { route: 'UserOrdersProcessing', status: 'Processing' },
         { route: 'UserOrdersShipping', status: 'Shipping' },
         { route: 'UserOrdersDelivery', status: 'Delivery' },
-        { route: 'UserOrdersReceive', status: 'Receive' },
+        { route: 'UserOrdersReceive', status: 'Received' },
         { route: 'UserCancelledOrders', status: 'Cancelled' },
         { route: 'UserCompletedOrders', status: 'Completed' }
     ];
 
     userManagerOrderRoutes.forEach(({ route, status }) => {
-        router.get(`/Employee/UserManager/${route}`, isAuthenticated, hasEmployeeAccess, async (req, res) => {
+        // Map route to permission
+        let permission = 'orders_orders_pending'; // default
+        if (route.includes('Processing')) permission = 'orders_orders_processing';
+        else if (route.includes('Shipping')) permission = 'orders_orders_shipping';
+        else if (route.includes('Delivery')) permission = 'orders_orders_delivery';
+        else if (route.includes('Receive')) permission = 'orders_orders_receive';
+        else if (route.includes('Cancelled')) permission = 'orders_orders_cancelled';
+        else if (route.includes('Completed')) permission = 'orders_orders_completed';
+        
+        router.get(`/Employee/UserManager/${route}`, isAuthenticated, checkPermission(permission), async (req, res) => {
             try {
                 await pool.connect();
                 const result = await pool.request()
@@ -2510,7 +3568,7 @@ module.exports = function(sql, pool) {
                         FROM Orders o
                         LEFT JOIN Customers c ON o.CustomerID = c.CustomerID
                         WHERE o.Status = @status
-                        ORDER BY o.CreatedAt DESC
+                        ORDER BY o.OrderDate DESC
                     `);
                 res.render(`Employee/UserManager/${route}`, { 
                     user: req.session.user, 
@@ -2528,7 +3586,7 @@ module.exports = function(sql, pool) {
     });
 
     // User Manager - Alerts Data API
-    router.get('/Employee/UserManager/Alerts/Data', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/Employee/UserManager/Alerts/Data', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             
@@ -2536,7 +3594,7 @@ module.exports = function(sql, pool) {
             const productsResult = await pool.request().query(`
                 SELECT ProductID, Name, StockQuantity 
                 FROM Products 
-                WHERE IsArchived = 0 AND StockQuantity <= 10
+                WHERE IsActive = 1 AND StockQuantity <= 10
                 ORDER BY StockQuantity ASC
             `);
             
@@ -2544,7 +3602,7 @@ module.exports = function(sql, pool) {
             const materialsResult = await pool.request().query(`
                 SELECT MaterialID, Name, QuantityAvailable, Unit 
                 FROM RawMaterials 
-                WHERE IsArchived = 0 AND QuantityAvailable <= 10
+                WHERE IsActive = 1 AND QuantityAvailable <= 10
                 ORDER BY QuantityAvailable ASC
             `);
             
@@ -2562,24 +3620,1349 @@ module.exports = function(sql, pool) {
         }
     });
 
-    // User Manager - Logs Data API
-    router.get('/Employee/UserManager/Logs/Data', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    // User Manager - Logs Data API endpoint with filtering support
+    router.get('/Employee/UserManager/Logs/Data', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
-            const result = await pool.request().query(`
-                SELECT TOP 100 * FROM ActivityLogs 
-                ORDER BY CreatedAt DESC
-            `);
-            res.json({
-                success: true,
-                logs: result.recordset
+            const currentUserRole = req.session.user.role;
+            
+            // Get query parameters for filtering
+            const {
+                action,
+                tableAffected,
+                userRole,
+                dateFrom,
+                dateTo,
+                search,
+                limit = 1000,
+                offset = 0
+            } = req.query;
+            
+            // Build dynamic query with filters
+            let query = `
+                SELECT 
+                    al.LogID,
+                    al.UserID,
+                    u.FullName,
+                    r.RoleName,
+                    al.Action,
+                    al.TableAffected,
+                    al.RecordID,
+                    al.Description,
+                    al.Changes,
+                    al.Timestamp
+                FROM ActivityLogs al
+                JOIN Users u ON al.UserID = u.UserID
+                JOIN Roles r ON u.RoleID = r.RoleID
+                WHERE 1=1
+            `;
+            
+            const request = pool.request();
+            
+            // Add filters
+            if (action) {
+                query += ` AND al.Action = @action`;
+                request.input('action', sql.NVarChar, action);
+            }
+            
+            if (tableAffected) {
+                query += ` AND al.TableAffected = @tableAffected`;
+                request.input('tableAffected', sql.NVarChar, tableAffected);
+            }
+            
+            if (userRole) {
+                query += ` AND r.RoleName = @userRole`;
+                request.input('userRole', sql.NVarChar, userRole);
+            }
+            
+            if (dateFrom) {
+                query += ` AND al.Timestamp >= @dateFrom`;
+                request.input('dateFrom', sql.DateTime, new Date(dateFrom));
+            }
+            
+            if (dateTo) {
+                query += ` AND al.Timestamp <= @dateTo`;
+                request.input('dateTo', sql.DateTime, new Date(dateTo));
+            }
+            
+            if (search) {
+                query += ` AND (al.Description LIKE @search OR u.FullName LIKE @search OR r.RoleName LIKE @search)`;
+                request.input('search', sql.NVarChar, `%${search}%`);
+            }
+            
+            // Add ordering and pagination
+            query += ` ORDER BY al.Timestamp DESC OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY`;
+            request.input('offset', sql.Int, parseInt(offset));
+            request.input('limit', sql.Int, parseInt(limit));
+            
+            const result = await request.query(query);
+            
+            // Decrypt user FullName before sending to frontend using transparent encryption service
+            const decryptedLogs = result.recordset.map(log => {
+                return {
+                    ...log,
+                    FullName: log.FullName
+                };
             });
+            
+            res.json({ success: true, logs: decryptedLogs });
         } catch (err) {
-            console.error('Error fetching logs data:', err);
-            res.json({
-                success: false,
+            console.error('Error fetching UserManager activity logs data:', err);
+            res.status(500).json({ success: false, message: 'Failed to retrieve activity logs data.', error: err.message });
+        }
+    });
+
+    // =============================================================================
+    // TRANSACTION MANAGER ORDER PROCESSING ROUTES
+    // =============================================================================
+
+    // Transaction Manager OrdersPending: Proceed to Processing
+    router.post('/Employee/TransactionManager/TransactionOrdersPending/Proceed/:orderId', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const orderId = parseInt(req.params.orderId);
+            await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query(`UPDATE Orders SET Status = 'Processing' WHERE OrderID = @orderId`);
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'UPDATE',
+                'Orders',
+                orderId,
+                `Order #${orderId} status changed to Processing by Transaction Manager`
+            );
+            
+            res.json({ success: true });
+        } catch (err) {
+            res.json({ success: false, message: 'Failed to update order status.' });
+        }
+    });
+
+    // Transaction Manager OrdersPending: Cancel order
+    router.post('/Employee/TransactionManager/TransactionOrdersPending/Cancel/:orderId', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const orderId = parseInt(req.params.orderId);
+            
+            // Get order items before cancelling to restore stock
+            const orderItemsResult = await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query(`
+                    SELECT oi.ProductID, oi.Quantity, oi.VariationID
+                    FROM OrderItems oi
+                    WHERE oi.OrderID = @orderId
+                `);
+            
+            // Restore stock for each item
+            for (const item of orderItemsResult.recordset) {
+                if (item.VariationID) {
+                    await pool.request()
+                        .input('variationID', sql.Int, item.VariationID)
+                        .input('quantity', sql.Int, item.Quantity)
+                        .query(`UPDATE ProductVariations SET StockQuantity = StockQuantity + @quantity WHERE VariationID = @variationID`);
+                } else {
+                    await pool.request()
+                        .input('productId', sql.Int, item.ProductID)
+                        .input('quantity', sql.Int, item.Quantity)
+                        .query(`UPDATE Products SET StockQuantity = StockQuantity + @quantity WHERE ProductID = @productId`);
+                }
+            }
+            
+            // Update order status to cancelled
+            await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query(`UPDATE Orders SET Status = 'Cancelled' WHERE OrderID = @orderId`);
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'CANCEL',
+                'Orders',
+                orderId,
+                `Order #${orderId} cancelled by Transaction Manager`
+            );
+            
+            res.json({ success: true });
+        } catch (err) {
+            res.json({ success: false, message: 'Failed to cancel order.' });
+        }
+    });
+
+    // Transaction Manager OrdersProcessing: Proceed to Shipping
+    router.post('/Employee/TransactionManager/TransactionOrdersProcessing/Proceed/:orderId', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const orderId = parseInt(req.params.orderId);
+            await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query(`UPDATE Orders SET Status = 'Shipping' WHERE OrderID = @orderId`);
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'UPDATE',
+                'Orders',
+                orderId,
+                `Order #${orderId} status changed to Shipping by Transaction Manager`
+            );
+            
+            res.json({ success: true });
+        } catch (err) {
+            res.json({ success: false, message: 'Failed to update order status.' });
+        }
+    });
+
+    // Transaction Manager OrdersProcessing: Cancel order
+    router.post('/Employee/TransactionManager/TransactionOrdersProcessing/Cancel/:orderId', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const orderId = parseInt(req.params.orderId);
+            
+            // Get order items before cancelling to restore stock
+            const orderItemsResult = await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query(`
+                    SELECT oi.ProductID, oi.Quantity, oi.VariationID
+                    FROM OrderItems oi
+                    WHERE oi.OrderID = @orderId
+                `);
+            
+            // Restore stock for each item
+            for (const item of orderItemsResult.recordset) {
+                if (item.VariationID) {
+                    await pool.request()
+                        .input('variationID', sql.Int, item.VariationID)
+                        .input('quantity', sql.Int, item.Quantity)
+                        .query(`UPDATE ProductVariations SET StockQuantity = StockQuantity + @quantity WHERE VariationID = @variationID`);
+                } else {
+                    await pool.request()
+                        .input('productId', sql.Int, item.ProductID)
+                        .input('quantity', sql.Int, item.Quantity)
+                        .query(`UPDATE Products SET StockQuantity = StockQuantity + @quantity WHERE ProductID = @productId`);
+                }
+            }
+            
+            // Update order status to cancelled
+            await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query(`UPDATE Orders SET Status = 'Cancelled' WHERE OrderID = @orderId`);
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'CANCEL',
+                'Orders',
+                orderId,
+                `Order #${orderId} cancelled by Transaction Manager`
+            );
+            
+            res.json({ success: true });
+        } catch (err) {
+            res.json({ success: false, message: 'Failed to cancel order.' });
+        }
+    });
+
+    // Transaction Manager OrdersShipping: Proceed to Delivery
+    router.post('/Employee/TransactionManager/TransactionOrdersShipping/Proceed/:orderId', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const orderId = parseInt(req.params.orderId);
+            await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query(`UPDATE Orders SET Status = 'Delivery' WHERE OrderID = @orderId`);
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'UPDATE',
+                'Orders',
+                orderId,
+                `Order #${orderId} status changed to Delivery by Transaction Manager`
+            );
+            
+            res.json({ success: true });
+        } catch (err) {
+            res.json({ success: false, message: 'Failed to update order status.' });
+        }
+    });
+
+    // Transaction Manager OrdersShipping: Cancel order
+    router.post('/Employee/TransactionManager/TransactionOrdersShipping/Cancel/:orderId', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const orderId = parseInt(req.params.orderId);
+            
+            // Get order items before cancelling to restore stock
+            const orderItemsResult = await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query(`
+                    SELECT oi.ProductID, oi.Quantity, oi.VariationID
+                    FROM OrderItems oi
+                    WHERE oi.OrderID = @orderId
+                `);
+            
+            // Restore stock for each item
+            for (const item of orderItemsResult.recordset) {
+                if (item.VariationID) {
+                    await pool.request()
+                        .input('variationID', sql.Int, item.VariationID)
+                        .input('quantity', sql.Int, item.Quantity)
+                        .query(`UPDATE ProductVariations SET StockQuantity = StockQuantity + @quantity WHERE VariationID = @variationID`);
+                } else {
+                    await pool.request()
+                        .input('productId', sql.Int, item.ProductID)
+                        .input('quantity', sql.Int, item.Quantity)
+                        .query(`UPDATE Products SET StockQuantity = StockQuantity + @quantity WHERE ProductID = @productId`);
+                }
+            }
+            
+            // Update order status to cancelled
+            await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query(`UPDATE Orders SET Status = 'Cancelled' WHERE OrderID = @orderId`);
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'CANCEL',
+                'Orders',
+                orderId,
+                `Order #${orderId} cancelled by Transaction Manager`
+            );
+            
+            res.json({ success: true });
+        } catch (err) {
+            res.json({ success: false, message: 'Failed to cancel order.' });
+        }
+    });
+
+    // Transaction Manager OrdersDelivery: Proceed to Received
+    router.post('/Employee/TransactionManager/TransactionOrdersDelivery/Proceed/:orderId', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const orderId = parseInt(req.params.orderId);
+            await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query(`UPDATE Orders SET Status = 'Received' WHERE OrderID = @orderId`);
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'UPDATE',
+                'Orders',
+                orderId,
+                `Order #${orderId} status changed to Received by Transaction Manager`
+            );
+            
+            res.json({ success: true });
+        } catch (err) {
+            res.json({ success: false, message: 'Failed to update order status.' });
+        }
+    });
+
+    // Transaction Manager OrdersDelivery: Cancel order
+    router.post('/Employee/TransactionManager/TransactionOrdersDelivery/Cancel/:orderId', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const orderId = parseInt(req.params.orderId);
+            
+            // Get order items before cancelling to restore stock
+            const orderItemsResult = await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query(`
+                    SELECT oi.ProductID, oi.Quantity, oi.VariationID
+                    FROM OrderItems oi
+                    WHERE oi.OrderID = @orderId
+                `);
+            
+            // Restore stock for each item
+            for (const item of orderItemsResult.recordset) {
+                if (item.VariationID) {
+                    await pool.request()
+                        .input('variationID', sql.Int, item.VariationID)
+                        .input('quantity', sql.Int, item.Quantity)
+                        .query(`UPDATE ProductVariations SET StockQuantity = StockQuantity + @quantity WHERE VariationID = @variationID`);
+                } else {
+                    await pool.request()
+                        .input('productId', sql.Int, item.ProductID)
+                        .input('quantity', sql.Int, item.Quantity)
+                        .query(`UPDATE Products SET StockQuantity = StockQuantity + @quantity WHERE ProductID = @productId`);
+                }
+            }
+            
+            // Update order status to cancelled
+            await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query(`UPDATE Orders SET Status = 'Cancelled' WHERE OrderID = @orderId`);
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'CANCEL',
+                'Orders',
+                orderId,
+                `Order #${orderId} cancelled by Transaction Manager`
+            );
+            
+            res.json({ success: true });
+        } catch (err) {
+            res.json({ success: false, message: 'Failed to cancel order.' });
+        }
+    });
+
+    // Transaction Manager OrdersReceive: Proceed to Completed
+    router.post('/Employee/TransactionManager/TransactionOrdersReceive/Proceed/:orderId', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const orderId = parseInt(req.params.orderId);
+            await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query(`UPDATE Orders SET Status = 'Completed' WHERE OrderID = @orderId`);
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'UPDATE',
+                'Orders',
+                orderId,
+                `Order #${orderId} completed by Transaction Manager`
+            );
+            
+            res.json({ success: true });
+        } catch (err) {
+            res.json({ success: false, message: 'Failed to update order status.' });
+        }
+    });
+
+    // =============================================================================
+    // USER MANAGER CRUD ROUTES
+    // =============================================================================
+
+    // User Manager - Products CRUD
+    router.post('/Employee/UserManager/UserProducts/Add', isAuthenticated, productUpload.fields([
+        { name: 'image', maxCount: 1 },
+        { name: 'thumbnail1', maxCount: 1 },
+        { name: 'thumbnail2', maxCount: 1 },
+        { name: 'thumbnail3', maxCount: 1 },
+        { name: 'thumbnail4', maxCount: 1 },
+        { name: 'model3d', maxCount: 1 }
+    ]), async (req, res) => {
+        try {
+            await pool.connect();
+            const { name, description, price, stockquantity, category, requiredMaterials } = req.body;
+            
+            // Start transaction
+            const transaction = new sql.Transaction(pool);
+            await transaction.begin();
+            
+            try {
+                // Insert product
+                const productResult = await transaction.request()
+                    .input('name', sql.NVarChar, name)
+                    .input('description', sql.NVarChar, description)
+                    .input('price', sql.Decimal(10, 2), parseFloat(price))
+                    .input('stockquantity', sql.Int, parseInt(stockquantity))
+                    .input('category', sql.NVarChar, category)
+                    .input('dimensions', sql.NVarChar, dimensionsJson)
+                    .input('image', sql.NVarChar, req.files?.image ? `/uploads/products/${req.files.image[0].filename}` : null)
+                    .input('thumbnails', sql.NVarChar, req.files ? JSON.stringify([
+                        req.files.thumbnail1?.[0]?.filename ? `/uploads/products/${req.files.thumbnail1[0].filename}` : null,
+                        req.files.thumbnail2?.[0]?.filename ? `/uploads/products/${req.files.thumbnail2[0].filename}` : null,
+                        req.files.thumbnail3?.[0]?.filename ? `/uploads/products/${req.files.thumbnail3[0].filename}` : null,
+                        req.files.thumbnail4?.[0]?.filename ? `/uploads/products/${req.files.thumbnail4[0].filename}` : null
+                    ].filter(Boolean)) : null)
+                    .input('model3d', sql.NVarChar, req.files?.model3d ? `/uploads/products/models/${req.files.model3d[0].filename}` : null)
+                    .query(`
+                        INSERT INTO Products (Name, Description, Price, StockQuantity, Category, ImageURL, Thumbnails, Model3DURL, CreatedAt, IsArchived)
+                        OUTPUT INSERTED.ProductID
+                        VALUES (@name, @description, @price, @stockquantity, @category, @image, @thumbnails, @model3d, GETDATE(), 0)
+                    `);
+                
+                const productId = productResult.recordset[0].ProductID;
+                
+                // Handle required materials if provided
+                if (requiredMaterials && requiredMaterials.length > 0) {
+                    for (const materialId of requiredMaterials) {
+                        await transaction.request()
+                            .input('productId', sql.Int, productId)
+                            .input('materialId', sql.Int, parseInt(materialId))
+                            .query(`
+                                INSERT INTO ProductMaterials (ProductID, MaterialID, CreatedAt)
+                                VALUES (@productId, @materialId, GETDATE())
+                            `);
+                    }
+                }
+                
+                await transaction.commit();
+                
+                // Log the activity
+                await logActivity(
+                    req.session.user.id,
+                    'INSERT',
+                    'Products',
+                    productId,
+                    `Created new product: "${name}" (ID: ${productId})`
+                );
+                
+                res.json({ success: true, message: 'Product added successfully', productId });
+            } catch (error) {
+                await transaction.rollback();
+                throw error;
+            }
+        } catch (err) {
+            console.error('Error adding product:', err);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to add product',
                 error: err.message
             });
+        }
+    });
+
+    router.post('/Employee/UserManager/UserProducts/Edit', isAuthenticated, productUpload.fields([
+        { name: 'image', maxCount: 1 },
+        { name: 'thumbnail1', maxCount: 1 },
+        { name: 'thumbnail2', maxCount: 1 },
+        { name: 'thumbnail3', maxCount: 1 },
+        { name: 'thumbnail4', maxCount: 1 },
+        { name: 'model3d', maxCount: 1 }
+    ]), async (req, res) => {
+        try {
+            await pool.connect();
+            const { productId, name, description, price, stockquantity, category, requiredMaterials } = req.body;
+            
+            // Start transaction
+            const transaction = new sql.Transaction(pool);
+            await transaction.begin();
+            
+            try {
+                // Get current product data for logging
+                const currentProduct = await transaction.request()
+                    .input('productId', sql.Int, productId)
+                    .query('SELECT * FROM Products WHERE ProductID = @productId');
+                
+                if (currentProduct.recordset.length === 0) {
+                    throw new Error('Product not found');
+                }
+                
+                const oldProduct = currentProduct.recordset[0];
+                
+                // Prepare update data
+                const updateData = {
+                    name: name || oldProduct.Name,
+                    description: description || oldProduct.Description,
+                    price: price ? parseFloat(price) : oldProduct.Price,
+                    stockquantity: stockquantity ? parseInt(stockquantity) : oldProduct.StockQuantity,
+                    category: category || oldProduct.Category,
+                    image: req.files?.image ? `/uploads/products/${req.files.image[0].filename}` : oldProduct.ImageURL,
+                    thumbnails: req.files ? JSON.stringify([
+                        req.files.thumbnail1?.[0]?.filename ? `/uploads/products/${req.files.thumbnail1[0].filename}` : null,
+                        req.files.thumbnail2?.[0]?.filename ? `/uploads/products/${req.files.thumbnail2[0].filename}` : null,
+                        req.files.thumbnail3?.[0]?.filename ? `/uploads/products/${req.files.thumbnail3[0].filename}` : null,
+                        req.files.thumbnail4?.[0]?.filename ? `/uploads/products/${req.files.thumbnail4[0].filename}` : null
+                    ].filter(Boolean)) : oldProduct.Thumbnails,
+                    model3d: req.files?.model3d ? `/uploads/products/models/${req.files.model3d[0].filename}` : oldProduct.Model3DURL
+                };
+                
+                // Update product
+                await transaction.request()
+                    .input('productId', sql.Int, productId)
+                    .input('name', sql.NVarChar, updateData.name)
+                    .input('description', sql.NVarChar, updateData.description)
+                    .input('price', sql.Decimal(10, 2), updateData.price)
+                    .input('stockquantity', sql.Int, updateData.stockquantity)
+                    .input('category', sql.NVarChar, updateData.category)
+                    .input('image', sql.NVarChar, updateData.image)
+                    .input('thumbnails', sql.NVarChar, updateData.thumbnails)
+                    .input('model3d', sql.NVarChar, updateData.model3d)
+                    .query(`
+                        UPDATE Products 
+                        SET Name = @name, Description = @description, Price = @price, 
+                            StockQuantity = @stockquantity, Category = @category, 
+                            ImageURL = @image, Thumbnails = @thumbnails, Model3DURL = @model3d,
+                            UpdatedAt = GETDATE()
+                        WHERE ProductID = @productId
+                    `);
+                
+                // Update required materials if provided
+                if (requiredMaterials !== undefined) {
+                    // Remove existing materials
+                    await transaction.request()
+                        .input('productId', sql.Int, productId)
+                        .query('DELETE FROM ProductMaterials WHERE ProductID = @productId');
+                    
+                    // Add new materials
+                    if (requiredMaterials && requiredMaterials.length > 0) {
+                        for (const materialId of requiredMaterials) {
+                            await transaction.request()
+                                .input('productId', sql.Int, productId)
+                                .input('materialId', sql.Int, parseInt(materialId))
+                                .query(`
+                                    INSERT INTO ProductMaterials (ProductID, MaterialID, CreatedAt)
+                                    VALUES (@productId, @materialId, GETDATE())
+                                `);
+                        }
+                    }
+                }
+                
+                await transaction.commit();
+                
+                // Log the activity
+                await logActivity(
+                    req.session.user.id,
+                    'UPDATE',
+                    'Products',
+                    productId,
+                    `Updated product: "${name}" (ID: ${productId})`
+                );
+                
+                res.json({ success: true, message: 'Product updated successfully' });
+            } catch (error) {
+                await transaction.rollback();
+                throw error;
+            }
+        } catch (err) {
+            console.error('Error updating product:', err);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to update product',
+                error: err.message
+            });
+        }
+    });
+
+    router.post('/Employee/UserManager/UserProducts/Delete/:id', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const productId = req.params.id;
+            
+            // Get product info for logging
+            const productResult = await pool.request()
+                .input('productId', sql.Int, productId)
+                .query('SELECT Name FROM Products WHERE ProductID = @productId');
+            
+            if (productResult.recordset.length === 0) {
+                return res.status(404).json({ success: false, message: 'Product not found' });
+            }
+            
+            const productName = productResult.recordset[0].Name;
+            
+            // Archive the product instead of deleting
+            await pool.request()
+                .input('productId', sql.Int, productId)
+                .query('UPDATE Products SET IsActive = 0, UpdatedAt = GETDATE() WHERE ProductID = @productId');
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'DELETE',
+                'Products',
+                productId,
+                `Deleted product: "${productName}" (ID: ${productId})`,
+                JSON.stringify({ IsActive: { old: 1, new: 0 } })
+            );
+            
+            res.json({ success: true, message: 'Product archived successfully' });
+        } catch (err) {
+            console.error('Error archiving product:', err);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to archive product',
+                error: err.message
+            });
+        }
+    });
+
+    // User Manager - Materials CRUD
+    router.post('/Employee/UserManager/UserMaterials/Add', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const { name, quantity, unit } = req.body;
+            
+            const result = await pool.request()
+                .input('name', sql.NVarChar, name)
+                .input('quantity', sql.Int, quantity)
+                .input('unit', sql.NVarChar, unit)
+                .query(`
+                    INSERT INTO RawMaterials (Name, QuantityAvailable, Unit, LastUpdated, IsActive)
+                    OUTPUT INSERTED.MaterialID
+                    VALUES (@name, @quantity, @unit, GETDATE(), 1)
+                `);
+            
+            const materialId = result.recordset[0].MaterialID;
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'INSERT',
+                'RawMaterials',
+                materialId,
+                `Created new material: "${name}" (ID: ${materialId})`
+            );
+            
+            res.json({ success: true, message: 'Material added successfully', materialId });
+        } catch (err) {
+            console.error('Error adding material:', err);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to add material',
+                error: err.message
+            });
+        }
+    });
+
+    router.post('/Employee/UserManager/UserMaterials/Edit', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const { materialId, name, quantity, unit } = req.body;
+            
+            await pool.request()
+                .input('materialId', sql.Int, materialId)
+                .input('name', sql.NVarChar, name)
+                .input('quantity', sql.Int, quantity)
+                .input('unit', sql.NVarChar, unit)
+                .query(`
+                    UPDATE RawMaterials 
+                    SET Name = @name, QuantityAvailable = @quantity, Unit = @unit, LastUpdated = GETDATE()
+                    WHERE MaterialID = @materialId
+                `);
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'UPDATE',
+                'RawMaterials',
+                materialId,
+                `Updated material: "${name}" (ID: ${materialId})`
+            );
+            
+            res.json({ success: true, message: 'Material updated successfully' });
+        } catch (err) {
+            console.error('Error updating material:', err);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to update material',
+                error: err.message
+            });
+        }
+    });
+
+    router.post('/Employee/UserManager/UserMaterials/Delete/:id', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const materialId = req.params.id;
+            
+            // Get material info for logging
+            const materialResult = await pool.request()
+                .input('materialId', sql.Int, materialId)
+                .query('SELECT Name FROM RawMaterials WHERE MaterialID = @materialId');
+            
+            if (materialResult.recordset.length === 0) {
+                return res.status(404).json({ success: false, message: 'Material not found' });
+            }
+            
+            const materialName = materialResult.recordset[0].Name;
+            
+            // Deactivate the material instead of deleting
+            await pool.request()
+                .input('materialId', sql.Int, materialId)
+                .query('UPDATE RawMaterials SET IsActive = 0, LastUpdated = GETDATE() WHERE MaterialID = @materialId');
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'DELETE',
+                'RawMaterials',
+                materialId,
+                `Deleted material: "${materialName}" (ID: ${materialId})`,
+                JSON.stringify({ IsActive: { old: 1, new: 0 } })
+            );
+            
+            res.json({ success: true, message: 'Material deactivated successfully' });
+        } catch (err) {
+            console.error('Error deactivating material:', err);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to deactivate material',
+                error: err.message
+            });
+        }
+    });
+
+    // User Manager - Variations CRUD
+    router.post('/Employee/UserManager/UserVariations/Add', isAuthenticated, variationUpload.single('variationImage'), async (req, res) => {
+        try {
+            await pool.connect();
+            const { variationName, color, quantity, productID, isActive } = req.body;
+            
+            // Handle image upload
+            let imageUrl = null;
+            if (req.file) {
+                imageUrl = `/uploads/variations/${req.file.filename}`;
+            }
+            
+            const result = await pool.request()
+                .input('productID', sql.Int, parseInt(productID))
+                .input('variationName', sql.NVarChar, variationName)
+                .input('color', sql.NVarChar, color || null)
+                .input('quantity', sql.Int, parseInt(quantity))
+                .input('imageUrl', sql.NVarChar, imageUrl)
+                .input('isActive', sql.Bit, isActive === '1' ? 1 : 0)
+                .query(`
+                    INSERT INTO ProductVariations (ProductID, VariationName, Color, Quantity, VariationImageURL, IsActive)
+                    OUTPUT INSERTED.VariationID
+                    VALUES (@productID, @variationName, @color, @quantity, @imageUrl, @isActive)
+                `);
+            
+            const variationID = result.recordset[0].VariationID;
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'INSERT',
+                'ProductVariations',
+                variationID,
+                `Variation "${variationName}" created`
+            );
+            
+            res.json({ success: true, message: 'Variation added successfully', variationID });
+        } catch (err) {
+            console.error('Error adding variation:', err);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to add variation',
+                error: err.message
+            });
+        }
+    });
+
+    router.post('/Employee/UserManager/UserVariations/Edit', isAuthenticated, variationUpload.single('variationImage'), async (req, res) => {
+        try {
+            await pool.connect();
+            const { variationID, variationName, color, quantity, productID, isActive } = req.body;
+            
+            // Handle image upload
+            let imageUrl = null;
+            if (req.file) {
+                // Get current variation image URL before updating
+                const currentVariation = await pool.request()
+                    .input('variationID', sql.Int, variationID)
+                    .query('SELECT VariationImageURL FROM ProductVariations WHERE VariationID = @variationID');
+                
+                const currentImageUrl = currentVariation.recordset[0]?.VariationImageURL;
+                
+                // Delete old variation image
+                await deleteOldImageFile(currentImageUrl);
+                
+                imageUrl = `/uploads/variations/${req.file.filename}`;
+            } else {
+                // If no new image uploaded, keep existing image
+                const existingResult = await pool.request()
+                    .input('variationID', sql.Int, variationID)
+                    .query('SELECT VariationImageURL FROM ProductVariations WHERE VariationID = @variationID');
+                
+                if (existingResult.recordset.length > 0) {
+                    imageUrl = existingResult.recordset[0].VariationImageURL;
+                }
+            }
+            
+            await pool.request()
+                .input('variationID', sql.Int, variationID)
+                .input('variationName', sql.NVarChar, variationName)
+                .input('color', sql.NVarChar, color || null)
+                .input('quantity', sql.Int, parseInt(quantity))
+                .input('imageUrl', sql.NVarChar, imageUrl)
+                .input('isActive', sql.Bit, isActive === '1' ? 1 : 0)
+                .query(`
+                    UPDATE ProductVariations 
+                    SET VariationName = @variationName, Color = @color, Quantity = @quantity, 
+                        VariationImageURL = @imageUrl, IsActive = @isActive
+                    WHERE VariationID = @variationID
+                `);
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'UPDATE',
+                'ProductVariations',
+                variationID,
+                `Variation "${variationName}" updated`
+            );
+            
+            res.json({ success: true, message: 'Variation updated successfully' });
+        } catch (err) {
+            console.error('Error updating variation:', err);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to update variation',
+                error: err.message
+            });
+        }
+    });
+
+    router.post('/Employee/UserManager/UserVariations/Delete/:id', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const variationID = req.params.id;
+            
+            // Get variation info for logging
+            const variationResult = await pool.request()
+                .input('variationID', sql.Int, variationID)
+                .query('SELECT VariationName FROM ProductVariations WHERE VariationID = @variationID');
+            
+            if (variationResult.recordset.length === 0) {
+                return res.status(404).json({ success: false, message: 'Variation not found' });
+            }
+            
+            const variationName = variationResult.recordset[0].VariationName;
+            
+            // Deactivate the variation instead of deleting
+            await pool.request()
+                .input('variationID', sql.Int, variationID)
+                .query('UPDATE ProductVariations SET IsActive = 0 WHERE VariationID = @variationID');
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'DELETE',
+                'ProductVariations',
+                variationID,
+                `Variation "${variationName}" deactivated`,
+                JSON.stringify({ IsActive: { old: 1, new: 0 } })
+            );
+            
+            res.json({ success: true, message: 'Variation deactivated successfully' });
+        } catch (err) {
+            console.error('Error deactivating variation:', err);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to deactivate variation',
+                error: err.message
+            });
+        }
+    });
+
+    // User Manager - Delivery Rates CRUD
+    router.post('/Employee/UserManager/UserRates/Add', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const { serviceType, basePrice, isActive } = req.body;
+            
+            const result = await pool.request()
+                .input('serviceType', sql.NVarChar, serviceType)
+                .input('basePrice', sql.Decimal(10, 2), parseFloat(basePrice))
+                .input('isActive', sql.Bit, isActive === '1' ? 1 : 0)
+                .input('createdByUserID', sql.Int, req.session.user?.id || null)
+                .input('createdByUsername', sql.NVarChar, req.session.user?.username || 'System')
+                .query(`
+                    INSERT INTO DeliveryRates (ServiceType, Price, IsActive, CreatedAt, CreatedByUserID, CreatedByUsername)
+                    OUTPUT INSERTED.RateID
+                    VALUES (@serviceType, @basePrice, @isActive, GETDATE(), @createdByUserID, @createdByUsername)
+                `);
+            
+            const rateId = result.recordset[0].RateID;
+            
+            res.json({ success: true, message: 'Delivery rate added successfully', rateId });
+        } catch (err) {
+            console.error('Error adding delivery rate:', err);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to add delivery rate',
+                error: err.message
+            });
+        }
+    });
+
+    router.post('/Employee/UserManager/UserRates/Update/:rateId', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const { rateId } = req.params;
+            const { serviceType, basePrice, isActive } = req.body;
+            
+            await pool.request()
+                .input('rateId', sql.Int, rateId)
+                .input('serviceType', sql.NVarChar, serviceType)
+                .input('basePrice', sql.Decimal(10, 2), parseFloat(basePrice))
+                .input('isActive', sql.Bit, isActive === '1' ? 1 : 0)
+                .query(`
+                    UPDATE DeliveryRates 
+                    SET ServiceType = @serviceType, Price = @basePrice, IsActive = @isActive
+                    WHERE RateID = @rateId
+                `);
+            
+            res.json({ success: true, message: 'Delivery rate updated successfully' });
+        } catch (err) {
+            console.error('Error updating delivery rate:', err);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to update delivery rate',
+                error: err.message
+            });
+        }
+    });
+
+    // User Manager - Stock Update
+    router.post('/Employee/UserManager/UserProducts/UpdateStock', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const { productId, newStock } = req.body;
+            
+            // Get current stock quantity before updating
+            const currentStockResult = await pool.request()
+                .input('productId', sql.Int, productId)
+                .query('SELECT StockQuantity FROM Products WHERE ProductID = @productId');
+            
+            if (currentStockResult.recordset.length === 0) {
+                return res.json({ 
+                    success: false, 
+                    message: 'Product not found.' 
+                });
+            }
+            
+            const oldStock = currentStockResult.recordset[0].StockQuantity;
+            
+            await pool.request()
+                .input('productId', sql.Int, productId)
+                .input('newStock', sql.Int, newStock)
+                .query(`
+                    UPDATE Products 
+                    SET StockQuantity = @newStock, UpdatedAt = GETDATE()
+                    WHERE ProductID = @productId
+                `);
+            
+            // Log the activity with actual changes
+            const changes = JSON.stringify({
+                StockQuantity: {
+                    old: oldStock,
+                    new: newStock
+                }
+            });
+            
+            await logActivity(
+                req.session.user.id,
+                'UPDATE',
+                'Products',
+                productId,
+                `UserManager updated stock quantity from ${oldStock} to ${newStock} for product ID: ${productId}`,
+                changes
+            );
+            
+            res.json({ success: true, message: 'Stock updated successfully' });
+        } catch (err) {
+            console.error('Error updating stock:', err);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to update stock',
+                error: err.message
+            });
+        }
+    });
+
+    // =============================================================================
+    // USER MANAGER ORDER PROCESSING ROUTES
+    // =============================================================================
+
+    // User Manager OrdersPending: Proceed to Processing
+    router.post('/Employee/UserManager/UserOrdersPending/Proceed/:orderId', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const orderId = parseInt(req.params.orderId);
+            await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query(`UPDATE Orders SET Status = 'Processing' WHERE OrderID = @orderId`);
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'UPDATE',
+                'Orders',
+                orderId,
+                `Order #${orderId} status changed to Processing by User Manager`
+            );
+            
+            res.json({ success: true });
+        } catch (err) {
+            res.json({ success: false, message: 'Failed to update order status.' });
+        }
+    });
+
+    // User Manager OrdersPending: Cancel order
+    router.post('/Employee/UserManager/UserOrdersPending/Cancel/:orderId', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const orderId = parseInt(req.params.orderId);
+            
+            // Get order items before cancelling to restore stock
+            const orderItemsResult = await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query(`
+                    SELECT oi.ProductID, oi.Quantity, oi.VariationID
+                    FROM OrderItems oi
+                    WHERE oi.OrderID = @orderId
+                `);
+            
+            // Restore stock for each item
+            for (const item of orderItemsResult.recordset) {
+                if (item.VariationID) {
+                    await pool.request()
+                        .input('variationID', sql.Int, item.VariationID)
+                        .input('quantity', sql.Int, item.Quantity)
+                        .query(`UPDATE ProductVariations SET StockQuantity = StockQuantity + @quantity WHERE VariationID = @variationID`);
+                } else {
+                    await pool.request()
+                        .input('productId', sql.Int, item.ProductID)
+                        .input('quantity', sql.Int, item.Quantity)
+                        .query(`UPDATE Products SET StockQuantity = StockQuantity + @quantity WHERE ProductID = @productId`);
+                }
+            }
+            
+            // Update order status to cancelled
+            await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query(`UPDATE Orders SET Status = 'Cancelled' WHERE OrderID = @orderId`);
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'CANCEL',
+                orderId,
+                `Order #${orderId} cancelled by User Manager - stock restored`,
+                { 
+                    oldStatus: 'Pending', 
+                    newStatus: 'Cancelled',
+                    itemsRestored: orderItemsResult.recordset.length
+                },
+                'UserManager'
+            );
+            
+            res.json({ success: true });
+        } catch (err) {
+            res.json({ success: false, message: 'Failed to cancel order.' });
+        }
+    });
+
+    // User Manager OrdersProcessing: Proceed to Shipping
+    router.post('/Employee/UserManager/UserOrdersProcessing/Proceed/:orderId', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const orderId = parseInt(req.params.orderId);
+            await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query(`UPDATE Orders SET Status = 'Shipping' WHERE OrderID = @orderId`);
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'STATUS_CHANGE',
+                orderId,
+                `Order #${orderId} status changed to Shipping by User Manager`,
+                { oldStatus: 'Processing', newStatus: 'Shipping' },
+                'UserManager'
+            );
+            
+            res.json({ success: true });
+        } catch (err) {
+            res.json({ success: false, message: 'Failed to update order status.' });
+        }
+    });
+
+    // User Manager OrdersProcessing: Cancel order
+    router.post('/Employee/UserManager/UserOrdersProcessing/Cancel/:orderId', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const orderId = parseInt(req.params.orderId);
+            
+            // Get order items before cancelling to restore stock
+            const orderItemsResult = await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query(`
+                    SELECT oi.ProductID, oi.Quantity, oi.VariationID
+                    FROM OrderItems oi
+                    WHERE oi.OrderID = @orderId
+                `);
+            
+            // Restore stock for each item
+            for (const item of orderItemsResult.recordset) {
+                if (item.VariationID) {
+                    await pool.request()
+                        .input('variationID', sql.Int, item.VariationID)
+                        .input('quantity', sql.Int, item.Quantity)
+                        .query(`UPDATE ProductVariations SET StockQuantity = StockQuantity + @quantity WHERE VariationID = @variationID`);
+                } else {
+                    await pool.request()
+                        .input('productId', sql.Int, item.ProductID)
+                        .input('quantity', sql.Int, item.Quantity)
+                        .query(`UPDATE Products SET StockQuantity = StockQuantity + @quantity WHERE ProductID = @productId`);
+                }
+            }
+            
+            // Update order status to cancelled
+            await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query(`UPDATE Orders SET Status = 'Cancelled' WHERE OrderID = @orderId`);
+            
+            res.json({ success: true });
+        } catch (err) {
+            res.json({ success: false, message: 'Failed to cancel order.' });
+        }
+    });
+
+    // User Manager OrdersShipping: Proceed to Delivery
+    router.post('/Employee/UserManager/UserOrdersShipping/Proceed/:orderId', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const orderId = parseInt(req.params.orderId);
+            await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query(`UPDATE Orders SET Status = 'Delivery' WHERE OrderID = @orderId`);
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'STATUS_CHANGE',
+                orderId,
+                `Order #${orderId} status changed to Delivery by User Manager`,
+                { oldStatus: 'Shipping', newStatus: 'Delivery' },
+                'UserManager'
+            );
+            
+            res.json({ success: true });
+        } catch (err) {
+            res.json({ success: false, message: 'Failed to update order status.' });
+        }
+    });
+
+    // User Manager OrdersShipping: Cancel order
+    router.post('/Employee/UserManager/UserOrdersShipping/Cancel/:orderId', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const orderId = parseInt(req.params.orderId);
+            
+            // Get order items before cancelling to restore stock
+            const orderItemsResult = await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query(`
+                    SELECT oi.ProductID, oi.Quantity, oi.VariationID
+                    FROM OrderItems oi
+                    WHERE oi.OrderID = @orderId
+                `);
+            
+            // Restore stock for each item
+            for (const item of orderItemsResult.recordset) {
+                if (item.VariationID) {
+                    await pool.request()
+                        .input('variationID', sql.Int, item.VariationID)
+                        .input('quantity', sql.Int, item.Quantity)
+                        .query(`UPDATE ProductVariations SET StockQuantity = StockQuantity + @quantity WHERE VariationID = @variationID`);
+                } else {
+                    await pool.request()
+                        .input('productId', sql.Int, item.ProductID)
+                        .input('quantity', sql.Int, item.Quantity)
+                        .query(`UPDATE Products SET StockQuantity = StockQuantity + @quantity WHERE ProductID = @productId`);
+                }
+            }
+            
+            // Update order status to cancelled
+            await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query(`UPDATE Orders SET Status = 'Cancelled' WHERE OrderID = @orderId`);
+            
+            res.json({ success: true });
+        } catch (err) {
+            res.json({ success: false, message: 'Failed to cancel order.' });
+        }
+    });
+
+    // User Manager OrdersDelivery: Proceed to Received
+    router.post('/Employee/UserManager/UserOrdersDelivery/Proceed/:orderId', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const orderId = parseInt(req.params.orderId);
+            await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query(`UPDATE Orders SET Status = 'Received' WHERE OrderID = @orderId`);
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'STATUS_CHANGE',
+                orderId,
+                `Order #${orderId} status changed to Received by User Manager`,
+                { oldStatus: 'Delivery', newStatus: 'Received' },
+                'UserManager'
+            );
+            
+            res.json({ success: true });
+        } catch (err) {
+            res.json({ success: false, message: 'Failed to update order status.' });
+        }
+    });
+
+    // User Manager OrdersDelivery: Cancel order
+    router.post('/Employee/UserManager/UserOrdersDelivery/Cancel/:orderId', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const orderId = parseInt(req.params.orderId);
+            
+            // Get order items before cancelling to restore stock
+            const orderItemsResult = await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query(`
+                    SELECT oi.ProductID, oi.Quantity, oi.VariationID
+                    FROM OrderItems oi
+                    WHERE oi.OrderID = @orderId
+                `);
+            
+            // Restore stock for each item
+            for (const item of orderItemsResult.recordset) {
+                if (item.VariationID) {
+                    await pool.request()
+                        .input('variationID', sql.Int, item.VariationID)
+                        .input('quantity', sql.Int, item.Quantity)
+                        .query(`UPDATE ProductVariations SET StockQuantity = StockQuantity + @quantity WHERE VariationID = @variationID`);
+                } else {
+                    await pool.request()
+                        .input('productId', sql.Int, item.ProductID)
+                        .input('quantity', sql.Int, item.Quantity)
+                        .query(`UPDATE Products SET StockQuantity = StockQuantity + @quantity WHERE ProductID = @productId`);
+                }
+            }
+            
+            // Update order status to cancelled
+            await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query(`UPDATE Orders SET Status = 'Cancelled' WHERE OrderID = @orderId`);
+            
+            res.json({ success: true });
+        } catch (err) {
+            res.json({ success: false, message: 'Failed to cancel order.' });
+        }
+    });
+
+    // User Manager OrdersReceive: Proceed to Completed
+    router.post('/Employee/UserManager/UserOrdersReceive/Proceed/:orderId', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const orderId = parseInt(req.params.orderId);
+            await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query(`UPDATE Orders SET Status = 'Completed' WHERE OrderID = @orderId`);
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'COMPLETE',
+                orderId,
+                `Order #${orderId} completed by User Manager`,
+                { oldStatus: 'Received', newStatus: 'Completed' },
+                'UserManager'
+            );
+            
+            res.json({ success: true });
+        } catch (err) {
+            res.json({ success: false, message: 'Failed to update order status.' });
         }
     });
 
@@ -2598,42 +4981,63 @@ module.exports = function(sql, pool) {
     });
 
     // Order Support - Products
-    router.get('/Employee/OrderSupport/OrderProducts', isAuthenticated, async (req, res) => {
+    router.get('/Employee/OrderSupport/OrderProducts', isAuthenticated, checkPermission('inventory_products'), async (req, res) => {
         try {
             await pool.connect();
+            const page = parseInt(req.query.page) || 1;
+            const limit = 10;
+            const offset = (page - 1) * limit;
+
+            const countResult = await pool.request().query('SELECT COUNT(*) as count FROM Products WHERE IsActive = 1');
+            const total = countResult.recordset[0].count;
+            const totalPages = Math.ceil(total / limit);
+
             const result = await pool.request().query(`
-                SELECT p.*, 
-                       COALESCE(SUM(oi.Quantity), 0) as TotalSold,
-                       COALESCE(AVG(r.Rating), 0) as AverageRating,
-                       COUNT(r.ReviewID) as ReviewCount
+                SELECT 
+                    p.*,
+                    pd.DiscountID,
+                    pd.DiscountType,
+                    pd.DiscountValue,
+                    pd.StartDate as DiscountStartDate,
+                    pd.EndDate as DiscountEndDate,
+                    pd.IsActive as DiscountIsActive,
+                    CASE 
+                        WHEN pd.DiscountType = 'percentage' THEN 
+                            p.Price - (p.Price * pd.DiscountValue / 100)
+                        WHEN pd.DiscountType = 'fixed' THEN 
+                            CASE WHEN p.Price - pd.DiscountValue < 0 THEN 0 ELSE p.Price - pd.DiscountValue END
+                        ELSE p.Price
+                    END as DiscountedPrice,
+                    CASE 
+                        WHEN pd.DiscountType = 'percentage' THEN 
+                            p.Price * pd.DiscountValue / 100
+                        WHEN pd.DiscountType = 'fixed' THEN 
+                            CASE WHEN pd.DiscountValue > p.Price THEN p.Price ELSE pd.DiscountValue END
+                        ELSE 0
+                    END as DiscountAmount
                 FROM Products p
-                LEFT JOIN OrderItems oi ON p.ProductID = oi.ProductID
-                LEFT JOIN Reviews r ON p.ProductID = r.ProductID
-                WHERE p.IsArchived = 0
-                GROUP BY p.ProductID, p.Name, p.Description, p.Price, p.StockQuantity, p.Category, p.ImageURL, p.CreatedAt, p.UpdatedAt, p.IsArchived
-                ORDER BY p.CreatedAt DESC
+                LEFT JOIN ProductDiscounts pd ON p.ProductID = pd.ProductID 
+                    AND pd.IsActive = 1 
+                    AND GETDATE() BETWEEN pd.StartDate AND pd.EndDate
+                WHERE p.IsActive = 1
+                ORDER BY p.ProductID DESC
+                OFFSET ${offset} ROWS FETCH NEXT ${limit} ROWS ONLY
             `);
-            res.render('Employee/OrderSupport/OrderProducts', { 
-                user: req.session.user, 
-                products: result.recordset 
-            });
+            const products = result.recordset;
+            res.render('Employee/OrderSupport/OrderProducts', { user: req.session.user, products, page, totalPages });
         } catch (err) {
             console.error('Error fetching products:', err);
-            res.render('Employee/OrderSupport/OrderProducts', { 
-                user: req.session.user, 
-                products: [], 
-                error: 'Failed to load products.' 
-            });
+            res.render('Employee/OrderSupport/OrderProducts', { user: req.session.user, products: [], page: 1, totalPages: 1 });
         }
     });
 
     // Order Support - Materials
-    router.get('/Employee/OrderSupport/OrderMaterials', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/Employee/OrderSupport/OrderMaterials', isAuthenticated, checkPermission('inventory_materials'), async (req, res) => {
         try {
             await pool.connect();
             const result = await pool.request().query(`
                 SELECT * FROM RawMaterials 
-                WHERE IsArchived = 0 
+                WHERE IsActive = 1 
                 ORDER BY Name ASC
             `);
             res.render('Employee/OrderSupport/OrderMaterials', { 
@@ -2651,60 +5055,93 @@ module.exports = function(sql, pool) {
     });
 
     // Order Support - Variations
-    router.get('/Employee/OrderSupport/OrderVariations', isAuthenticated, hasEmployeeAccess, (req, res) => {
+    router.get('/Employee/OrderSupport/OrderVariations', isAuthenticated, checkPermission('inventory_variations'), (req, res) => {
         res.render('Employee/OrderSupport/OrderVariations', { user: req.session.user });
     });
 
     // Order Support - Archived
-    router.get('/Employee/OrderSupport/OrderArchived', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/Employee/OrderSupport/OrderArchived', isAuthenticated, checkPermission('inventory_archived'), async (req, res) => {
         try {
             await pool.connect();
-            const result = await pool.request().query(`
-                SELECT * FROM Products 
-                WHERE IsArchived = 1 
-                ORDER BY UpdatedAt DESC
+            
+            // Fetch archived products
+            const productsResult = await pool.request().query(`
+                SELECT 
+                    ProductID,
+                    Name,
+                    Description,
+                    Price,
+                    StockQuantity,
+                    Category,
+                    DateAdded,
+                    IsActive
+                FROM Products
+                WHERE IsActive = 0
+                ORDER BY DateAdded DESC
             `);
+            
+            // Fetch archived raw materials
+            const materialsResult = await pool.request().query(`
+                SELECT 
+                    MaterialID,
+                    Name,
+                    QuantityAvailable,
+                    Unit,
+                    LastUpdated,
+                    IsActive
+                FROM RawMaterials
+                WHERE IsActive = 0
+                ORDER BY LastUpdated DESC
+            `);
+            
+            // Categories are stored as a column in Products table, not a separate table
+            const categoriesResult = { recordset: [] };
+            
             res.render('Employee/OrderSupport/OrderArchived', { 
                 user: req.session.user, 
-                products: result.recordset 
+                archivedProducts: productsResult.recordset,
+                archivedMaterials: materialsResult.recordset,
+                archivedCategories: categoriesResult.recordset
             });
         } catch (err) {
-            console.error('Error fetching archived products:', err);
+            console.error('Error fetching archived items:', err);
             res.render('Employee/OrderSupport/OrderArchived', { 
                 user: req.session.user, 
-                products: [], 
-                error: 'Failed to load archived products.' 
+                archivedProducts: [],
+                archivedMaterials: [],
+                archivedCategories: [],
+                error: 'Failed to load archived items.' 
             });
         }
     });
 
     // Order Support - Alerts
-    router.get('/Employee/OrderSupport/OrderAlerts', isAuthenticated, hasEmployeeAccess, (req, res) => {
+    router.get('/Employee/OrderSupport/OrderAlerts', isAuthenticated, checkPermission('inventory_alerts'), (req, res) => {
         res.render('Employee/OrderSupport/OrderAlerts', { user: req.session.user });
     });
 
     // Order Support - Logs
-    router.get('/Employee/OrderSupport/OrderLogs', isAuthenticated, hasEmployeeAccess, (req, res) => {
+    router.get('/Employee/OrderSupport/OrderLogs', isAuthenticated, checkPermission('content_logs'), (req, res) => {
         res.render('Employee/OrderSupport/OrderLogs', { user: req.session.user });
     });
 
     // Order Support - CMS
-    router.get('/Employee/OrderSupport/OrderCMS', isAuthenticated, hasEmployeeAccess, (req, res) => {
+    router.get('/Employee/OrderSupport/OrderCMS', isAuthenticated, checkPermission('content_cms'), (req, res) => {
         res.render('Employee/OrderSupport/OrderCMS', { user: req.session.user });
     });
 
     // Order Support - Reviews
-    router.get('/Employee/OrderSupport/OrderReviews', isAuthenticated, hasEmployeeAccess, (req, res) => {
+    router.get('/Employee/OrderSupport/OrderReviews', isAuthenticated, checkPermission('reviews_reviews'), (req, res) => {
         res.render('Employee/OrderSupport/OrderReviews', { user: req.session.user });
     });
 
     // Order Support - Delivery Rates
-    router.get('/Employee/OrderSupport/OrderRates', isAuthenticated, hasEmployeeAccess, (req, res) => {
+    router.get('/Employee/OrderSupport/OrderRates', isAuthenticated, checkPermission('transactions_delivery_rates'), (req, res) => {
         res.render('Employee/OrderSupport/OrderRates', { user: req.session.user });
     });
 
     // Order Support - Walk In
-    router.get('/Employee/OrderSupport/OrderWalkIn', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/Employee/OrderSupport/OrderWalkIn', isAuthenticated, checkPermission('transactions_walk_in'), async (req, res) => {
         try {
             await pool.connect();
             const result = await pool.request().query(`
@@ -2713,20 +5150,20 @@ module.exports = function(sql, pool) {
             `);
             res.render('Employee/OrderSupport/OrderWalkIn', { 
                 user: req.session.user, 
-                walkInOrders: result.recordset 
+                bulkOrders: result.recordset 
             });
         } catch (err) {
             console.error('Error fetching walk-in orders:', err);
             res.render('Employee/OrderSupport/OrderWalkIn', { 
                 user: req.session.user, 
-                walkInOrders: [], 
+                bulkOrders: [], 
                 error: 'Failed to load walk-in orders.' 
             });
         }
     });
 
     // Order Support - Manage Users
-    router.get('/Employee/OrderSupport/OrderManageUsers', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/Employee/OrderSupport/OrderManageUsers', isAuthenticated, checkPermission('users_manage_users'), async (req, res) => {
         try {
             await pool.connect();
             const result = await pool.request().query(`
@@ -2735,9 +5172,13 @@ module.exports = function(sql, pool) {
                 LEFT JOIN Roles r ON u.RoleID = r.RoleID 
                 ORDER BY u.CreatedAt DESC
             `);
+            
+            // Decrypt user data before sending to frontend using transparent encryption service
+            const decryptedUsers = result.recordset;
+            
             res.render('Employee/OrderSupport/OrderManageUsers', { 
                 user: req.session.user, 
-                users: result.recordset 
+                users: decryptedUsers 
             });
         } catch (err) {
             console.error('Error fetching users:', err);
@@ -2750,7 +5191,7 @@ module.exports = function(sql, pool) {
     });
 
     // Order Support - Chat Support
-    router.get('/Employee/OrderSupport/OrderChatSupport', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/Employee/OrderSupport/OrderChatSupport', isAuthenticated, checkPermission('chat_chat_support'), async (req, res) => {
         let threads = [];
         let selectedThread = null;
         let messages = [];
@@ -2837,13 +5278,22 @@ module.exports = function(sql, pool) {
         { route: 'OrderOrdersProcessing', status: 'Processing' },
         { route: 'OrderOrdersShipping', status: 'Shipping' },
         { route: 'OrderOrdersDelivery', status: 'Delivery' },
-        { route: 'OrderOrdersReceive', status: 'Receive' },
+        { route: 'OrderOrdersReceive', status: 'Received' },
         { route: 'OrderCancelledOrders', status: 'Cancelled' },
         { route: 'OrderCompletedOrders', status: 'Completed' }
     ];
 
     orderSupportOrderRoutes.forEach(({ route, status }) => {
-        router.get(`/Employee/OrderSupport/${route}`, isAuthenticated, hasEmployeeAccess, async (req, res) => {
+        // Map route to permission
+        let permission = 'orders_orders_pending'; // default
+        if (route.includes('Processing')) permission = 'orders_orders_processing';
+        else if (route.includes('Shipping')) permission = 'orders_orders_shipping';
+        else if (route.includes('Delivery')) permission = 'orders_orders_delivery';
+        else if (route.includes('Receive')) permission = 'orders_orders_receive';
+        else if (route.includes('Cancelled')) permission = 'orders_orders_cancelled';
+        else if (route.includes('Completed')) permission = 'orders_orders_completed';
+        
+        router.get(`/Employee/OrderSupport/${route}`, isAuthenticated, checkPermission(permission), async (req, res) => {
             try {
                 await pool.connect();
                 const result = await pool.request()
@@ -2853,7 +5303,7 @@ module.exports = function(sql, pool) {
                         FROM Orders o
                         LEFT JOIN Customers c ON o.CustomerID = c.CustomerID
                         WHERE o.Status = @status
-                        ORDER BY o.CreatedAt DESC
+                        ORDER BY o.OrderDate DESC
                     `);
                 res.render(`Employee/OrderSupport/${route}`, { 
                     user: req.session.user, 
@@ -2871,7 +5321,7 @@ module.exports = function(sql, pool) {
     });
 
     // Order Support - Alerts Data API
-    router.get('/Employee/OrderSupport/Alerts/Data', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/Employee/OrderSupport/Alerts/Data', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             
@@ -2879,7 +5329,7 @@ module.exports = function(sql, pool) {
             const productsResult = await pool.request().query(`
                 SELECT ProductID, Name, StockQuantity 
                 FROM Products 
-                WHERE IsArchived = 0 AND StockQuantity <= 10
+                WHERE IsActive = 1 AND StockQuantity <= 10
                 ORDER BY StockQuantity ASC
             `);
             
@@ -2887,7 +5337,7 @@ module.exports = function(sql, pool) {
             const materialsResult = await pool.request().query(`
                 SELECT MaterialID, Name, QuantityAvailable, Unit 
                 FROM RawMaterials 
-                WHERE IsArchived = 0 AND QuantityAvailable <= 10
+                WHERE IsActive = 1 AND QuantityAvailable <= 10
                 ORDER BY QuantityAvailable ASC
             `);
             
@@ -2905,24 +5355,1012 @@ module.exports = function(sql, pool) {
         }
     });
 
-    // Order Support - Logs Data API
-    router.get('/Employee/OrderSupport/Logs/Data', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    // Order Support - Logs Data API endpoint with filtering support
+    router.get('/Employee/OrderSupport/Logs/Data', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
-            const result = await pool.request().query(`
-                SELECT TOP 100 * FROM ActivityLogs 
-                ORDER BY CreatedAt DESC
-            `);
-            res.json({
-                success: true,
-                logs: result.recordset
+            const currentUserRole = req.session.user.role;
+            
+            // Get query parameters for filtering
+            const {
+                action,
+                tableAffected,
+                userRole,
+                dateFrom,
+                dateTo,
+                search,
+                limit = 1000,
+                offset = 0
+            } = req.query;
+            
+            // Build dynamic query with filters
+            let query = `
+                SELECT 
+                    al.LogID,
+                    al.UserID,
+                    u.FullName,
+                    r.RoleName,
+                    al.Action,
+                    al.TableAffected,
+                    al.RecordID,
+                    al.Description,
+                    al.Changes,
+                    al.Timestamp
+                FROM ActivityLogs al
+                JOIN Users u ON al.UserID = u.UserID
+                JOIN Roles r ON u.RoleID = r.RoleID
+                WHERE 1=1
+            `;
+            
+            const request = pool.request();
+            
+            // Add filters
+            if (action) {
+                query += ` AND al.Action = @action`;
+                request.input('action', sql.NVarChar, action);
+            }
+            
+            if (tableAffected) {
+                query += ` AND al.TableAffected = @tableAffected`;
+                request.input('tableAffected', sql.NVarChar, tableAffected);
+            }
+            
+            if (userRole) {
+                query += ` AND r.RoleName = @userRole`;
+                request.input('userRole', sql.NVarChar, userRole);
+            }
+            
+            if (dateFrom) {
+                query += ` AND al.Timestamp >= @dateFrom`;
+                request.input('dateFrom', sql.DateTime, new Date(dateFrom));
+            }
+            
+            if (dateTo) {
+                query += ` AND al.Timestamp <= @dateTo`;
+                request.input('dateTo', sql.DateTime, new Date(dateTo));
+            }
+            
+            if (search) {
+                query += ` AND (al.Description LIKE @search OR u.FullName LIKE @search OR r.RoleName LIKE @search)`;
+                request.input('search', sql.NVarChar, `%${search}%`);
+            }
+            
+            // Add ordering and pagination
+            query += ` ORDER BY al.Timestamp DESC OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY`;
+            request.input('offset', sql.Int, parseInt(offset));
+            request.input('limit', sql.Int, parseInt(limit));
+            
+            const result = await request.query(query);
+            
+            // Decrypt user FullName before sending to frontend using transparent encryption service
+            const decryptedLogs = result.recordset.map(log => {
+                return {
+                    ...log,
+                    FullName: log.FullName
+                };
             });
+            
+            res.json({ success: true, logs: decryptedLogs });
         } catch (err) {
-            console.error('Error fetching logs data:', err);
-            res.json({
-                success: false,
+            console.error('Error fetching OrderSupport activity logs data:', err);
+            res.status(500).json({ success: false, message: 'Failed to retrieve activity logs data.', error: err.message });
+        }
+    });
+
+    // =============================================================================
+    // ORDER SUPPORT CRUD ROUTES
+    // =============================================================================
+
+    // Order Support - Products CRUD
+    router.post('/Employee/OrderSupport/OrderProducts/Add', isAuthenticated, productUpload.fields([
+        { name: 'image', maxCount: 1 },
+        { name: 'thumbnail1', maxCount: 1 },
+        { name: 'thumbnail2', maxCount: 1 },
+        { name: 'thumbnail3', maxCount: 1 },
+        { name: 'thumbnail4', maxCount: 1 },
+        { name: 'model3d', maxCount: 1 }
+    ]), async (req, res) => {
+        try {
+            await pool.connect();
+            const { name, description, price, stockquantity, category, requiredMaterials } = req.body;
+            
+            // Start transaction
+            const transaction = new sql.Transaction(pool);
+            await transaction.begin();
+            
+            try {
+                // Insert product
+                const productResult = await transaction.request()
+                    .input('name', sql.NVarChar, name)
+                    .input('description', sql.NVarChar, description)
+                    .input('price', sql.Decimal(10, 2), parseFloat(price))
+                    .input('stockquantity', sql.Int, parseInt(stockquantity))
+                    .input('category', sql.NVarChar, category)
+                    .input('dimensions', sql.NVarChar, dimensionsJson)
+                    .input('image', sql.NVarChar, req.files?.image ? `/uploads/products/${req.files.image[0].filename}` : null)
+                    .input('thumbnails', sql.NVarChar, req.files ? JSON.stringify([
+                        req.files.thumbnail1?.[0]?.filename ? `/uploads/products/${req.files.thumbnail1[0].filename}` : null,
+                        req.files.thumbnail2?.[0]?.filename ? `/uploads/products/${req.files.thumbnail2[0].filename}` : null,
+                        req.files.thumbnail3?.[0]?.filename ? `/uploads/products/${req.files.thumbnail3[0].filename}` : null,
+                        req.files.thumbnail4?.[0]?.filename ? `/uploads/products/${req.files.thumbnail4[0].filename}` : null
+                    ].filter(Boolean)) : null)
+                    .input('model3d', sql.NVarChar, req.files?.model3d ? `/uploads/products/models/${req.files.model3d[0].filename}` : null)
+                    .query(`
+                        INSERT INTO Products (Name, Description, Price, StockQuantity, Category, ImageURL, Thumbnails, Model3DURL, CreatedAt, IsArchived)
+                        OUTPUT INSERTED.ProductID
+                        VALUES (@name, @description, @price, @stockquantity, @category, @image, @thumbnails, @model3d, GETDATE(), 0)
+                    `);
+                
+                const productId = productResult.recordset[0].ProductID;
+                
+                // Handle required materials if provided
+                if (requiredMaterials && requiredMaterials.length > 0) {
+                    for (const materialId of requiredMaterials) {
+                        await transaction.request()
+                            .input('productId', sql.Int, productId)
+                            .input('materialId', sql.Int, parseInt(materialId))
+                            .query(`
+                                INSERT INTO ProductMaterials (ProductID, MaterialID, CreatedAt)
+                                VALUES (@productId, @materialId, GETDATE())
+                            `);
+                    }
+                }
+                
+                await transaction.commit();
+                
+                // Log the activity
+                await logActivity(
+                    req.session.user.id,
+                    'INSERT',
+                    'Products',
+                    productId,
+                    `Created new product: "${name}" (ID: ${productId})`
+                );
+                
+                res.json({ success: true, message: 'Product added successfully', productId });
+            } catch (error) {
+                await transaction.rollback();
+                throw error;
+            }
+        } catch (err) {
+            console.error('Error adding product:', err);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to add product',
                 error: err.message
             });
+        }
+    });
+
+    router.post('/Employee/OrderSupport/OrderProducts/Edit', isAuthenticated, productUpload.fields([
+        { name: 'image', maxCount: 1 },
+        { name: 'thumbnail1', maxCount: 1 },
+        { name: 'thumbnail2', maxCount: 1 },
+        { name: 'thumbnail3', maxCount: 1 },
+        { name: 'thumbnail4', maxCount: 1 },
+        { name: 'model3d', maxCount: 1 }
+    ]), async (req, res) => {
+        try {
+            await pool.connect();
+            const { productId, name, description, price, stockquantity, category, requiredMaterials } = req.body;
+            
+            // Start transaction
+            const transaction = new sql.Transaction(pool);
+            await transaction.begin();
+            
+            try {
+                // Get current product data for logging
+                const currentProduct = await transaction.request()
+                    .input('productId', sql.Int, productId)
+                    .query('SELECT * FROM Products WHERE ProductID = @productId');
+                
+                if (currentProduct.recordset.length === 0) {
+                    throw new Error('Product not found');
+                }
+                
+                const oldProduct = currentProduct.recordset[0];
+                
+                // Prepare update data
+                const updateData = {
+                    name: name || oldProduct.Name,
+                    description: description || oldProduct.Description,
+                    price: price ? parseFloat(price) : oldProduct.Price,
+                    stockquantity: stockquantity ? parseInt(stockquantity) : oldProduct.StockQuantity,
+                    category: category || oldProduct.Category,
+                    image: req.files?.image ? `/uploads/products/${req.files.image[0].filename}` : oldProduct.ImageURL,
+                    thumbnails: req.files ? JSON.stringify([
+                        req.files.thumbnail1?.[0]?.filename ? `/uploads/products/${req.files.thumbnail1[0].filename}` : null,
+                        req.files.thumbnail2?.[0]?.filename ? `/uploads/products/${req.files.thumbnail2[0].filename}` : null,
+                        req.files.thumbnail3?.[0]?.filename ? `/uploads/products/${req.files.thumbnail3[0].filename}` : null,
+                        req.files.thumbnail4?.[0]?.filename ? `/uploads/products/${req.files.thumbnail4[0].filename}` : null
+                    ].filter(Boolean)) : oldProduct.Thumbnails,
+                    model3d: req.files?.model3d ? `/uploads/products/models/${req.files.model3d[0].filename}` : oldProduct.Model3DURL
+                };
+                
+                // Update product
+                await transaction.request()
+                    .input('productId', sql.Int, productId)
+                    .input('name', sql.NVarChar, updateData.name)
+                    .input('description', sql.NVarChar, updateData.description)
+                    .input('price', sql.Decimal(10, 2), updateData.price)
+                    .input('stockquantity', sql.Int, updateData.stockquantity)
+                    .input('category', sql.NVarChar, updateData.category)
+                    .input('image', sql.NVarChar, updateData.image)
+                    .input('thumbnails', sql.NVarChar, updateData.thumbnails)
+                    .input('model3d', sql.NVarChar, updateData.model3d)
+                    .query(`
+                        UPDATE Products 
+                        SET Name = @name, Description = @description, Price = @price, 
+                            StockQuantity = @stockquantity, Category = @category, 
+                            ImageURL = @image, Thumbnails = @thumbnails, Model3DURL = @model3d,
+                            UpdatedAt = GETDATE()
+                        WHERE ProductID = @productId
+                    `);
+                
+                // Update required materials if provided
+                if (requiredMaterials !== undefined) {
+                    // Remove existing materials
+                    await transaction.request()
+                        .input('productId', sql.Int, productId)
+                        .query('DELETE FROM ProductMaterials WHERE ProductID = @productId');
+                    
+                    // Add new materials
+                    if (requiredMaterials && requiredMaterials.length > 0) {
+                        for (const materialId of requiredMaterials) {
+                            await transaction.request()
+                                .input('productId', sql.Int, productId)
+                                .input('materialId', sql.Int, parseInt(materialId))
+                                .query(`
+                                    INSERT INTO ProductMaterials (ProductID, MaterialID, CreatedAt)
+                                    VALUES (@productId, @materialId, GETDATE())
+                                `);
+                        }
+                    }
+                }
+                
+                await transaction.commit();
+                
+                // Log the activity
+                await logActivity(
+                    req.session.user.id,
+                    'UPDATE',
+                    'Products',
+                    productId,
+                    `Updated product: "${name}" (ID: ${productId})`
+                );
+                
+                res.json({ success: true, message: 'Product updated successfully' });
+            } catch (error) {
+                await transaction.rollback();
+                throw error;
+            }
+        } catch (err) {
+            console.error('Error updating product:', err);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to update product',
+                error: err.message
+            });
+        }
+    });
+
+    router.post('/Employee/OrderSupport/OrderProducts/Delete/:id', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const productId = req.params.id;
+            
+            // Get product info for logging
+            const productResult = await pool.request()
+                .input('productId', sql.Int, productId)
+                .query('SELECT Name FROM Products WHERE ProductID = @productId');
+            
+            if (productResult.recordset.length === 0) {
+                return res.status(404).json({ success: false, message: 'Product not found' });
+            }
+            
+            const productName = productResult.recordset[0].Name;
+            
+            // Archive the product instead of deleting
+            await pool.request()
+                .input('productId', sql.Int, productId)
+                .query('UPDATE Products SET IsActive = 0, UpdatedAt = GETDATE() WHERE ProductID = @productId');
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'DELETE',
+                'Products',
+                productId,
+                `Deleted product: "${productName}" (ID: ${productId})`,
+                JSON.stringify({ IsActive: { old: 1, new: 0 } })
+            );
+            
+            res.json({ success: true, message: 'Product archived successfully' });
+        } catch (err) {
+            console.error('Error archiving product:', err);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to archive product',
+                error: err.message
+            });
+        }
+    });
+
+    // Order Support - Materials CRUD
+    router.post('/Employee/OrderSupport/OrderMaterials/Add', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const { name, quantity, unit } = req.body;
+            
+            const result = await pool.request()
+                .input('name', sql.NVarChar, name)
+                .input('quantity', sql.Int, quantity)
+                .input('unit', sql.NVarChar, unit)
+                .query(`
+                    INSERT INTO RawMaterials (Name, QuantityAvailable, Unit, LastUpdated, IsActive)
+                    OUTPUT INSERTED.MaterialID
+                    VALUES (@name, @quantity, @unit, GETDATE(), 1)
+                `);
+            
+            const materialId = result.recordset[0].MaterialID;
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'INSERT',
+                'RawMaterials',
+                materialId,
+                `Created new material: "${name}" (ID: ${materialId})`
+            );
+            
+            res.json({ success: true, message: 'Material added successfully', materialId });
+        } catch (err) {
+            console.error('Error adding material:', err);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to add material',
+                error: err.message
+            });
+        }
+    });
+
+    router.post('/Employee/OrderSupport/OrderMaterials/Edit', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const { materialId, name, quantity, unit } = req.body;
+            
+            await pool.request()
+                .input('materialId', sql.Int, materialId)
+                .input('name', sql.NVarChar, name)
+                .input('quantity', sql.Int, quantity)
+                .input('unit', sql.NVarChar, unit)
+                .query(`
+                    UPDATE RawMaterials 
+                    SET Name = @name, QuantityAvailable = @quantity, Unit = @unit, LastUpdated = GETDATE()
+                    WHERE MaterialID = @materialId
+                `);
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'UPDATE',
+                'RawMaterials',
+                materialId,
+                `Updated material: "${name}" (ID: ${materialId})`
+            );
+            
+            res.json({ success: true, message: 'Material updated successfully' });
+        } catch (err) {
+            console.error('Error updating material:', err);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to update material',
+                error: err.message
+            });
+        }
+    });
+
+    router.post('/Employee/OrderSupport/OrderMaterials/Delete/:id', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const materialId = req.params.id;
+            
+            // Get material info for logging
+            const materialResult = await pool.request()
+                .input('materialId', sql.Int, materialId)
+                .query('SELECT Name FROM RawMaterials WHERE MaterialID = @materialId');
+            
+            if (materialResult.recordset.length === 0) {
+                return res.status(404).json({ success: false, message: 'Material not found' });
+            }
+            
+            const materialName = materialResult.recordset[0].Name;
+            
+            // Deactivate the material instead of deleting
+            await pool.request()
+                .input('materialId', sql.Int, materialId)
+                .query('UPDATE RawMaterials SET IsActive = 0, LastUpdated = GETDATE() WHERE MaterialID = @materialId');
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'DELETE',
+                'RawMaterials',
+                materialId,
+                `Deleted material: "${materialName}" (ID: ${materialId})`,
+                JSON.stringify({ IsActive: { old: 1, new: 0 } })
+            );
+            
+            res.json({ success: true, message: 'Material deactivated successfully' });
+        } catch (err) {
+            console.error('Error deactivating material:', err);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to deactivate material',
+                error: err.message
+            });
+        }
+    });
+
+    // Order Support - Variations CRUD
+    router.post('/Employee/OrderSupport/OrderVariations/Add', isAuthenticated, variationUpload.single('variationImage'), async (req, res) => {
+        try {
+            await pool.connect();
+            const { variationName, color, quantity, productID, isActive } = req.body;
+            
+            // Handle image upload
+            let imageUrl = null;
+            if (req.file) {
+                imageUrl = `/uploads/variations/${req.file.filename}`;
+            }
+            
+            const result = await pool.request()
+                .input('productID', sql.Int, parseInt(productID))
+                .input('variationName', sql.NVarChar, variationName)
+                .input('color', sql.NVarChar, color || null)
+                .input('quantity', sql.Int, parseInt(quantity))
+                .input('imageUrl', sql.NVarChar, imageUrl)
+                .input('isActive', sql.Bit, isActive === '1' ? 1 : 0)
+                .query(`
+                    INSERT INTO ProductVariations (ProductID, VariationName, Color, Quantity, VariationImageURL, IsActive)
+                    OUTPUT INSERTED.VariationID
+                    VALUES (@productID, @variationName, @color, @quantity, @imageUrl, @isActive)
+                `);
+            
+            const variationID = result.recordset[0].VariationID;
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'INSERT',
+                'ProductVariations',
+                variationID,
+                `Variation "${variationName}" created`
+            );
+            
+            res.json({ success: true, message: 'Variation added successfully', variationID });
+        } catch (err) {
+            console.error('Error adding variation:', err);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to add variation',
+                error: err.message
+            });
+        }
+    });
+
+    router.post('/Employee/OrderSupport/OrderVariations/Edit', isAuthenticated, variationUpload.single('variationImage'), async (req, res) => {
+        try {
+            await pool.connect();
+            const { variationID, variationName, color, quantity, productID, isActive } = req.body;
+            
+            // Handle image upload
+            let imageUrl = null;
+            if (req.file) {
+                // Get current variation image URL before updating
+                const currentVariation = await pool.request()
+                    .input('variationID', sql.Int, variationID)
+                    .query('SELECT VariationImageURL FROM ProductVariations WHERE VariationID = @variationID');
+                
+                const currentImageUrl = currentVariation.recordset[0]?.VariationImageURL;
+                
+                // Delete old variation image
+                await deleteOldImageFile(currentImageUrl);
+                
+                imageUrl = `/uploads/variations/${req.file.filename}`;
+            } else {
+                // If no new image uploaded, keep existing image
+                const existingResult = await pool.request()
+                    .input('variationID', sql.Int, variationID)
+                    .query('SELECT VariationImageURL FROM ProductVariations WHERE VariationID = @variationID');
+                
+                if (existingResult.recordset.length > 0) {
+                    imageUrl = existingResult.recordset[0].VariationImageURL;
+                }
+            }
+            
+            await pool.request()
+                .input('variationID', sql.Int, variationID)
+                .input('variationName', sql.NVarChar, variationName)
+                .input('color', sql.NVarChar, color || null)
+                .input('quantity', sql.Int, parseInt(quantity))
+                .input('imageUrl', sql.NVarChar, imageUrl)
+                .input('isActive', sql.Bit, isActive === '1' ? 1 : 0)
+                .query(`
+                    UPDATE ProductVariations 
+                    SET VariationName = @variationName, Color = @color, Quantity = @quantity, 
+                        VariationImageURL = @imageUrl, IsActive = @isActive
+                    WHERE VariationID = @variationID
+                `);
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'UPDATE',
+                'ProductVariations',
+                variationID,
+                `Variation "${variationName}" updated`
+            );
+            
+            res.json({ success: true, message: 'Variation updated successfully' });
+        } catch (err) {
+            console.error('Error updating variation:', err);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to update variation',
+                error: err.message
+            });
+        }
+    });
+
+    router.post('/Employee/OrderSupport/OrderVariations/Delete/:id', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const variationID = req.params.id;
+            
+            // Get variation info for logging
+            const variationResult = await pool.request()
+                .input('variationID', sql.Int, variationID)
+                .query('SELECT VariationName FROM ProductVariations WHERE VariationID = @variationID');
+            
+            if (variationResult.recordset.length === 0) {
+                return res.status(404).json({ success: false, message: 'Variation not found' });
+            }
+            
+            const variationName = variationResult.recordset[0].VariationName;
+            
+            // Deactivate the variation instead of deleting
+            await pool.request()
+                .input('variationID', sql.Int, variationID)
+                .query('UPDATE ProductVariations SET IsActive = 0 WHERE VariationID = @variationID');
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'DELETE',
+                'ProductVariations',
+                variationID,
+                `Variation "${variationName}" deactivated`,
+                JSON.stringify({ IsActive: { old: 1, new: 0 } })
+            );
+            
+            res.json({ success: true, message: 'Variation deactivated successfully' });
+        } catch (err) {
+            console.error('Error deactivating variation:', err);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to deactivate variation',
+                error: err.message
+            });
+        }
+    });
+
+    // Order Support - Delivery Rates CRUD
+    router.post('/Employee/OrderSupport/OrderRates/Add', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const { serviceType, basePrice, isActive } = req.body;
+            
+            const result = await pool.request()
+                .input('serviceType', sql.NVarChar, serviceType)
+                .input('basePrice', sql.Decimal(10, 2), parseFloat(basePrice))
+                .input('isActive', sql.Bit, isActive === '1' ? 1 : 0)
+                .input('createdByUserID', sql.Int, req.session.user?.id || null)
+                .input('createdByUsername', sql.NVarChar, req.session.user?.username || 'System')
+                .query(`
+                    INSERT INTO DeliveryRates (ServiceType, Price, IsActive, CreatedAt, CreatedByUserID, CreatedByUsername)
+                    OUTPUT INSERTED.RateID
+                    VALUES (@serviceType, @basePrice, @isActive, GETDATE(), @createdByUserID, @createdByUsername)
+                `);
+            
+            const rateId = result.recordset[0].RateID;
+            
+            res.json({ success: true, message: 'Delivery rate added successfully', rateId });
+        } catch (err) {
+            console.error('Error adding delivery rate:', err);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to add delivery rate',
+                error: err.message
+            });
+        }
+    });
+
+    router.post('/Employee/OrderSupport/OrderRates/Update/:rateId', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const { rateId } = req.params;
+            const { serviceType, basePrice, isActive } = req.body;
+            
+            await pool.request()
+                .input('rateId', sql.Int, rateId)
+                .input('serviceType', sql.NVarChar, serviceType)
+                .input('basePrice', sql.Decimal(10, 2), parseFloat(basePrice))
+                .input('isActive', sql.Bit, isActive === '1' ? 1 : 0)
+                .query(`
+                    UPDATE DeliveryRates 
+                    SET ServiceType = @serviceType, Price = @basePrice, IsActive = @isActive
+                    WHERE RateID = @rateId
+                `);
+            
+            res.json({ success: true, message: 'Delivery rate updated successfully' });
+        } catch (err) {
+            console.error('Error updating delivery rate:', err);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to update delivery rate',
+                error: err.message
+            });
+        }
+    });
+
+    // Order Support - Stock Update
+    router.post('/Employee/OrderSupport/OrderProducts/UpdateStock', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const { productId, newStock } = req.body;
+            
+            // Get current stock quantity before updating
+            const currentStockResult = await pool.request()
+                .input('productId', sql.Int, productId)
+                .query('SELECT StockQuantity FROM Products WHERE ProductID = @productId');
+            
+            if (currentStockResult.recordset.length === 0) {
+                return res.json({ 
+                    success: false, 
+                    message: 'Product not found.' 
+                });
+            }
+            
+            const oldStock = currentStockResult.recordset[0].StockQuantity;
+            
+            await pool.request()
+                .input('productId', sql.Int, productId)
+                .input('newStock', sql.Int, newStock)
+                .query(`
+                    UPDATE Products 
+                    SET StockQuantity = @newStock, UpdatedAt = GETDATE()
+                    WHERE ProductID = @productId
+                `);
+            
+            // Log the activity with actual changes
+            const changes = JSON.stringify({
+                StockQuantity: {
+                    old: oldStock,
+                    new: newStock
+                }
+            });
+            
+            await logActivity(
+                req.session.user.id,
+                'UPDATE',
+                'Products',
+                productId,
+                `OrderSupport updated stock quantity from ${oldStock} to ${newStock} for product ID: ${productId}`,
+                changes
+            );
+            
+            res.json({ success: true, message: 'Stock updated successfully' });
+        } catch (err) {
+            console.error('Error updating stock:', err);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to update stock',
+                error: err.message
+            });
+        }
+    });
+
+    // =============================================================================
+    // ORDER SUPPORT ORDER PROCESSING ROUTES
+    // =============================================================================
+
+    // Order Support OrdersPending: Proceed to Processing
+    router.post('/Employee/OrderSupport/OrderOrdersPending/Proceed/:orderId', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const orderId = parseInt(req.params.orderId);
+            await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query(`UPDATE Orders SET Status = 'Processing' WHERE OrderID = @orderId`);
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'STATUS_CHANGE',
+                'Orders',
+                orderId.toString(),
+                `Order #${orderId} status changed to Processing by Order Support`,
+                JSON.stringify({ oldStatus: 'Pending', newStatus: 'Processing' })
+            );
+            
+            res.json({ success: true });
+        } catch (err) {
+            res.json({ success: false, message: 'Failed to update order status.' });
+        }
+    });
+
+    // Order Support OrdersPending: Cancel order
+    router.post('/Employee/OrderSupport/OrderOrdersPending/Cancel/:orderId', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const orderId = parseInt(req.params.orderId);
+            
+            // Get order items before cancelling to restore stock
+            const orderItemsResult = await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query(`
+                    SELECT oi.ProductID, oi.Quantity, oi.VariationID
+                    FROM OrderItems oi
+                    WHERE oi.OrderID = @orderId
+                `);
+            
+            // Restore stock for each item
+            for (const item of orderItemsResult.recordset) {
+                if (item.VariationID) {
+                    await pool.request()
+                        .input('variationID', sql.Int, item.VariationID)
+                        .input('quantity', sql.Int, item.Quantity)
+                        .query(`UPDATE ProductVariations SET StockQuantity = StockQuantity + @quantity WHERE VariationID = @variationID`);
+                } else {
+                    await pool.request()
+                        .input('productId', sql.Int, item.ProductID)
+                        .input('quantity', sql.Int, item.Quantity)
+                        .query(`UPDATE Products SET StockQuantity = StockQuantity + @quantity WHERE ProductID = @productId`);
+                }
+            }
+            
+            // Update order status to cancelled
+            await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query(`UPDATE Orders SET Status = 'Cancelled' WHERE OrderID = @orderId`);
+            
+            res.json({ success: true });
+        } catch (err) {
+            res.json({ success: false, message: 'Failed to cancel order.' });
+        }
+    });
+
+    // Order Support OrdersProcessing: Proceed to Shipping
+    router.post('/Employee/OrderSupport/OrderOrdersProcessing/Proceed/:orderId', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const orderId = parseInt(req.params.orderId);
+            await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query(`UPDATE Orders SET Status = 'Shipping' WHERE OrderID = @orderId`);
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'STATUS_CHANGE',
+                'Orders',
+                orderId.toString(),
+                `Order #${orderId} status changed to Shipping by Order Support`,
+                JSON.stringify({ oldStatus: 'Processing', newStatus: 'Shipping' })
+            );
+            
+            res.json({ success: true });
+        } catch (err) {
+            res.json({ success: false, message: 'Failed to update order status.' });
+        }
+    });
+
+    // Order Support OrdersProcessing: Cancel order
+    router.post('/Employee/OrderSupport/OrderOrdersProcessing/Cancel/:orderId', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const orderId = parseInt(req.params.orderId);
+            
+            // Get order items before cancelling to restore stock
+            const orderItemsResult = await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query(`
+                    SELECT oi.ProductID, oi.Quantity, oi.VariationID
+                    FROM OrderItems oi
+                    WHERE oi.OrderID = @orderId
+                `);
+            
+            // Restore stock for each item
+            for (const item of orderItemsResult.recordset) {
+                if (item.VariationID) {
+                    await pool.request()
+                        .input('variationID', sql.Int, item.VariationID)
+                        .input('quantity', sql.Int, item.Quantity)
+                        .query(`UPDATE ProductVariations SET StockQuantity = StockQuantity + @quantity WHERE VariationID = @variationID`);
+                } else {
+                    await pool.request()
+                        .input('productId', sql.Int, item.ProductID)
+                        .input('quantity', sql.Int, item.Quantity)
+                        .query(`UPDATE Products SET StockQuantity = StockQuantity + @quantity WHERE ProductID = @productId`);
+                }
+            }
+            
+            // Update order status to cancelled
+            await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query(`UPDATE Orders SET Status = 'Cancelled' WHERE OrderID = @orderId`);
+            
+            res.json({ success: true });
+        } catch (err) {
+            res.json({ success: false, message: 'Failed to cancel order.' });
+        }
+    });
+
+    // Order Support OrdersShipping: Proceed to Delivery
+    router.post('/Employee/OrderSupport/OrderOrdersShipping/Proceed/:orderId', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const orderId = parseInt(req.params.orderId);
+            await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query(`UPDATE Orders SET Status = 'Delivery' WHERE OrderID = @orderId`);
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'STATUS_CHANGE',
+                'Orders',
+                orderId.toString(),
+                `Order #${orderId} status changed to Delivery by Order Support`,
+                JSON.stringify({ oldStatus: 'Shipping', newStatus: 'Delivery' })
+            );
+            
+            res.json({ success: true });
+        } catch (err) {
+            res.json({ success: false, message: 'Failed to update order status.' });
+        }
+    });
+
+    // Order Support OrdersShipping: Cancel order
+    router.post('/Employee/OrderSupport/OrderOrdersShipping/Cancel/:orderId', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const orderId = parseInt(req.params.orderId);
+            
+            // Get order items before cancelling to restore stock
+            const orderItemsResult = await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query(`
+                    SELECT oi.ProductID, oi.Quantity, oi.VariationID
+                    FROM OrderItems oi
+                    WHERE oi.OrderID = @orderId
+                `);
+            
+            // Restore stock for each item
+            for (const item of orderItemsResult.recordset) {
+                if (item.VariationID) {
+                    await pool.request()
+                        .input('variationID', sql.Int, item.VariationID)
+                        .input('quantity', sql.Int, item.Quantity)
+                        .query(`UPDATE ProductVariations SET StockQuantity = StockQuantity + @quantity WHERE VariationID = @variationID`);
+                } else {
+                    await pool.request()
+                        .input('productId', sql.Int, item.ProductID)
+                        .input('quantity', sql.Int, item.Quantity)
+                        .query(`UPDATE Products SET StockQuantity = StockQuantity + @quantity WHERE ProductID = @productId`);
+                }
+            }
+            
+            // Update order status to cancelled
+            await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query(`UPDATE Orders SET Status = 'Cancelled' WHERE OrderID = @orderId`);
+            
+            res.json({ success: true });
+        } catch (err) {
+            res.json({ success: false, message: 'Failed to cancel order.' });
+        }
+    });
+
+    // Order Support OrdersDelivery: Proceed to Received
+    router.post('/Employee/OrderSupport/OrderOrdersDelivery/Proceed/:orderId', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const orderId = parseInt(req.params.orderId);
+            await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query(`UPDATE Orders SET Status = 'Received' WHERE OrderID = @orderId`);
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'STATUS_CHANGE',
+                'Orders',
+                orderId.toString(),
+                `Order #${orderId} status changed to Received by Order Support`,
+                JSON.stringify({ oldStatus: 'Delivery', newStatus: 'Received' })
+            );
+            
+            res.json({ success: true });
+        } catch (err) {
+            res.json({ success: false, message: 'Failed to update order status.' });
+        }
+    });
+
+    // Order Support OrdersDelivery: Cancel order
+    router.post('/Employee/OrderSupport/OrderOrdersDelivery/Cancel/:orderId', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const orderId = parseInt(req.params.orderId);
+            
+            // Get order items before cancelling to restore stock
+            const orderItemsResult = await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query(`
+                    SELECT oi.ProductID, oi.Quantity, oi.VariationID
+                    FROM OrderItems oi
+                    WHERE oi.OrderID = @orderId
+                `);
+            
+            // Restore stock for each item
+            for (const item of orderItemsResult.recordset) {
+                if (item.VariationID) {
+                    await pool.request()
+                        .input('variationID', sql.Int, item.VariationID)
+                        .input('quantity', sql.Int, item.Quantity)
+                        .query(`UPDATE ProductVariations SET StockQuantity = StockQuantity + @quantity WHERE VariationID = @variationID`);
+                } else {
+                    await pool.request()
+                        .input('productId', sql.Int, item.ProductID)
+                        .input('quantity', sql.Int, item.Quantity)
+                        .query(`UPDATE Products SET StockQuantity = StockQuantity + @quantity WHERE ProductID = @productId`);
+                }
+            }
+            
+            // Update order status to cancelled
+            await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query(`UPDATE Orders SET Status = 'Cancelled' WHERE OrderID = @orderId`);
+            
+            res.json({ success: true });
+        } catch (err) {
+            res.json({ success: false, message: 'Failed to cancel order.' });
+        }
+    });
+
+    // Order Support OrdersReceive: Proceed to Completed
+    router.post('/Employee/OrderSupport/OrderOrdersReceive/Proceed/:orderId', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const orderId = parseInt(req.params.orderId);
+            await pool.request()
+                .input('orderId', sql.Int, orderId)
+                .query(`UPDATE Orders SET Status = 'Completed' WHERE OrderID = @orderId`);
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'COMPLETE',
+                'Orders',
+                orderId.toString(),
+                `Order #${orderId} completed by Order Support`,
+                JSON.stringify({ oldStatus: 'Received', newStatus: 'Completed' })
+            );
+            
+            res.json({ success: true });
+        } catch (err) {
+            res.json({ success: false, message: 'Failed to update order status.' });
         }
     });
 
@@ -2936,38 +6374,69 @@ module.exports = function(sql, pool) {
     ];
 
     // Admin Delivery Rates route
-    router.get('/Employee/Admin/DeliveryRates', isAuthenticated, hasEmployeeAccess, (req, res) => {
+    router.get('/Employee/Admin/DeliveryRates', isAuthenticated, (req, res) => {
         res.render('Employee/Admin/AdminRates', { user: req.session.user });
     });
 
-    // Admin: Delivery Rates API - list active
-    router.get('/api/admin/delivery-rates', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    // Admin: Delivery Rates API - list all rates (active and inactive)
+    router.get('/api/admin/delivery-rates', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
-            const result = await pool.request().query(`
+            
+            // First, ensure the DeliveryRates table exists with consistent schema
+            await pool.request().query(`
                 IF OBJECT_ID('dbo.DeliveryRates','U') IS NULL
                 BEGIN
-                    SELECT CAST(0 AS BIT) AS success, 'DeliveryRates table missing' AS message;
-                    RETURN;
+                    CREATE TABLE dbo.DeliveryRates (
+                        RateID INT IDENTITY(1,1) PRIMARY KEY,
+                        ServiceType NVARCHAR(150) NOT NULL,
+                        Price DECIMAL(18,2) NOT NULL,
+                        CreatedAt DATETIME2(0) NOT NULL CONSTRAINT DF_DeliveryRates_CreatedAt DEFAULT (SYSUTCDATETIME()),
+                        CreatedByUserID INT NULL,
+                        CreatedByUsername NVARCHAR(150) NULL,
+                        IsActive BIT NOT NULL CONSTRAINT DF_DeliveryRates_IsActive DEFAULT (1)
+                    );
+                    
+                    CREATE UNIQUE INDEX UX_DeliveryRates_ServiceType_Active
+                        ON dbo.DeliveryRates (ServiceType)
+                        WHERE IsActive = 1;
+                        
+                    -- Insert default delivery rates if table is empty
+                    IF NOT EXISTS (SELECT 1 FROM dbo.DeliveryRates)
+                    BEGIN
+                        INSERT INTO dbo.DeliveryRates (ServiceType, Price, CreatedByUsername)
+                        VALUES 
+                            ('Standard Delivery', 50.00, 'System'),
+                            ('Express Delivery', 100.00, 'System'),
+                            ('Same Day Delivery', 150.00, 'System'),
+                            ('Pickup', 0.00, 'System');
+                    END
                 END
-                SELECT RateID, ServiceType, Price, CreatedAt, CreatedByUserID, CreatedByUsername, IsActive
-                FROM dbo.DeliveryRates
-                WHERE IsActive = 1
-                ORDER BY CreatedAt DESC;
             `);
-            const rows = result.recordset || [];
-            if (rows.length && rows[0].success === false) {
-                return res.json({ success: false, message: rows[0].message });
-            }
-            res.json({ success: true, rates: rows });
+            
+            // Now fetch all delivery rates (both active and inactive for admin view)
+            const result = await pool.request().query(`
+                SELECT 
+                    RateID, 
+                    ServiceType, 
+                    Price,
+                    CreatedAt, 
+                    CreatedByUserID,
+                    CreatedByUsername,
+                    IsActive
+                FROM DeliveryRates 
+                ORDER BY IsActive DESC, CreatedAt DESC
+            `);
+            
+            res.json({ success: true, rates: result.recordset });
         } catch (err) {
             console.error('Error listing admin delivery rates:', err);
-            res.json({ success: false, message: 'Failed to list delivery rates' });
+            res.json({ success: false, message: 'Failed to list delivery rates', error: err.message });
         }
     });
 
     // Admin: Add Delivery Rate
-    router.post('/Employee/Admin/DeliveryRates/Add', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/Employee/Admin/DeliveryRates/Add', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const { serviceType, price } = req.body || {};
@@ -3023,7 +6492,7 @@ module.exports = function(sql, pool) {
     });
 
     // Admin: Update Delivery Rate (price, name, active flag)
-    router.post('/Employee/Admin/DeliveryRates/Update/:rateId', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/Employee/Admin/DeliveryRates/Update/:rateId', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const rateId = parseInt(req.params.rateId);
@@ -3194,7 +6663,7 @@ module.exports = function(sql, pool) {
     }
 
     // Admin WalkIn: Add new walk-in order
-    router.post('/Employee/Admin/WalkIn/Add', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/Employee/Admin/WalkIn/Add', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             await ensureWalkInOrdersTable(pool);
@@ -3217,19 +6686,19 @@ module.exports = function(sql, pool) {
             for (const item of ordered) {
                 const pid = parseInt(item.productId || item.ProductID);
                 const qty = parseInt(item.quantity || 0);
-                const variationId = item.variationId || item.variationID;
+                const variationID = item.variationID || item.variationID;
                 
                 if (pid && qty > 0) {
                     // Check if this is a variation purchase
-                    if (variationId) {
+                    if (variationID) {
                         // Decrement variation stock
-                        console.log('WalkIn order: Decrementing variation stock for variation ID:', variationId);
+                        console.log('WalkIn order: Decrementing variation stock for variation ID:', variationID);
                         await pool.request()
-                            .input('variationId', sql.Int, variationId)
+                            .input('variationID', sql.Int, variationID)
                             .input('quantity', sql.Int, qty)
                             .query(`UPDATE ProductVariations 
                                     SET Quantity = CASE WHEN Quantity >= @quantity THEN Quantity - @quantity ELSE 0 END 
-                                    WHERE VariationID = @variationId`);
+                                    WHERE VariationID = @variationID`);
                         console.log('WalkIn order: Variation stock decremented successfully');
                     } else {
                         // Decrement main product stock
@@ -3252,7 +6721,7 @@ module.exports = function(sql, pool) {
     });
 
     // Admin WalkIn: Proceed to On delivery
-    router.post('/Employee/Admin/WalkIn/ProceedToDelivery/:id', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/Employee/Admin/WalkIn/ProceedToDelivery/:id', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const id = parseInt(req.params.id);
@@ -3265,7 +6734,7 @@ module.exports = function(sql, pool) {
     });
 
     // Admin WalkIn: Complete
-    router.post('/Employee/Admin/WalkIn/Complete/:id', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/Employee/Admin/WalkIn/Complete/:id', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const id = parseInt(req.params.id);
@@ -3278,7 +6747,7 @@ module.exports = function(sql, pool) {
     });
 
     // Admin WalkIn route
-    router.get('/Employee/Admin/WalkIn', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/Employee/Admin/WalkIn', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             
@@ -3315,30 +6784,438 @@ module.exports = function(sql, pool) {
         }
     });
 
-    // Admin ManageUsers route
-    router.get('/Employee/Admin/ManageUsers', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    // Get Customer Accounts API - MUST come before the main ManageUsers route
+    router.get('/Employee/Admin/ManageUsers/Customers', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             
-            // Query users with roles
+            // Check if Customers table exists
+            const tableCheck = await pool.request().query(`
+                SELECT COUNT(*) as tableExists
+                FROM INFORMATION_SCHEMA.TABLES 
+                WHERE TABLE_NAME = 'Customers'
+            `);
+            
+            if (tableCheck.recordset[0].tableExists === 0) {
+                // Customers table doesn't exist, return empty array
+                res.json({ 
+                    success: true, 
+                    customers: [],
+                    message: 'Customer accounts feature not yet implemented'
+                });
+                return;
+            }
+            
+            // Query customers from the database
+            const result = await pool.request().query(`
+                SELECT 
+                    CustomerID,
+                    FullName,
+                    Email,
+                    PhoneNumber,
+                    IsActive,
+                    CreatedAt
+                FROM Customers
+                ORDER BY CreatedAt DESC
+            `);
+            
+            // Return customer data as plain text
+            const customers = result.recordset;
+            
+            res.json({ 
+                success: true, 
+                customers: customers 
+            });
+        } catch (error) {
+            console.error('Error fetching customers:', error);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to fetch customer accounts' 
+            });
+        }
+    });
+
+    // Admin ManageUsers route
+    router.get('/Employee/Admin/ManageUsers', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            
+            // Query users with roles - using LEFT JOIN to include users even if they don't have a valid role
             const result = await pool.request().query(`
                 SELECT u.UserID, u.Username, u.FullName, u.Email, u.RoleID, r.RoleName, u.IsActive, u.CreatedAt
                 FROM Users u
-                JOIN Roles r ON u.RoleID = r.RoleID
+                LEFT JOIN Roles r ON u.RoleID = r.RoleID
                 ORDER BY u.CreatedAt DESC
             `);
-            const users = result.recordset;
             
-            res.render('Employee/Admin/AdminManageUsers', { user: req.session.user, users });
+            // Decrypt user data before sending to frontend using transparent encryption service
+            const decryptedUsers = result.recordset;
+            
+            res.render('Employee/Admin/AdminManageUsers', { user: req.session.user, users: decryptedUsers });
         } catch (err) {
             console.error('Error fetching users:', err);
             res.render('Employee/Admin/AdminManageUsers', { user: req.session.user, users: [], error: 'Failed to load users.' });
         }
     });
 
+    // Edit User route
+    router.post('/Employee/Admin/Users/Edit', isAuthenticated, async (req, res) => {
+        try {
+            const { userId, username, fullName, email, roleId, isActive, password } = req.body;
+            
+            await pool.connect();
+            
+            // Get current user data before updating
+            const currentUserResult = await pool.request()
+                .input('userId', sql.Int, userId)
+                .query('SELECT Username, FullName, Email, RoleID, IsActive, PasswordHash FROM Users WHERE UserID = @userId');
+            
+            if (currentUserResult.recordset.length === 0) {
+                return res.json({ success: false, message: 'User not found' });
+            }
+            
+            const currentUser = currentUserResult.recordset[0];
+            const changes = {};
+            
+            // Decrypt current user data for comparison using transparent encryption service
+            const decryptedCurrentUser = currentUser;
+            const currentUsername = decryptedCurrentUser.Username;
+            const currentFullName = decryptedCurrentUser.FullName;
+            const currentEmail = decryptedCurrentUser.Email;
+            
+            // Check for changes and build changes object
+            if (currentUsername !== username) {
+                changes.Username = { old: currentUsername, new: username };
+            }
+            if (currentFullName !== fullName) {
+                changes.FullName = { old: currentFullName, new: fullName };
+            }
+            if (currentEmail !== email) {
+                changes.Email = { old: currentEmail, new: email };
+            }
+            if (currentUser.IsActive !== (isActive === '1' ? 1 : 0)) {
+                changes.IsActive = { old: currentUser.IsActive, new: (isActive === '1' ? 1 : 0) };
+            }
+            if (roleId && currentUser.RoleID !== parseInt(roleId)) {
+                changes.RoleID = { old: currentUser.RoleID, new: parseInt(roleId) };
+            }
+            
+            // Encrypt the new data using transparent encryption service
+            // Store user data as plain text
+            const userData = {
+                Username: username,
+                FullName: fullName,
+                Email: email
+            };
+            
+            // Handle password update if provided
+            if (password && password.trim() !== '') {
+                const bcrypt = require('bcryptjs');
+                const hashedPassword = await bcrypt.hash(password, 10);
+                await pool.request()
+                    .input('userId', sql.Int, userId)
+                    .input('password', sql.NVarChar, hashedPassword)
+                    .query(`
+                        UPDATE Users 
+                        SET PasswordHash = @password
+                        WHERE UserID = @userId
+                    `);
+                changes.Password = { old: '[HIDDEN]', new: '[UPDATED]' };
+            }
+            
+            // Update user information with encrypted data
+            await pool.request()
+                .input('userId', sql.Int, userId)
+                .input('username', sql.NVarChar, userData.Username)
+                .input('fullName', sql.NVarChar, userData.FullName)
+                .input('email', sql.NVarChar, userData.Email)
+                .input('isActive', sql.Bit, isActive === '1' ? 1 : 0)
+                .query(`
+                    UPDATE Users 
+                    SET Username = @username, FullName = @fullName, Email = @email, IsActive = @isActive
+                    WHERE UserID = @userId
+                `);
+            
+            // Update user role if roleId is provided
+            if (roleId) {
+                await pool.request()
+                    .input('userId', sql.Int, userId)
+                    .input('roleId', sql.Int, roleId)
+                    .query(`
+                        UPDATE Users 
+                        SET RoleID = @roleId 
+                        WHERE UserID = @userId
+                    `);
+            }
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'UPDATE',
+                'Users',
+                userId.toString(),
+                `Admin updated user information for ${username} (ID: ${userId})`,
+                Object.keys(changes).length > 0 ? JSON.stringify(changes) : null
+            );
+            
+            res.json({ success: true, message: 'User updated successfully' });
+        } catch (error) {
+            console.error('Error updating user:', error);
+            res.status(500).json({ success: false, message: 'Failed to update user' });
+        }
+    });
+
+
+    // Edit Customer route
+    router.post('/Employee/Admin/Customers/Edit', isAuthenticated, async (req, res) => {
+        try {
+            const { customerId, fullName, email, phone, isActive } = req.body;
+            
+            await pool.connect();
+            
+            // Get current customer data before updating
+            const currentCustomerResult = await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .query('SELECT FullName, Email, PhoneNumber, IsActive FROM Customers WHERE CustomerID = @customerId');
+            
+            if (currentCustomerResult.recordset.length === 0) {
+                return res.json({ success: false, message: 'Customer not found' });
+            }
+            
+            const currentCustomer = currentCustomerResult.recordset[0];
+            const changes = {};
+            
+            // Decrypt current customer data for comparison using transparent encryption service
+            const decryptedCurrentCustomer = currentCustomer;
+            const currentFullName = decryptedCurrentCustomer.FullName;
+            const currentEmail = decryptedCurrentCustomer.Email;
+            const currentPhoneNumber = decryptedCurrentCustomer.PhoneNumber;
+            
+            // Check for changes and build changes object
+            if (currentFullName !== fullName) {
+                changes.FullName = { old: currentFullName, new: fullName };
+            }
+            if (currentEmail !== email) {
+                changes.Email = { old: currentEmail, new: email };
+            }
+            if (currentPhoneNumber !== phone) {
+                changes.PhoneNumber = { old: currentPhoneNumber, new: phone };
+            }
+            if (currentCustomer.IsActive !== (isActive === '1' ? 1 : 0)) {
+                changes.IsActive = { old: currentCustomer.IsActive, new: (isActive === '1' ? 1 : 0) };
+            }
+            
+            // Encrypt the new data using transparent encryption service
+            // Store customer data as plain text
+            const customerData = {
+                FullName: fullName,
+                Email: email,
+                PhoneNumber: phone
+            };
+            
+            // Update customer information with encrypted data
+            await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .input('fullName', sql.NVarChar, customerData.FullName)
+                .input('email', sql.NVarChar, customerData.Email)
+                .input('phone', sql.NVarChar, customerData.PhoneNumber)
+                .input('isActive', sql.Bit, isActive === '1' ? 1 : 0)
+                .query(`
+                    UPDATE Customers 
+                    SET FullName = @fullName, Email = @email, PhoneNumber = @phone, IsActive = @isActive
+                    WHERE CustomerID = @customerId
+                `);
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'UPDATE',
+                'Customers',
+                customerId.toString(),
+                `Admin updated customer information for ${fullName} (ID: ${customerId})`,
+                Object.keys(changes).length > 0 ? JSON.stringify(changes) : null
+            );
+            
+            res.json({ success: true, message: 'Customer updated successfully' });
+        } catch (error) {
+            console.error('Error updating customer:', error);
+            res.status(500).json({ success: false, message: 'Failed to update customer' });
+        }
+    });
+
+    // Archive Customer route (Soft Delete)
+    router.post('/Employee/Admin/Customers/Archive', isAuthenticated, checkPermission('users_manage_users'), async (req, res) => {
+        try {
+            const { customerId } = req.body;
+            
+            if (!customerId) {
+                return res.status(400).json({ success: false, message: 'Customer ID is required' });
+            }
+            
+            await pool.connect();
+            
+            // Get current customer data before archiving
+            const currentCustomerResult = await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .query('SELECT FullName, Email, IsActive FROM Customers WHERE CustomerID = @customerId');
+            
+            if (currentCustomerResult.recordset.length === 0) {
+                return res.json({ success: false, message: 'Customer not found' });
+            }
+            
+            const currentCustomer = currentCustomerResult.recordset[0];
+            
+            // Check if customer is already archived
+            if (currentCustomer.IsActive === 0) {
+                return res.json({ success: false, message: 'Customer is already archived' });
+            }
+            
+            // Archive the customer (soft delete by setting IsActive = 0)
+            await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .query('UPDATE Customers SET IsActive = 0 WHERE CustomerID = @customerId');
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'DELETE',
+                'Customers',
+                customerId.toString(),
+                `Admin archived customer ${currentCustomer.FullName} (ID: ${customerId})`,
+                JSON.stringify({ IsActive: { old: 1, new: 0 } })
+            );
+            
+            res.json({ success: true, message: 'Customer archived successfully' });
+        } catch (error) {
+            console.error('Error archiving customer:', error);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to archive customer',
+                error: error.message
+            });
+        }
+    });
+
+    // Dearchive Customer route (Restore Archived Customer)
+    router.post('/Employee/Admin/Customers/Dearchive', isAuthenticated, checkPermission('users_manage_users'), async (req, res) => {
+        try {
+            const { customerId } = req.body;
+            
+            if (!customerId) {
+                return res.status(400).json({ success: false, message: 'Customer ID is required' });
+            }
+            
+            await pool.connect();
+            
+            // Get current customer data before dearchiving
+            const currentCustomerResult = await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .query('SELECT FullName, Email, IsActive FROM Customers WHERE CustomerID = @customerId');
+            
+            if (currentCustomerResult.recordset.length === 0) {
+                return res.json({ success: false, message: 'Customer not found' });
+            }
+            
+            const currentCustomer = currentCustomerResult.recordset[0];
+            
+            // Customer data is already plain text
+            const fullName = currentCustomer.FullName;
+            const email = currentCustomer.Email;
+            
+            // Check if customer is already active
+            if (currentCustomer.IsActive === 1) {
+                return res.json({ success: false, message: 'Customer is already active' });
+            }
+            
+            // Dearchive the customer (restore by setting IsActive = 1)
+            await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .query('UPDATE Customers SET IsActive = 1 WHERE CustomerID = @customerId');
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'UPDATE',
+                'Customers',
+                customerId.toString(),
+                `Admin dearchived customer ${fullName} (ID: ${customerId})`,
+                JSON.stringify({ IsActive: { old: 0, new: 1 } })
+            );
+            
+            res.json({ success: true, message: 'Customer restored successfully' });
+        } catch (error) {
+            console.error('Error dearchiving customer:', error);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to restore customer',
+                error: error.message
+            });
+        }
+    });
+
+    // Permanently Delete Customer route (Hard Delete)
+    router.delete('/Employee/Admin/Customers/Delete/:customerId', isAuthenticated, checkPermission('users_manage_users'), async (req, res) => {
+        try {
+            const { customerId } = req.params;
+            
+            if (!customerId) {
+                return res.status(400).json({ success: false, message: 'Customer ID is required' });
+            }
+            
+            await pool.connect();
+            
+            // Get current customer data before deleting
+            const currentCustomerResult = await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .query('SELECT FullName, Email FROM Customers WHERE CustomerID = @customerId');
+            
+            if (currentCustomerResult.recordset.length === 0) {
+                return res.json({ success: false, message: 'Customer not found' });
+            }
+            
+            const currentCustomer = currentCustomerResult.recordset[0];
+            
+            // Check if customer has any orders before permanent deletion
+            const ordersCheck = await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .query('SELECT COUNT(*) as orderCount FROM Orders WHERE CustomerID = @customerId');
+            
+            if (ordersCheck.recordset[0].orderCount > 0) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Cannot permanently delete customer with existing orders. Please archive instead.' 
+                });
+            }
+            
+            // Permanently delete the customer
+            await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .query('DELETE FROM Customers WHERE CustomerID = @customerId');
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'DELETE',
+                'Customers',
+                customerId.toString(),
+                `Admin permanently deleted customer ${currentCustomer.FullName} (ID: ${customerId})`,
+                JSON.stringify({ action: 'permanent_delete' })
+            );
+            
+            res.json({ success: true, message: 'Customer permanently deleted successfully' });
+        } catch (error) {
+            console.error('Error permanently deleting customer:', error);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to permanently delete customer',
+                error: error.message
+            });
+        }
+    });
+
 
     // Toggle User Active Status API
-    router.post('/Employee/Admin/ManageUsers/ToggleActive/:userId/:newStatus', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/Employee/Admin/ManageUsers/ToggleActive/:userId/:newStatus', isAuthenticated, async (req, res) => {
         try {
             const userId = req.params.userId;
             const newStatus = parseInt(req.params.newStatus);
@@ -3347,6 +7224,453 @@ module.exports = function(sql, pool) {
             if (req.session.user.role !== 'Admin') {
                 return res.status(403).json({ success: false, message: 'Admin access required' });
             }
+
+            await pool.connect();
+            
+            // Get user details for logging
+            const userResult = await pool.request()
+                .input('userId', sql.Int, userId)
+                .query(`SELECT FullName FROM Users WHERE UserID = @userId`);
+            
+            const userName = userResult.recordset[0]?.FullName || `User ${userId}`;
+            
+            await pool.request()
+                .input('userId', sql.Int, userId)
+                .input('isActive', sql.Bit, newStatus)
+                .query(`
+                    UPDATE Users 
+                    SET IsActive = @isActive, UpdatedAt = GETDATE()
+                    WHERE UserID = @userId
+                `);
+
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'UPDATE',
+                'Users',
+                userId,
+                `User "${userName}" status toggled to ${newStatus ? 'Active' : 'Inactive'}`
+            );
+
+            res.json({ success: true, message: 'User status updated successfully' });
+        } catch (error) {
+            console.error('Error toggling user status:', error);
+            res.status(500).json({ success: false, message: 'Failed to update user status' });
+        }
+    });
+
+    // =============================================================================
+    // ORDER SUPPORT - MANAGE USERS API ROUTES
+    // =============================================================================
+
+    // Get Customer Accounts API for Order Support
+    router.get('/Employee/OrderSupport/OrderManageUsers/Customers', isAuthenticated, checkPermission('users_manage_users'), async (req, res) => {
+        try {
+            await pool.connect();
+            
+            // Check if Customers table exists
+            const tableCheck = await pool.request().query(`
+                SELECT COUNT(*) as tableExists
+                FROM INFORMATION_SCHEMA.TABLES 
+                WHERE TABLE_NAME = 'Customers'
+            `);
+            
+            if (tableCheck.recordset[0].tableExists === 0) {
+                res.json({ 
+                    success: true, 
+                    customers: [],
+                    message: 'Customer accounts feature not yet implemented'
+                });
+                return;
+            }
+            
+            const result = await pool.request().query(`
+                SELECT 
+                    CustomerID,
+                    FullName,
+                    Email,
+                    PhoneNumber,
+                    IsActive,
+                    CreatedAt
+                FROM Customers
+                ORDER BY CreatedAt DESC
+            `);
+            
+            // Return customer data as plain text
+            const customers = result.recordset;
+            
+            res.json({ 
+                success: true, 
+                customers: customers 
+            });
+        } catch (error) {
+            console.error('Error fetching customers:', error);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to fetch customer accounts' 
+            });
+        }
+    });
+
+    // Edit User route for Order Support
+    router.post('/Employee/OrderSupport/OrderManageUsers/Users/Edit', isAuthenticated, checkPermission('users_manage_users'), async (req, res) => {
+        try {
+            const { userId, username, fullName, email, roleId, isActive, password } = req.body;
+            
+            await pool.connect();
+            
+            // Get current user data before updating
+            const currentUserResult = await pool.request()
+                .input('userId', sql.Int, userId)
+                .query('SELECT Username, FullName, Email, RoleID, IsActive, PasswordHash FROM Users WHERE UserID = @userId');
+            
+            if (currentUserResult.recordset.length === 0) {
+                return res.json({ success: false, message: 'User not found' });
+            }
+            
+            const currentUser = currentUserResult.recordset[0];
+            const changes = {};
+            
+            // Decrypt current user data for comparison using transparent encryption service
+            const decryptedCurrentUser = currentUser;
+            const currentUsername = decryptedCurrentUser.Username;
+            const currentFullName = decryptedCurrentUser.FullName;
+            const currentEmail = decryptedCurrentUser.Email;
+            
+            // Check for changes and build changes object
+            if (currentUsername !== username) {
+                changes.Username = { old: currentUsername, new: username };
+            }
+            if (currentFullName !== fullName) {
+                changes.FullName = { old: currentFullName, new: fullName };
+            }
+            if (currentEmail !== email) {
+                changes.Email = { old: currentEmail, new: email };
+            }
+            if (currentUser.IsActive !== (isActive === '1' ? 1 : 0)) {
+                changes.IsActive = { old: currentUser.IsActive, new: (isActive === '1' ? 1 : 0) };
+            }
+            if (roleId && currentUser.RoleID !== parseInt(roleId)) {
+                changes.RoleID = { old: currentUser.RoleID, new: parseInt(roleId) };
+            }
+            
+            // Encrypt the new data using transparent encryption service
+            // Store user data as plain text
+            const userData = {
+                Username: username,
+                FullName: fullName,
+                Email: email
+            };
+            
+            // Handle password update if provided
+            if (password && password.trim() !== '') {
+                const bcrypt = require('bcryptjs');
+                const hashedPassword = await bcrypt.hash(password, 10);
+                await pool.request()
+                    .input('userId', sql.Int, userId)
+                    .input('password', sql.NVarChar, hashedPassword)
+                    .query(`
+                        UPDATE Users 
+                        SET PasswordHash = @password
+                        WHERE UserID = @userId
+                    `);
+                changes.Password = { old: '[HIDDEN]', new: '[UPDATED]' };
+            }
+            
+            // Update user information with encrypted data
+            await pool.request()
+                .input('userId', sql.Int, userId)
+                .input('username', sql.NVarChar, userData.Username)
+                .input('fullName', sql.NVarChar, userData.FullName)
+                .input('email', sql.NVarChar, userData.Email)
+                .input('isActive', sql.Bit, isActive === '1' ? 1 : 0)
+                .query(`
+                    UPDATE Users 
+                    SET Username = @username, FullName = @fullName, Email = @email, IsActive = @isActive
+                    WHERE UserID = @userId
+                `);
+            
+            // Update user role if roleId is provided
+            if (roleId) {
+                await pool.request()
+                    .input('userId', sql.Int, userId)
+                    .input('roleId', sql.Int, roleId)
+                    .query(`
+                        UPDATE Users 
+                        SET RoleID = @roleId 
+                        WHERE UserID = @userId
+                    `);
+            }
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'UPDATE',
+                'Users',
+                userId.toString(),
+                `OrderSupport updated user information for ${username} (ID: ${userId})`,
+                Object.keys(changes).length > 0 ? JSON.stringify(changes) : null
+            );
+            
+            res.json({ success: true, message: 'User updated successfully' });
+        } catch (error) {
+            console.error('Error updating user:', error);
+            res.status(500).json({ success: false, message: 'Failed to update user' });
+        }
+    });
+
+    // Edit Customer route for Order Support
+    router.post('/Employee/OrderSupport/OrderManageUsers/Customers/Edit', isAuthenticated, checkPermission('users_manage_users'), async (req, res) => {
+        try {
+            const { customerId, fullName, email, phone, isActive } = req.body;
+            
+            await pool.connect();
+            
+            // Get current customer data before updating
+            const currentCustomerResult = await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .query('SELECT FullName, Email, PhoneNumber, IsActive FROM Customers WHERE CustomerID = @customerId');
+            
+            if (currentCustomerResult.recordset.length === 0) {
+                return res.json({ success: false, message: 'Customer not found' });
+            }
+            
+            const currentCustomer = currentCustomerResult.recordset[0];
+            const changes = {};
+            
+            // Decrypt current customer data for comparison using transparent encryption service
+            const decryptedCurrentCustomer = currentCustomer;
+            const currentFullName = decryptedCurrentCustomer.FullName;
+            const currentEmail = decryptedCurrentCustomer.Email;
+            const currentPhoneNumber = decryptedCurrentCustomer.PhoneNumber;
+            
+            // Check for changes and build changes object
+            if (currentFullName !== fullName) {
+                changes.FullName = { old: currentFullName, new: fullName };
+            }
+            if (currentEmail !== email) {
+                changes.Email = { old: currentEmail, new: email };
+            }
+            if (currentPhoneNumber !== phone) {
+                changes.PhoneNumber = { old: currentPhoneNumber, new: phone };
+            }
+            if (currentCustomer.IsActive !== (isActive === '1' ? 1 : 0)) {
+                changes.IsActive = { old: currentCustomer.IsActive, new: (isActive === '1' ? 1 : 0) };
+            }
+            
+            // Encrypt the new data using transparent encryption service
+            // Store customer data as plain text
+            const customerData = {
+                FullName: fullName,
+                Email: email,
+                PhoneNumber: phone
+            };
+            
+            // Update customer information with encrypted data
+            await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .input('fullName', sql.NVarChar, customerData.FullName)
+                .input('email', sql.NVarChar, customerData.Email)
+                .input('phone', sql.NVarChar, customerData.PhoneNumber)
+                .input('isActive', sql.Bit, isActive === '1' ? 1 : 0)
+                .query(`
+                    UPDATE Customers 
+                    SET FullName = @fullName, Email = @email, PhoneNumber = @phone, IsActive = @isActive
+                    WHERE CustomerID = @customerId
+                `);
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'UPDATE',
+                'Customers',
+                customerId.toString(),
+                `OrderSupport updated customer information for ${fullName} (ID: ${customerId})`,
+                Object.keys(changes).length > 0 ? JSON.stringify(changes) : null
+            );
+            
+            res.json({ success: true, message: 'Customer updated successfully' });
+        } catch (error) {
+            console.error('Error updating customer:', error);
+            res.status(500).json({ success: false, message: 'Failed to update customer' });
+        }
+    });
+
+    // Order Support - Archive Customer route (Soft Delete)
+    router.post('/Employee/OrderSupport/OrderManageUsers/Customers/Archive', isAuthenticated, checkPermission('users_manage_users'), async (req, res) => {
+        try {
+            const { customerId } = req.body;
+            
+            if (!customerId) {
+                return res.status(400).json({ success: false, message: 'Customer ID is required' });
+            }
+            
+            await pool.connect();
+            
+            // Get current customer data before archiving
+            const currentCustomerResult = await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .query('SELECT FullName, Email, IsActive FROM Customers WHERE CustomerID = @customerId');
+            
+            if (currentCustomerResult.recordset.length === 0) {
+                return res.json({ success: false, message: 'Customer not found' });
+            }
+            
+            const currentCustomer = currentCustomerResult.recordset[0];
+            
+            // Check if customer is already archived
+            if (currentCustomer.IsActive === 0) {
+                return res.json({ success: false, message: 'Customer is already archived' });
+            }
+            
+            // Archive the customer (soft delete by setting IsActive = 0)
+            await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .query('UPDATE Customers SET IsActive = 0 WHERE CustomerID = @customerId');
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'DELETE',
+                'Customers',
+                customerId.toString(),
+                `Order Support archived customer ${currentCustomer.FullName} (ID: ${customerId})`,
+                JSON.stringify({ IsActive: { old: 1, new: 0 } })
+            );
+            
+            res.json({ success: true, message: 'Customer archived successfully' });
+        } catch (error) {
+            console.error('Error archiving customer:', error);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to archive customer',
+                error: error.message
+            });
+        }
+    });
+
+    // Order Support - Dearchive Customer route (Restore Archived Customer)
+    router.post('/Employee/OrderSupport/OrderManageUsers/Customers/Dearchive', isAuthenticated, checkPermission('users_manage_users'), async (req, res) => {
+        try {
+            const { customerId } = req.body;
+            
+            if (!customerId) {
+                return res.status(400).json({ success: false, message: 'Customer ID is required' });
+            }
+            
+            await pool.connect();
+            
+            // Get current customer data before dearchiving
+            const currentCustomerResult = await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .query('SELECT FullName, Email, IsActive FROM Customers WHERE CustomerID = @customerId');
+            
+            if (currentCustomerResult.recordset.length === 0) {
+                return res.json({ success: false, message: 'Customer not found' });
+            }
+            
+            const currentCustomer = currentCustomerResult.recordset[0];
+            
+            // Customer data is already plain text
+            const fullName = currentCustomer.FullName;
+            const email = currentCustomer.Email;
+            
+            // Check if customer is already active
+            if (currentCustomer.IsActive === 1) {
+                return res.json({ success: false, message: 'Customer is already active' });
+            }
+            
+            // Dearchive the customer (restore by setting IsActive = 1)
+            await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .query('UPDATE Customers SET IsActive = 1 WHERE CustomerID = @customerId');
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'UPDATE',
+                'Customers',
+                customerId.toString(),
+                `Order Support dearchived customer ${currentCustomer.FullName} (ID: ${customerId})`,
+                JSON.stringify({ IsActive: { old: 0, new: 1 } })
+            );
+            
+            res.json({ success: true, message: 'Customer restored successfully' });
+        } catch (error) {
+            console.error('Error dearchiving customer:', error);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to restore customer',
+                error: error.message
+            });
+        }
+    });
+
+    // Order Support - Permanently Delete Customer route (Hard Delete)
+    router.delete('/Employee/OrderSupport/OrderManageUsers/Customers/Delete/:customerId', isAuthenticated, checkPermission('users_manage_users'), async (req, res) => {
+        try {
+            const { customerId } = req.params;
+            
+            if (!customerId) {
+                return res.status(400).json({ success: false, message: 'Customer ID is required' });
+            }
+            
+            await pool.connect();
+            
+            // Get current customer data before deleting
+            const currentCustomerResult = await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .query('SELECT FullName, Email FROM Customers WHERE CustomerID = @customerId');
+            
+            if (currentCustomerResult.recordset.length === 0) {
+                return res.json({ success: false, message: 'Customer not found' });
+            }
+            
+            const currentCustomer = currentCustomerResult.recordset[0];
+            
+            // Check if customer has any orders before permanent deletion
+            const ordersCheck = await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .query('SELECT COUNT(*) as orderCount FROM Orders WHERE CustomerID = @customerId');
+            
+            if (ordersCheck.recordset[0].orderCount > 0) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Cannot permanently delete customer with existing orders. Please archive instead.' 
+                });
+            }
+            
+            // Permanently delete the customer
+            await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .query('DELETE FROM Customers WHERE CustomerID = @customerId');
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'DELETE',
+                'Customers',
+                customerId.toString(),
+                `Order Support permanently deleted customer ${currentCustomer.FullName} (ID: ${customerId})`,
+                JSON.stringify({ action: 'permanent_delete' })
+            );
+            
+            res.json({ success: true, message: 'Customer permanently deleted successfully' });
+        } catch (error) {
+            console.error('Error permanently deleting customer:', error);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to permanently delete customer',
+                error: error.message
+            });
+        }
+    });
+
+    // Toggle User Active Status API for Order Support
+    router.post('/Employee/OrderSupport/OrderManageUsers/ToggleActive/:userId/:newStatus', isAuthenticated, checkPermission('users_manage_users'), async (req, res) => {
+        try {
+            const userId = req.params.userId;
+            const newStatus = parseInt(req.params.newStatus);
 
             await pool.connect();
             
@@ -3365,9 +7689,1485 @@ module.exports = function(sql, pool) {
             res.status(500).json({ success: false, message: 'Failed to update user status' });
         }
     });
+
+    // =============================================================================
+    // TRANSACTION MANAGER - MANAGE USERS API ROUTES
+    // =============================================================================
+
+    // Get Customer Accounts API for Transaction Manager
+    router.get('/Employee/TransactionManager/TransactionManageUsers/Customers', isAuthenticated, checkPermission('users_manage_users'), async (req, res) => {
+        try {
+            await pool.connect();
+            
+            const tableCheck = await pool.request().query(`
+                SELECT COUNT(*) as tableExists
+                FROM INFORMATION_SCHEMA.TABLES 
+                WHERE TABLE_NAME = 'Customers'
+            `);
+            
+            if (tableCheck.recordset[0].tableExists === 0) {
+                res.json({ 
+                    success: true, 
+                    customers: [],
+                    message: 'Customer accounts feature not yet implemented'
+                });
+                return;
+            }
+            
+            const result = await pool.request().query(`
+                SELECT 
+                    CustomerID,
+                    FullName,
+                    Email,
+                    PhoneNumber,
+                    IsActive,
+                    CreatedAt
+                FROM Customers
+                ORDER BY CreatedAt DESC
+            `);
+            
+            // Return customer data as plain text
+            const customers = result.recordset;
+            
+            res.json({ 
+                success: true, 
+                customers: customers 
+            });
+        } catch (error) {
+            console.error('Error fetching customers:', error);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to fetch customer accounts' 
+            });
+        }
+    });
+
+    // Edit User route for Transaction Manager
+    router.post('/Employee/TransactionManager/TransactionManageUsers/Users/Edit', isAuthenticated, checkPermission('users_manage_users'), async (req, res) => {
+        try {
+            const { userId, username, fullName, email, roleId, isActive, password } = req.body;
+            
+            await pool.connect();
+            
+            // Get current user data before updating
+            const currentUserResult = await pool.request()
+                .input('userId', sql.Int, userId)
+                .query('SELECT Username, FullName, Email, RoleID, IsActive, PasswordHash FROM Users WHERE UserID = @userId');
+            
+            if (currentUserResult.recordset.length === 0) {
+                return res.json({ success: false, message: 'User not found' });
+            }
+            
+            const currentUser = currentUserResult.recordset[0];
+            const changes = {};
+            
+            // Decrypt current user data for comparison using transparent encryption service
+            const decryptedCurrentUser = currentUser;
+            const currentUsername = decryptedCurrentUser.Username;
+            const currentFullName = decryptedCurrentUser.FullName;
+            const currentEmail = decryptedCurrentUser.Email;
+            
+            // Check for changes and build changes object
+            if (currentUsername !== username) {
+                changes.Username = { old: currentUsername, new: username };
+            }
+            if (currentFullName !== fullName) {
+                changes.FullName = { old: currentFullName, new: fullName };
+            }
+            if (currentEmail !== email) {
+                changes.Email = { old: currentEmail, new: email };
+            }
+            if (currentUser.IsActive !== (isActive === '1' ? 1 : 0)) {
+                changes.IsActive = { old: currentUser.IsActive, new: (isActive === '1' ? 1 : 0) };
+            }
+            if (roleId && currentUser.RoleID !== parseInt(roleId)) {
+                changes.RoleID = { old: currentUser.RoleID, new: parseInt(roleId) };
+            }
+            
+            // Encrypt the new data using transparent encryption service
+            // Store user data as plain text
+            const userData = {
+                Username: username,
+                FullName: fullName,
+                Email: email
+            };
+            
+            // Handle password update if provided
+            if (password && password.trim() !== '') {
+                const bcrypt = require('bcryptjs');
+                const hashedPassword = await bcrypt.hash(password, 10);
+                await pool.request()
+                    .input('userId', sql.Int, userId)
+                    .input('password', sql.NVarChar, hashedPassword)
+                    .query(`
+                        UPDATE Users 
+                        SET PasswordHash = @password
+                        WHERE UserID = @userId
+                    `);
+                changes.Password = { old: '[HIDDEN]', new: '[UPDATED]' };
+            }
+            
+            // Update user information with encrypted data
+            await pool.request()
+                .input('userId', sql.Int, userId)
+                .input('username', sql.NVarChar, userData.Username)
+                .input('fullName', sql.NVarChar, userData.FullName)
+                .input('email', sql.NVarChar, userData.Email)
+                .input('isActive', sql.Bit, isActive === '1' ? 1 : 0)
+                .query(`
+                    UPDATE Users 
+                    SET Username = @username, FullName = @fullName, Email = @email, IsActive = @isActive
+                    WHERE UserID = @userId
+                `);
+            
+            // Update user role if roleId is provided
+            if (roleId) {
+                await pool.request()
+                    .input('userId', sql.Int, userId)
+                    .input('roleId', sql.Int, roleId)
+                    .query(`
+                        UPDATE Users 
+                        SET RoleID = @roleId 
+                        WHERE UserID = @userId
+                    `);
+            }
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'UPDATE',
+                'Users',
+                userId.toString(),
+                `TransactionManager updated user information for ${username} (ID: ${userId})`,
+                Object.keys(changes).length > 0 ? JSON.stringify(changes) : null
+            );
+            
+            res.json({ success: true, message: 'User updated successfully' });
+        } catch (error) {
+            console.error('Error updating user:', error);
+            res.status(500).json({ success: false, message: 'Failed to update user' });
+        }
+    });
+
+    // Edit Customer route for Transaction Manager
+    router.post('/Employee/TransactionManager/TransactionManageUsers/Customers/Edit', isAuthenticated, checkPermission('users_manage_users'), async (req, res) => {
+        try {
+            const { customerId, fullName, email, phone, isActive } = req.body;
+            
+            await pool.connect();
+            
+            // Get current customer data before updating
+            const currentCustomerResult = await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .query('SELECT FullName, Email, PhoneNumber, IsActive FROM Customers WHERE CustomerID = @customerId');
+            
+            if (currentCustomerResult.recordset.length === 0) {
+                return res.json({ success: false, message: 'Customer not found' });
+            }
+            
+            const currentCustomer = currentCustomerResult.recordset[0];
+            const changes = {};
+            
+            // Decrypt current customer data for comparison using transparent encryption service
+            const decryptedCurrentCustomer = currentCustomer;
+            const currentFullName = decryptedCurrentCustomer.FullName;
+            const currentEmail = decryptedCurrentCustomer.Email;
+            const currentPhoneNumber = decryptedCurrentCustomer.PhoneNumber;
+            
+            // Check for changes and build changes object
+            if (currentFullName !== fullName) {
+                changes.FullName = { old: currentFullName, new: fullName };
+            }
+            if (currentEmail !== email) {
+                changes.Email = { old: currentEmail, new: email };
+            }
+            if (currentPhoneNumber !== phone) {
+                changes.PhoneNumber = { old: currentPhoneNumber, new: phone };
+            }
+            if (currentCustomer.IsActive !== (isActive === '1' ? 1 : 0)) {
+                changes.IsActive = { old: currentCustomer.IsActive, new: (isActive === '1' ? 1 : 0) };
+            }
+            
+            // Encrypt the new data using transparent encryption service
+            // Store customer data as plain text
+            const customerData = {
+                FullName: fullName,
+                Email: email,
+                PhoneNumber: phone
+            };
+            
+            // Update customer information with encrypted data
+            await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .input('fullName', sql.NVarChar, customerData.FullName)
+                .input('email', sql.NVarChar, customerData.Email)
+                .input('phone', sql.NVarChar, customerData.PhoneNumber)
+                .input('isActive', sql.Bit, isActive === '1' ? 1 : 0)
+                .query(`
+                    UPDATE Customers 
+                    SET FullName = @fullName, Email = @email, PhoneNumber = @phone, IsActive = @isActive
+                    WHERE CustomerID = @customerId
+                `);
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'UPDATE',
+                'Customers',
+                customerId.toString(),
+                `TransactionManager updated customer information for ${fullName} (ID: ${customerId})`,
+                Object.keys(changes).length > 0 ? JSON.stringify(changes) : null
+            );
+            
+            res.json({ success: true, message: 'Customer updated successfully' });
+        } catch (error) {
+            console.error('Error updating customer:', error);
+            res.status(500).json({ success: false, message: 'Failed to update customer' });
+        }
+    });
+
+    // Transaction Manager - Archive Customer route (Soft Delete)
+    router.post('/Employee/TransactionManager/TransactionManageUsers/Customers/Archive', isAuthenticated, checkPermission('users_manage_users'), async (req, res) => {
+        try {
+            const { customerId } = req.body;
+            
+            if (!customerId) {
+                return res.status(400).json({ success: false, message: 'Customer ID is required' });
+            }
+            
+            await pool.connect();
+            
+            // Get current customer data before archiving
+            const currentCustomerResult = await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .query('SELECT FullName, Email, IsActive FROM Customers WHERE CustomerID = @customerId');
+            
+            if (currentCustomerResult.recordset.length === 0) {
+                return res.json({ success: false, message: 'Customer not found' });
+            }
+            
+            const currentCustomer = currentCustomerResult.recordset[0];
+            
+            // Check if customer is already archived
+            if (currentCustomer.IsActive === 0) {
+                return res.json({ success: false, message: 'Customer is already archived' });
+            }
+            
+            // Archive the customer (soft delete by setting IsActive = 0)
+            await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .query('UPDATE Customers SET IsActive = 0 WHERE CustomerID = @customerId');
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'DELETE',
+                'Customers',
+                customerId.toString(),
+                `Transaction Manager archived customer ${currentCustomer.FullName} (ID: ${customerId})`,
+                JSON.stringify({ IsActive: { old: 1, new: 0 } })
+            );
+            
+            res.json({ success: true, message: 'Customer archived successfully' });
+        } catch (error) {
+            console.error('Error archiving customer:', error);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to archive customer',
+                error: error.message
+            });
+        }
+    });
+
+    // Transaction Manager - Dearchive Customer route (Restore Archived Customer)
+    router.post('/Employee/TransactionManager/TransactionManageUsers/Customers/Dearchive', isAuthenticated, checkPermission('users_manage_users'), async (req, res) => {
+        try {
+            const { customerId } = req.body;
+            
+            if (!customerId) {
+                return res.status(400).json({ success: false, message: 'Customer ID is required' });
+            }
+            
+            await pool.connect();
+            
+            // Get current customer data before dearchiving
+            const currentCustomerResult = await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .query('SELECT FullName, Email, IsActive FROM Customers WHERE CustomerID = @customerId');
+            
+            if (currentCustomerResult.recordset.length === 0) {
+                return res.json({ success: false, message: 'Customer not found' });
+            }
+            
+            const currentCustomer = currentCustomerResult.recordset[0];
+            
+            // Customer data is already plain text
+            const fullName = currentCustomer.FullName;
+            const email = currentCustomer.Email;
+            
+            // Check if customer is already active
+            if (currentCustomer.IsActive === 1) {
+                return res.json({ success: false, message: 'Customer is already active' });
+            }
+            
+            // Dearchive the customer (restore by setting IsActive = 1)
+            await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .query('UPDATE Customers SET IsActive = 1 WHERE CustomerID = @customerId');
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'UPDATE',
+                'Customers',
+                customerId.toString(),
+                `Transaction Manager dearchived customer ${currentCustomer.FullName} (ID: ${customerId})`,
+                JSON.stringify({ IsActive: { old: 0, new: 1 } })
+            );
+            
+            res.json({ success: true, message: 'Customer restored successfully' });
+        } catch (error) {
+            console.error('Error dearchiving customer:', error);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to restore customer',
+                error: error.message
+            });
+        }
+    });
+
+    // Transaction Manager - Permanently Delete Customer route (Hard Delete)
+    router.delete('/Employee/TransactionManager/TransactionManageUsers/Customers/Delete/:customerId', isAuthenticated, checkPermission('users_manage_users'), async (req, res) => {
+        try {
+            const { customerId } = req.params;
+            
+            if (!customerId) {
+                return res.status(400).json({ success: false, message: 'Customer ID is required' });
+            }
+            
+            await pool.connect();
+            
+            // Get current customer data before deleting
+            const currentCustomerResult = await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .query('SELECT FullName, Email FROM Customers WHERE CustomerID = @customerId');
+            
+            if (currentCustomerResult.recordset.length === 0) {
+                return res.json({ success: false, message: 'Customer not found' });
+            }
+            
+            const currentCustomer = currentCustomerResult.recordset[0];
+            
+            // Check if customer has any orders before permanent deletion
+            const ordersCheck = await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .query('SELECT COUNT(*) as orderCount FROM Orders WHERE CustomerID = @customerId');
+            
+            if (ordersCheck.recordset[0].orderCount > 0) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Cannot permanently delete customer with existing orders. Please archive instead.' 
+                });
+            }
+            
+            // Permanently delete the customer
+            await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .query('DELETE FROM Customers WHERE CustomerID = @customerId');
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'DELETE',
+                'Customers',
+                customerId.toString(),
+                `Transaction Manager permanently deleted customer ${currentCustomer.FullName} (ID: ${customerId})`,
+                JSON.stringify({ action: 'permanent_delete' })
+            );
+            
+            res.json({ success: true, message: 'Customer permanently deleted successfully' });
+        } catch (error) {
+            console.error('Error permanently deleting customer:', error);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to permanently delete customer',
+                error: error.message
+            });
+        }
+    });
+
+    // Toggle User Active Status API for Transaction Manager
+    router.post('/Employee/TransactionManager/TransactionManageUsers/ToggleActive/:userId/:newStatus', isAuthenticated, checkPermission('users_manage_users'), async (req, res) => {
+        try {
+            const userId = req.params.userId;
+            const newStatus = parseInt(req.params.newStatus);
+
+            await pool.connect();
+            
+            await pool.request()
+                .input('userId', sql.Int, userId)
+                .input('isActive', sql.Bit, newStatus)
+                .query(`
+                    UPDATE Users 
+                    SET IsActive = @isActive, UpdatedAt = GETDATE()
+                    WHERE UserID = @userId
+                `);
+
+            res.json({ success: true, message: 'User status updated successfully' });
+        } catch (error) {
+            console.error('Error toggling user status:', error);
+            res.status(500).json({ success: false, message: 'Failed to update user status' });
+        }
+    });
+
+    // =============================================================================
+    // USER MANAGER - MANAGE USERS API ROUTES
+    // =============================================================================
+
+    // Get Customer Accounts API for User Manager
+    router.get('/Employee/UserManager/UserManageUsers/Customers', isAuthenticated, checkPermission('users_manage_users'), async (req, res) => {
+        try {
+            await pool.connect();
+            
+            const tableCheck = await pool.request().query(`
+                SELECT COUNT(*) as tableExists
+                FROM INFORMATION_SCHEMA.TABLES 
+                WHERE TABLE_NAME = 'Customers'
+            `);
+            
+            if (tableCheck.recordset[0].tableExists === 0) {
+                res.json({ 
+                    success: true, 
+                    customers: [],
+                    message: 'Customer accounts feature not yet implemented'
+                });
+                return;
+            }
+            
+            const result = await pool.request().query(`
+                SELECT 
+                    CustomerID,
+                    FullName,
+                    Email,
+                    PhoneNumber,
+                    IsActive,
+                    CreatedAt
+                FROM Customers
+                ORDER BY CreatedAt DESC
+            `);
+            
+            res.json({ 
+                success: true, 
+                customers: result.recordset 
+            });
+        } catch (error) {
+            console.error('Error fetching customers:', error);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to fetch customer accounts' 
+            });
+        }
+    });
+
+    // Edit User route for User Manager
+    router.post('/Employee/UserManager/UserManageUsers/Users/Edit', isAuthenticated, checkPermission('users_manage_users'), async (req, res) => {
+        try {
+            const { userId, username, fullName, email, roleId, isActive, password } = req.body;
+            
+            await pool.connect();
+            
+            // Get current user data before updating
+            const currentUserResult = await pool.request()
+                .input('userId', sql.Int, userId)
+                .query('SELECT Username, FullName, Email, RoleID, IsActive, PasswordHash FROM Users WHERE UserID = @userId');
+            
+            if (currentUserResult.recordset.length === 0) {
+                return res.json({ success: false, message: 'User not found' });
+            }
+            
+            const currentUser = currentUserResult.recordset[0];
+            const changes = {};
+            
+            // Decrypt current user data for comparison using transparent encryption service
+            const decryptedCurrentUser = currentUser;
+            const currentUsername = decryptedCurrentUser.Username;
+            const currentFullName = decryptedCurrentUser.FullName;
+            const currentEmail = decryptedCurrentUser.Email;
+            
+            // Check for changes and build changes object
+            if (currentUsername !== username) {
+                changes.Username = { old: currentUsername, new: username };
+            }
+            if (currentFullName !== fullName) {
+                changes.FullName = { old: currentFullName, new: fullName };
+            }
+            if (currentEmail !== email) {
+                changes.Email = { old: currentEmail, new: email };
+            }
+            if (currentUser.IsActive !== (isActive === '1' ? 1 : 0)) {
+                changes.IsActive = { old: currentUser.IsActive, new: (isActive === '1' ? 1 : 0) };
+            }
+            if (roleId && currentUser.RoleID !== parseInt(roleId)) {
+                changes.RoleID = { old: currentUser.RoleID, new: parseInt(roleId) };
+            }
+            
+            // Encrypt the new data using transparent encryption service
+            // Store user data as plain text
+            const userData = {
+                Username: username,
+                FullName: fullName,
+                Email: email
+            };
+            
+            // Handle password update if provided
+            if (password && password.trim() !== '') {
+                const bcrypt = require('bcryptjs');
+                const hashedPassword = await bcrypt.hash(password, 10);
+                await pool.request()
+                    .input('userId', sql.Int, userId)
+                    .input('password', sql.NVarChar, hashedPassword)
+                    .query(`
+                        UPDATE Users 
+                        SET PasswordHash = @password
+                        WHERE UserID = @userId
+                    `);
+                changes.Password = { old: '[HIDDEN]', new: '[UPDATED]' };
+            }
+            
+            // Update user information with encrypted data
+            await pool.request()
+                .input('userId', sql.Int, userId)
+                .input('username', sql.NVarChar, userData.Username)
+                .input('fullName', sql.NVarChar, userData.FullName)
+                .input('email', sql.NVarChar, userData.Email)
+                .input('isActive', sql.Bit, isActive === '1' ? 1 : 0)
+                .query(`
+                    UPDATE Users 
+                    SET Username = @username, FullName = @fullName, Email = @email, IsActive = @isActive
+                    WHERE UserID = @userId
+                `);
+            
+            // Update user role if roleId is provided
+            if (roleId) {
+                await pool.request()
+                    .input('userId', sql.Int, userId)
+                    .input('roleId', sql.Int, roleId)
+                    .query(`
+                        UPDATE Users 
+                        SET RoleID = @roleId 
+                        WHERE UserID = @userId
+                    `);
+            }
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'UPDATE',
+                'Users',
+                userId.toString(),
+                `UserManager updated user information for ${username} (ID: ${userId})`,
+                Object.keys(changes).length > 0 ? JSON.stringify(changes) : null
+            );
+            
+            res.json({ success: true, message: 'User updated successfully' });
+        } catch (error) {
+            console.error('Error updating user:', error);
+            res.status(500).json({ success: false, message: 'Failed to update user' });
+        }
+    });
+
+    // Edit Customer route for User Manager
+    router.post('/Employee/UserManager/UserManageUsers/Customers/Edit', isAuthenticated, checkPermission('users_manage_users'), async (req, res) => {
+        try {
+            const { customerId, fullName, email, phone, isActive } = req.body;
+            
+            await pool.connect();
+            
+            // Get current customer data before updating
+            const currentCustomerResult = await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .query('SELECT FullName, Email, PhoneNumber, IsActive FROM Customers WHERE CustomerID = @customerId');
+            
+            if (currentCustomerResult.recordset.length === 0) {
+                return res.json({ success: false, message: 'Customer not found' });
+            }
+            
+            const currentCustomer = currentCustomerResult.recordset[0];
+            const changes = {};
+            
+            // Decrypt current customer data for comparison using transparent encryption service
+            const decryptedCurrentCustomer = currentCustomer;
+            const currentFullName = decryptedCurrentCustomer.FullName;
+            const currentEmail = decryptedCurrentCustomer.Email;
+            const currentPhoneNumber = decryptedCurrentCustomer.PhoneNumber;
+            
+            // Check for changes and build changes object
+            if (currentFullName !== fullName) {
+                changes.FullName = { old: currentFullName, new: fullName };
+            }
+            if (currentEmail !== email) {
+                changes.Email = { old: currentEmail, new: email };
+            }
+            if (currentPhoneNumber !== phone) {
+                changes.PhoneNumber = { old: currentPhoneNumber, new: phone };
+            }
+            if (currentCustomer.IsActive !== (isActive === '1' ? 1 : 0)) {
+                changes.IsActive = { old: currentCustomer.IsActive, new: (isActive === '1' ? 1 : 0) };
+            }
+            
+            // Encrypt the new data using transparent encryption service
+            // Store customer data as plain text
+            const customerData = {
+                FullName: fullName,
+                Email: email,
+                PhoneNumber: phone
+            };
+            
+            // Update customer information with encrypted data
+            await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .input('fullName', sql.NVarChar, customerData.FullName)
+                .input('email', sql.NVarChar, customerData.Email)
+                .input('phone', sql.NVarChar, customerData.PhoneNumber)
+                .input('isActive', sql.Bit, isActive === '1' ? 1 : 0)
+                .query(`
+                    UPDATE Customers 
+                    SET FullName = @fullName, Email = @email, PhoneNumber = @phone, IsActive = @isActive
+                    WHERE CustomerID = @customerId
+                `);
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'UPDATE',
+                'Customers',
+                customerId.toString(),
+                `UserManager updated customer information for ${fullName} (ID: ${customerId})`,
+                Object.keys(changes).length > 0 ? JSON.stringify(changes) : null
+            );
+            
+            res.json({ success: true, message: 'Customer updated successfully' });
+        } catch (error) {
+            console.error('Error updating customer:', error);
+            res.status(500).json({ success: false, message: 'Failed to update customer' });
+        }
+    });
+
+    // User Manager - Archive Customer route (Soft Delete)
+    router.post('/Employee/UserManager/UserManageUsers/Customers/Archive', isAuthenticated, checkPermission('users_manage_users'), async (req, res) => {
+        try {
+            const { customerId } = req.body;
+            
+            if (!customerId) {
+                return res.status(400).json({ success: false, message: 'Customer ID is required' });
+            }
+            
+            await pool.connect();
+            
+            // Get current customer data before archiving
+            const currentCustomerResult = await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .query('SELECT FullName, Email, IsActive FROM Customers WHERE CustomerID = @customerId');
+            
+            if (currentCustomerResult.recordset.length === 0) {
+                return res.json({ success: false, message: 'Customer not found' });
+            }
+            
+            const currentCustomer = currentCustomerResult.recordset[0];
+            
+            // Check if customer is already archived
+            if (currentCustomer.IsActive === 0) {
+                return res.json({ success: false, message: 'Customer is already archived' });
+            }
+            
+            // Archive the customer (soft delete by setting IsActive = 0)
+            await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .query('UPDATE Customers SET IsActive = 0 WHERE CustomerID = @customerId');
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'DELETE',
+                'Customers',
+                customerId.toString(),
+                `User Manager archived customer ${currentCustomer.FullName} (ID: ${customerId})`,
+                JSON.stringify({ IsActive: { old: 1, new: 0 } })
+            );
+            
+            res.json({ success: true, message: 'Customer archived successfully' });
+        } catch (error) {
+            console.error('Error archiving customer:', error);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to archive customer',
+                error: error.message
+            });
+        }
+    });
+
+    // User Manager - Dearchive Customer route (Restore Archived Customer)
+    router.post('/Employee/UserManager/UserManageUsers/Customers/Dearchive', isAuthenticated, checkPermission('users_manage_users'), async (req, res) => {
+        try {
+            const { customerId } = req.body;
+            
+            if (!customerId) {
+                return res.status(400).json({ success: false, message: 'Customer ID is required' });
+            }
+            
+            await pool.connect();
+            
+            // Get current customer data before dearchiving
+            const currentCustomerResult = await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .query('SELECT FullName, Email, IsActive FROM Customers WHERE CustomerID = @customerId');
+            
+            if (currentCustomerResult.recordset.length === 0) {
+                return res.json({ success: false, message: 'Customer not found' });
+            }
+            
+            const currentCustomer = currentCustomerResult.recordset[0];
+            
+            // Customer data is already plain text
+            const fullName = currentCustomer.FullName;
+            const email = currentCustomer.Email;
+            
+            // Check if customer is already active
+            if (currentCustomer.IsActive === 1) {
+                return res.json({ success: false, message: 'Customer is already active' });
+            }
+            
+            // Dearchive the customer (restore by setting IsActive = 1)
+            await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .query('UPDATE Customers SET IsActive = 1 WHERE CustomerID = @customerId');
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'UPDATE',
+                'Customers',
+                customerId.toString(),
+                `User Manager dearchived customer ${currentCustomer.FullName} (ID: ${customerId})`,
+                JSON.stringify({ IsActive: { old: 0, new: 1 } })
+            );
+            
+            res.json({ success: true, message: 'Customer restored successfully' });
+        } catch (error) {
+            console.error('Error dearchiving customer:', error);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to restore customer',
+                error: error.message
+            });
+        }
+    });
+
+    // User Manager - Permanently Delete Customer route (Hard Delete)
+    router.delete('/Employee/UserManager/UserManageUsers/Customers/Delete/:customerId', isAuthenticated, checkPermission('users_manage_users'), async (req, res) => {
+        try {
+            const { customerId } = req.params;
+            
+            if (!customerId) {
+                return res.status(400).json({ success: false, message: 'Customer ID is required' });
+            }
+            
+            await pool.connect();
+            
+            // Get current customer data before deleting
+            const currentCustomerResult = await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .query('SELECT FullName, Email FROM Customers WHERE CustomerID = @customerId');
+            
+            if (currentCustomerResult.recordset.length === 0) {
+                return res.json({ success: false, message: 'Customer not found' });
+            }
+            
+            const currentCustomer = currentCustomerResult.recordset[0];
+            
+            // Check if customer has any orders before permanent deletion
+            const ordersCheck = await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .query('SELECT COUNT(*) as orderCount FROM Orders WHERE CustomerID = @customerId');
+            
+            if (ordersCheck.recordset[0].orderCount > 0) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Cannot permanently delete customer with existing orders. Please archive instead.' 
+                });
+            }
+            
+            // Permanently delete the customer
+            await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .query('DELETE FROM Customers WHERE CustomerID = @customerId');
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'DELETE',
+                'Customers',
+                customerId.toString(),
+                `User Manager permanently deleted customer ${currentCustomer.FullName} (ID: ${customerId})`,
+                JSON.stringify({ action: 'permanent_delete' })
+            );
+            
+            res.json({ success: true, message: 'Customer permanently deleted successfully' });
+        } catch (error) {
+            console.error('Error permanently deleting customer:', error);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to permanently delete customer',
+                error: error.message
+            });
+        }
+    });
+
+    // Toggle User Active Status API for User Manager
+    router.post('/Employee/UserManager/UserManageUsers/ToggleActive/:userId/:newStatus', isAuthenticated, checkPermission('users_manage_users'), async (req, res) => {
+        try {
+            const userId = req.params.userId;
+            const newStatus = parseInt(req.params.newStatus);
+
+            await pool.connect();
+            
+            await pool.request()
+                .input('userId', sql.Int, userId)
+                .input('isActive', sql.Bit, newStatus)
+                .query(`
+                    UPDATE Users 
+                    SET IsActive = @isActive, UpdatedAt = GETDATE()
+                    WHERE UserID = @userId
+                `);
+
+            res.json({ success: true, message: 'User status updated successfully' });
+        } catch (error) {
+            console.error('Error toggling user status:', error);
+            res.status(500).json({ success: false, message: 'Failed to update user status' });
+        }
+    });
+
+    // =============================================================================
+    // INVENTORY MANAGER - MANAGE USERS API ROUTES
+    // =============================================================================
+
+    // Get Customer Accounts API for Inventory Manager
+    router.get('/Employee/InventoryManager/InventoryManageUsers/Customers', isAuthenticated, checkPermission('users_manage_users'), async (req, res) => {
+        try {
+            await pool.connect();
+            
+            const tableCheck = await pool.request().query(`
+                SELECT COUNT(*) as tableExists
+                FROM INFORMATION_SCHEMA.TABLES 
+                WHERE TABLE_NAME = 'Customers'
+            `);
+            
+            if (tableCheck.recordset[0].tableExists === 0) {
+                res.json({ 
+                    success: true, 
+                    customers: [],
+                    message: 'Customer accounts feature not yet implemented'
+                });
+                return;
+            }
+            
+            const result = await pool.request().query(`
+                SELECT 
+                    CustomerID,
+                    FullName,
+                    Email,
+                    PhoneNumber,
+                    IsActive,
+                    CreatedAt
+                FROM Customers
+                ORDER BY CreatedAt DESC
+            `);
+            
+            // Return customer data as plain text
+            const customers = result.recordset;
+            
+            res.json({ 
+                success: true, 
+                customers: customers 
+            });
+        } catch (error) {
+            console.error('Error fetching customers:', error);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to fetch customer accounts' 
+            });
+        }
+    });
+
+    // Edit User route for Inventory Manager
+    router.post('/Employee/InventoryManager/InventoryManageUsers/Users/Edit', isAuthenticated, checkPermission('users_manage_users'), async (req, res) => {
+        try {
+            const { userId, username, fullName, email, roleId, isActive, password } = req.body;
+            
+            await pool.connect();
+            
+            // Get current user data before updating
+            const currentUserResult = await pool.request()
+                .input('userId', sql.Int, userId)
+                .query('SELECT Username, FullName, Email, RoleID, IsActive, PasswordHash FROM Users WHERE UserID = @userId');
+            
+            if (currentUserResult.recordset.length === 0) {
+                return res.json({ success: false, message: 'User not found' });
+            }
+            
+            const currentUser = currentUserResult.recordset[0];
+            const changes = {};
+            
+            // Decrypt current user data for comparison using transparent encryption service
+            const decryptedCurrentUser = currentUser;
+            const currentUsername = decryptedCurrentUser.Username;
+            const currentFullName = decryptedCurrentUser.FullName;
+            const currentEmail = decryptedCurrentUser.Email;
+            
+            // Check for changes and build changes object
+            if (currentUsername !== username) {
+                changes.Username = { old: currentUsername, new: username };
+            }
+            if (currentFullName !== fullName) {
+                changes.FullName = { old: currentFullName, new: fullName };
+            }
+            if (currentEmail !== email) {
+                changes.Email = { old: currentEmail, new: email };
+            }
+            if (currentUser.IsActive !== (isActive === '1' ? 1 : 0)) {
+                changes.IsActive = { old: currentUser.IsActive, new: (isActive === '1' ? 1 : 0) };
+            }
+            if (roleId && currentUser.RoleID !== parseInt(roleId)) {
+                changes.RoleID = { old: currentUser.RoleID, new: parseInt(roleId) };
+            }
+            
+            // Encrypt the new data using transparent encryption service
+            // Store user data as plain text
+            const userData = {
+                Username: username,
+                FullName: fullName,
+                Email: email
+            };
+            
+            // Handle password update if provided
+            if (password && password.trim() !== '') {
+                const bcrypt = require('bcryptjs');
+                const hashedPassword = await bcrypt.hash(password, 10);
+                await pool.request()
+                    .input('userId', sql.Int, userId)
+                    .input('password', sql.NVarChar, hashedPassword)
+                    .query(`
+                        UPDATE Users 
+                        SET PasswordHash = @password
+                        WHERE UserID = @userId
+                    `);
+                changes.Password = { old: '[HIDDEN]', new: '[UPDATED]' };
+            }
+            
+            // Update user information with encrypted data
+            await pool.request()
+                .input('userId', sql.Int, userId)
+                .input('username', sql.NVarChar, userData.Username)
+                .input('fullName', sql.NVarChar, userData.FullName)
+                .input('email', sql.NVarChar, userData.Email)
+                .input('isActive', sql.Bit, isActive === '1' ? 1 : 0)
+                .query(`
+                    UPDATE Users 
+                    SET Username = @username, FullName = @fullName, Email = @email, IsActive = @isActive
+                    WHERE UserID = @userId
+                `);
+            
+            // Update user role if roleId is provided
+            if (roleId) {
+                await pool.request()
+                    .input('userId', sql.Int, userId)
+                    .input('roleId', sql.Int, roleId)
+                    .query(`
+                        UPDATE Users 
+                        SET RoleID = @roleId 
+                        WHERE UserID = @userId
+                    `);
+            }
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'UPDATE',
+                'Users',
+                userId.toString(),
+                `InventoryManager updated user information for ${username} (ID: ${userId})`,
+                Object.keys(changes).length > 0 ? JSON.stringify(changes) : null
+            );
+            
+            res.json({ success: true, message: 'User updated successfully' });
+        } catch (error) {
+            console.error('Error updating user:', error);
+            res.status(500).json({ success: false, message: 'Failed to update user' });
+        }
+    });
+
+    // Edit Customer route for Inventory Manager
+    router.post('/Employee/InventoryManager/InventoryManageUsers/Customers/Edit', isAuthenticated, checkPermission('users_manage_users'), async (req, res) => {
+        try {
+            const { customerId, fullName, email, phone, isActive } = req.body;
+            
+            await pool.connect();
+            
+            // Get current customer data before updating
+            const currentCustomerResult = await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .query('SELECT FullName, Email, PhoneNumber, IsActive FROM Customers WHERE CustomerID = @customerId');
+            
+            if (currentCustomerResult.recordset.length === 0) {
+                return res.json({ success: false, message: 'Customer not found' });
+            }
+            
+            const currentCustomer = currentCustomerResult.recordset[0];
+            const changes = {};
+            
+            // Decrypt current customer data for comparison using transparent encryption service
+            const decryptedCurrentCustomer = currentCustomer;
+            const currentFullName = decryptedCurrentCustomer.FullName;
+            const currentEmail = decryptedCurrentCustomer.Email;
+            const currentPhoneNumber = decryptedCurrentCustomer.PhoneNumber;
+            
+            // Check for changes and build changes object
+            if (currentFullName !== fullName) {
+                changes.FullName = { old: currentFullName, new: fullName };
+            }
+            if (currentEmail !== email) {
+                changes.Email = { old: currentEmail, new: email };
+            }
+            if (currentPhoneNumber !== phone) {
+                changes.PhoneNumber = { old: currentPhoneNumber, new: phone };
+            }
+            if (currentCustomer.IsActive !== (isActive === '1' ? 1 : 0)) {
+                changes.IsActive = { old: currentCustomer.IsActive, new: (isActive === '1' ? 1 : 0) };
+            }
+            
+            // Encrypt the new data using transparent encryption service
+            // Store customer data as plain text
+            const customerData = {
+                FullName: fullName,
+                Email: email,
+                PhoneNumber: phone
+            };
+            
+            // Update customer information with encrypted data
+            await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .input('fullName', sql.NVarChar, customerData.FullName)
+                .input('email', sql.NVarChar, customerData.Email)
+                .input('phone', sql.NVarChar, customerData.PhoneNumber)
+                .input('isActive', sql.Bit, isActive === '1' ? 1 : 0)
+                .query(`
+                    UPDATE Customers 
+                    SET FullName = @fullName, Email = @email, PhoneNumber = @phone, IsActive = @isActive
+                    WHERE CustomerID = @customerId
+                `);
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'UPDATE',
+                'Customers',
+                customerId.toString(),
+                `InventoryManager updated customer information for ${fullName} (ID: ${customerId})`,
+                Object.keys(changes).length > 0 ? JSON.stringify(changes) : null
+            );
+            
+            res.json({ success: true, message: 'Customer updated successfully' });
+        } catch (error) {
+            console.error('Error updating customer:', error);
+            res.status(500).json({ success: false, message: 'Failed to update customer' });
+        }
+    });
+
+    // Inventory Manager - Archive Customer route (Soft Delete)
+    router.post('/Employee/InventoryManager/InventoryManageUsers/Customers/Archive', isAuthenticated, checkPermission('users_manage_users'), async (req, res) => {
+        try {
+            const { customerId } = req.body;
+            
+            if (!customerId) {
+                return res.status(400).json({ success: false, message: 'Customer ID is required' });
+            }
+            
+            await pool.connect();
+            
+            // Get current customer data before archiving
+            const currentCustomerResult = await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .query('SELECT FullName, Email, IsActive FROM Customers WHERE CustomerID = @customerId');
+            
+            if (currentCustomerResult.recordset.length === 0) {
+                return res.json({ success: false, message: 'Customer not found' });
+            }
+            
+            const currentCustomer = currentCustomerResult.recordset[0];
+            
+            // Check if customer is already archived
+            if (currentCustomer.IsActive === 0) {
+                return res.json({ success: false, message: 'Customer is already archived' });
+            }
+            
+            // Archive the customer (soft delete by setting IsActive = 0)
+            await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .query('UPDATE Customers SET IsActive = 0 WHERE CustomerID = @customerId');
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'DELETE',
+                'Customers',
+                customerId.toString(),
+                `Inventory Manager archived customer ${currentCustomer.FullName} (ID: ${customerId})`,
+                JSON.stringify({ IsActive: { old: 1, new: 0 } })
+            );
+            
+            res.json({ success: true, message: 'Customer archived successfully' });
+        } catch (error) {
+            console.error('Error archiving customer:', error);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to archive customer',
+                error: error.message
+            });
+        }
+    });
+
+    // Inventory Manager - Dearchive Customer route (Restore Archived Customer)
+    router.post('/Employee/InventoryManager/InventoryManageUsers/Customers/Dearchive', isAuthenticated, checkPermission('users_manage_users'), async (req, res) => {
+        try {
+            const { customerId } = req.body;
+            
+            if (!customerId) {
+                return res.status(400).json({ success: false, message: 'Customer ID is required' });
+            }
+            
+            await pool.connect();
+            
+            // Get current customer data before dearchiving
+            const currentCustomerResult = await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .query('SELECT FullName, Email, IsActive FROM Customers WHERE CustomerID = @customerId');
+            
+            if (currentCustomerResult.recordset.length === 0) {
+                return res.json({ success: false, message: 'Customer not found' });
+            }
+            
+            const currentCustomer = currentCustomerResult.recordset[0];
+            
+            // Customer data is already plain text
+            const fullName = currentCustomer.FullName;
+            const email = currentCustomer.Email;
+            
+            // Check if customer is already active
+            if (currentCustomer.IsActive === 1) {
+                return res.json({ success: false, message: 'Customer is already active' });
+            }
+            
+            // Dearchive the customer (restore by setting IsActive = 1)
+            await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .query('UPDATE Customers SET IsActive = 1 WHERE CustomerID = @customerId');
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'UPDATE',
+                'Customers',
+                customerId.toString(),
+                `Inventory Manager dearchived customer ${currentCustomer.FullName} (ID: ${customerId})`,
+                JSON.stringify({ IsActive: { old: 0, new: 1 } })
+            );
+            
+            res.json({ success: true, message: 'Customer restored successfully' });
+        } catch (error) {
+            console.error('Error dearchiving customer:', error);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to restore customer',
+                error: error.message
+            });
+        }
+    });
+
+    // Inventory Manager - Permanently Delete Customer route (Hard Delete)
+    router.delete('/Employee/InventoryManager/InventoryManageUsers/Customers/Delete/:customerId', isAuthenticated, checkPermission('users_manage_users'), async (req, res) => {
+        try {
+            const { customerId } = req.params;
+            
+            if (!customerId) {
+                return res.status(400).json({ success: false, message: 'Customer ID is required' });
+            }
+            
+            await pool.connect();
+            
+            // Get current customer data before deleting
+            const currentCustomerResult = await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .query('SELECT FullName, Email FROM Customers WHERE CustomerID = @customerId');
+            
+            if (currentCustomerResult.recordset.length === 0) {
+                return res.json({ success: false, message: 'Customer not found' });
+            }
+            
+            const currentCustomer = currentCustomerResult.recordset[0];
+            
+            // Check if customer has any orders before permanent deletion
+            const ordersCheck = await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .query('SELECT COUNT(*) as orderCount FROM Orders WHERE CustomerID = @customerId');
+            
+            if (ordersCheck.recordset[0].orderCount > 0) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Cannot permanently delete customer with existing orders. Please archive instead.' 
+                });
+            }
+            
+            // Permanently delete the customer
+            await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .query('DELETE FROM Customers WHERE CustomerID = @customerId');
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'DELETE',
+                'Customers',
+                customerId.toString(),
+                `Inventory Manager permanently deleted customer ${currentCustomer.FullName} (ID: ${customerId})`,
+                JSON.stringify({ action: 'permanent_delete' })
+            );
+            
+            res.json({ success: true, message: 'Customer permanently deleted successfully' });
+        } catch (error) {
+            console.error('Error permanently deleting customer:', error);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to permanently delete customer',
+                error: error.message
+            });
+        }
+    });
+
+    // Toggle User Active Status API for Inventory Manager
+    router.post('/Employee/InventoryManager/InventoryManageUsers/ToggleActive/:userId/:newStatus', isAuthenticated, checkPermission('users_manage_users'), async (req, res) => {
+        try {
+            const userId = req.params.userId;
+            const newStatus = parseInt(req.params.newStatus);
+
+            await pool.connect();
+            
+            await pool.request()
+                .input('userId', sql.Int, userId)
+                .input('isActive', sql.Bit, newStatus)
+                .query(`
+                    UPDATE Users 
+                    SET IsActive = @isActive, UpdatedAt = GETDATE()
+                    WHERE UserID = @userId
+                `);
+
+            res.json({ success: true, message: 'User status updated successfully' });
+        } catch (error) {
+            console.error('Error toggling user status:', error);
+            res.status(500).json({ success: false, message: 'Failed to update user status' });
+        }
+    });
+
+    // Get User Permissions API
+    router.get('/Employee/Admin/ManageUsers/Permissions/:userId', isAuthenticated, async (req, res) => {
+        try {
+            const userId = req.params.userId;
+            
+            console.log('=== Permission Request Debug ===');
+            console.log('User ID requested:', userId);
+            console.log('Session user:', req.session.user);
+            console.log('User role:', req.session.user?.role);
+            
+            // Only Admin can view user permissions
+            if (req.session.user.role !== 'Admin') {
+                console.log('Access denied: User is not Admin');
+                return res.status(403).json({ success: false, message: 'Admin access required' });
+            }
+
+            console.log('Admin access confirmed, connecting to database...');
+            await pool.connect();
+            
+            const result = await pool.request()
+                .input('userId', sql.Int, userId)
+                .query(`
+                    SELECT PermissionName, CanAccess, Section
+                    FROM UserPermissions
+                    WHERE UserID = @userId
+                    ORDER BY Section, PermissionName
+                `);
+            
+            console.log('Permissions found:', result.recordset.length);
+            console.log('Permissions data:', result.recordset);
+            
+            res.json({ 
+                success: true, 
+                permissions: result.recordset 
+            });
+        } catch (error) {
+            console.error('Error fetching user permissions:', error);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to fetch user permissions',
+                error: error.message 
+            });
+        }
+    });
+
+    // Update User Permissions API
+    router.post('/Employee/Admin/ManageUsers/Permissions/:userId/Update', isAuthenticated, async (req, res) => {
+        try {
+            const userId = req.params.userId;
+            const { permissions } = req.body;
+            
+            // Debug logging (can be removed in production)
+            console.log('=== Permission Update Request ===');
+            console.log('User ID:', userId);
+            console.log('Permissions received:', permissions);
+            
+            // Only Admin can update user permissions
+            if (req.session.user.role !== 'Admin') {
+                return res.status(403).json({ success: false, message: 'Admin access required' });
+            }
+
+            if (!permissions || !Array.isArray(permissions)) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Invalid permissions data' 
+                });
+            }
+
+            await pool.connect();
+            
+            // Get user details for logging
+            const userResult = await pool.request()
+                .input('userId', sql.Int, userId)
+                .query(`SELECT FullName FROM Users WHERE UserID = @userId`);
+            
+            const userName = userResult.recordset[0]?.FullName || `User ${userId}`;
+            
+            // Update each permission
+            for (const permission of permissions) {
+                const { permission_name, has_access } = permission;
+                
+                // Determine section from permission name
+                let section = 'other';
+                if (permission_name.startsWith('inventory_')) section = 'inventory';
+                else if (permission_name.startsWith('transactions_')) section = 'transactions';
+                else if (permission_name.startsWith('orders_')) section = 'orders';
+                else if (permission_name.startsWith('users_')) section = 'users';
+                else if (permission_name.startsWith('reviews_')) section = 'reviews';
+                else if (permission_name.startsWith('chat_')) section = 'chat';
+                else if (permission_name.startsWith('content_')) section = 'content';
+                
+                // Check if permission exists
+                const existingResult = await pool.request()
+                    .input('userId', sql.Int, userId)
+                    .input('permissionName', sql.NVarChar, permission_name)
+                    .query(`
+                        SELECT PermissionID FROM UserPermissions 
+                        WHERE UserID = @userId AND PermissionName = @permissionName
+                    `);
+                
+                if (existingResult.recordset.length > 0) {
+                    // Update existing permission
+                    // console.log(`Updating permission: ${permission_name} = ${has_access} for user ${userId}`);
+                    await pool.request()
+                        .input('userId', sql.Int, userId)
+                        .input('permissionName', sql.NVarChar, permission_name)
+                        .input('canAccess', sql.Bit, has_access)
+                        .query(`
+                            UPDATE UserPermissions 
+                            SET CanAccess = @canAccess, UpdatedAt = GETDATE()
+                            WHERE UserID = @userId AND PermissionName = @permissionName
+                        `);
+                } else {
+                    // Insert new permission
+                    // console.log(`Inserting new permission: ${permission_name} = ${has_access} for user ${userId}`);
+                    await pool.request()
+                        .input('userId', sql.Int, userId)
+                        .input('section', sql.NVarChar, section)
+                        .input('permissionName', sql.NVarChar, permission_name)
+                        .input('canAccess', sql.Bit, has_access)
+                        .query(`
+                            INSERT INTO UserPermissions (UserID, Section, PermissionName, CanAccess)
+                            VALUES (@userId, @section, @permissionName, @canAccess)
+                        `);
+                }
+            }
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'UPDATE',
+                'UserPermissions',
+                userId,
+                `Permissions updated for user "${userName}"`
+            );
+            
+            res.json({ 
+                success: true, 
+                message: 'User permissions updated successfully' 
+            });
+        } catch (error) {
+            console.error('Error updating user permissions:', error);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to update user permissions' 
+            });
+        }
+    });
+
+    // Get Current User Permissions API
+    router.get('/api/user-permissions', isAuthenticated, async (req, res) => {
+        try {
+            const userId = req.session.user.id;
+            
+            await pool.connect();
+            
+            const result = await pool.request()
+                .input('userId', sql.Int, userId)
+                .query(`
+                    SELECT PermissionName, CanAccess
+                    FROM UserPermissions
+                    WHERE UserID = @userId
+                `);
+            
+            // Convert to object for easier access
+            const permissions = {};
+            result.recordset.forEach(perm => {
+                permissions[perm.PermissionName] = { CanAccess: perm.CanAccess };
+            });
+            
+            res.json({ 
+                success: true, 
+                permissions: permissions 
+            });
+        } catch (error) {
+            console.error('Error fetching current user permissions:', error);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to fetch user permissions' 
+            });
+        }
+    });
+
+    // Forbidden Access Route
+    router.get('/Employee/Forbidden', isAuthenticated, (req, res) => {
+        res.render('Employee/Forbidden', { user: req.session.user });
+    });
+
  
     // Admin ChatSupport route
-    router.get('/Employee/Admin/ChatSupport', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/Employee/Admin/ChatSupport', isAuthenticated, async (req, res) => {
         console.log('=== ChatSupport Route Called ===');
         let threads = [];
         let selectedThread = null;
@@ -3575,7 +9375,7 @@ module.exports = function(sql, pool) {
     // Admin Chat Support API Endpoints
     
     // GET /api/support/chat/messages/:customerId - Get messages for a specific customer (Admin)
-    router.get('/api/support/chat/messages/:customerId', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/api/support/chat/messages/:customerId', isAuthenticated, async (req, res) => {
         try {
             console.log('🔍 Fetching messages for customer ID:', req.params.customerId);
             await pool.connect();
@@ -3614,7 +9414,7 @@ module.exports = function(sql, pool) {
     });
 
     // POST /api/support/chat/messages/:customerId - Send a message to customer (Admin)
-    router.post('/api/support/chat/messages/:customerId', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/api/support/chat/messages/:customerId', isAuthenticated, async (req, res) => {
         try {
             console.log('📤 Sending message to customer ID:', req.params.customerId);
             console.log('📤 Request body:', req.body);
@@ -3759,7 +9559,7 @@ module.exports = function(sql, pool) {
     }
 
     // Admin CMS route
-    router.get('/Employee/Admin/CMS', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/Employee/Admin/CMS', isAuthenticated, async (req, res) => {
         try {
             console.log('=== AdminCMS Route Called ===');
             
@@ -3780,7 +9580,7 @@ module.exports = function(sql, pool) {
     // --- Hero Banner API Endpoints ---
     
     // GET: Fetch hero banner settings (admin only)
-    router.get('/api/admin/hero-banner', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/api/admin/hero-banner', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             
@@ -3881,7 +9681,7 @@ module.exports = function(sql, pool) {
     });
 
     // POST: Save hero banner settings (admin only)
-    router.post('/api/admin/hero-banner', isAuthenticated, hasEmployeeAccess, upload.array('heroBannerImages', 3), async (req, res) => {
+    router.post('/api/admin/hero-banner', isAuthenticated, upload.array('heroBannerImages', 3), async (req, res) => {
         try {
             await pool.connect();
             
@@ -3965,6 +9765,15 @@ module.exports = function(sql, pool) {
                                 @textColor, @buttonBgColor, @buttonTextColor, @heroBannerImages);
                 `);
             
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'UPDATE',
+                'HeroBanner',
+                null,
+                `Updated hero banner settings: "${mainHeading}" with ${heroBannerImages.length} images`
+            );
+            
             res.json({
                 success: true,
                 message: 'Hero banner settings saved successfully',
@@ -3977,7 +9786,7 @@ module.exports = function(sql, pool) {
     });
 
     // DELETE: Remove hero banner images (admin only)
-    router.delete('/api/admin/hero-banner', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.delete('/api/admin/hero-banner', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             
@@ -4058,14 +9867,36 @@ module.exports = function(sql, pool) {
         }
     });
 
-    // Admin Logs Data API endpoint
-    router.get('/Employee/Admin/Logs/Data', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    // Admin Logs route
+    router.get('/Employee/Admin/Logs', isAuthenticated, async (req, res) => {
+        try {
+            res.render('Employee/Admin/AdminLogs', { user: req.session.user });
+        } catch (err) {
+            console.error('Error rendering admin logs page:', err);
+            res.status(500).send('Error loading admin logs page');
+        }
+    });
+
+    // Admin Logs Data API endpoint with filtering support
+    router.get('/Employee/Admin/Logs/Data', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const currentUserRole = req.session.user.role;
             
-            // Admin can see all logs from all users
-            const result = await pool.request().query(`
+            // Get query parameters for filtering
+            const {
+                action,
+                tableAffected,
+                userRole,
+                dateFrom,
+                dateTo,
+                search,
+                limit = 1000,
+                offset = 0
+            } = req.query;
+            
+            // Build dynamic query with filters
+            let query = `
                 SELECT 
                     al.LogID,
                     al.UserID,
@@ -4080,10 +9911,58 @@ module.exports = function(sql, pool) {
                 FROM ActivityLogs al
                 JOIN Users u ON al.UserID = u.UserID
                 JOIN Roles r ON u.RoleID = r.RoleID
-                ORDER BY al.Timestamp DESC
-            `);
-            const logs = result.recordset;
-            res.json({ success: true, logs: logs });
+                WHERE 1=1
+            `;
+            
+            const request = pool.request();
+            
+            // Add filters
+            if (action) {
+                query += ` AND al.Action = @action`;
+                request.input('action', sql.NVarChar, action);
+            }
+            
+            if (tableAffected) {
+                query += ` AND al.TableAffected = @tableAffected`;
+                request.input('tableAffected', sql.NVarChar, tableAffected);
+            }
+            
+            if (userRole) {
+                query += ` AND r.RoleName = @userRole`;
+                request.input('userRole', sql.NVarChar, userRole);
+            }
+            
+            if (dateFrom) {
+                query += ` AND al.Timestamp >= @dateFrom`;
+                request.input('dateFrom', sql.DateTime, new Date(dateFrom));
+            }
+            
+            if (dateTo) {
+                query += ` AND al.Timestamp <= @dateTo`;
+                request.input('dateTo', sql.DateTime, new Date(dateTo));
+            }
+            
+            if (search) {
+                query += ` AND (al.Description LIKE @search OR u.FullName LIKE @search OR r.RoleName LIKE @search)`;
+                request.input('search', sql.NVarChar, `%${search}%`);
+            }
+            
+            // Add ordering and pagination
+            query += ` ORDER BY al.Timestamp DESC OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY`;
+            request.input('offset', sql.Int, parseInt(offset));
+            request.input('limit', sql.Int, parseInt(limit));
+            
+            const result = await request.query(query);
+            
+            // Decrypt user FullName before sending to frontend using transparent encryption service
+            const decryptedLogs = result.recordset.map(log => {
+                return {
+                    ...log,
+                    FullName: log.FullName
+                };
+            });
+            
+            res.json({ success: true, logs: decryptedLogs });
         } catch (err) {
             console.error('Error fetching activity logs data:', err);
             res.status(500).json({ success: false, message: 'Failed to retrieve activity logs data.', error: err.message });
@@ -4095,7 +9974,7 @@ module.exports = function(sql, pool) {
     // =============================================================================
 
     // CMS Content Types API
-    router.get('/api/cms/content-types', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/api/cms/content-types', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const result = await pool.request().query(`
@@ -4128,7 +10007,7 @@ module.exports = function(sql, pool) {
     });
 
     // CMS Recent Content API
-    router.get('/api/cms/recent-content', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/api/cms/recent-content', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const result = await pool.request().query(`
@@ -4150,20 +10029,50 @@ module.exports = function(sql, pool) {
     });
 
     // CMS Media API
-    router.get('/api/cms/media', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/api/cms/media', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
-            const result = await pool.request().query(`
+
+            // Detect available timestamp column to avoid errors on older schemas
+            const uploadedAtCheck = await pool.request().query(`
+                SELECT 1 AS existsFlag
+                FROM sys.columns 
+                WHERE object_id = OBJECT_ID('dbo.MediaFiles') AND name = 'UploadedAt'
+            `);
+            const createdAtCheck = await pool.request().query(`
+                SELECT 1 AS existsFlag
+                FROM sys.columns 
+                WHERE object_id = OBJECT_ID('dbo.MediaFiles') AND name = 'CreatedAt'
+            `);
+
+            const hasUploadedAt = uploadedAtCheck.recordset.length > 0;
+            const hasCreatedAt = createdAtCheck.recordset.length > 0;
+
+            const uploadedAtSelect = hasUploadedAt
+                ? 'UploadedAt'
+                : (hasCreatedAt ? 'CreatedAt' : 'NULL');
+            const orderByExpr = hasUploadedAt
+                ? 'UploadedAt DESC'
+                : (hasCreatedAt ? 'CreatedAt DESC' : 'MediaID DESC');
+
+            const query = `
                 SELECT 
                     MediaID as id,
                     FileName as name,
-                    FilePath as url,
+                    (CASE WHEN LEFT(FilePath, 1) = '/' 
+                          THEN CONCAT(ISNULL(@publicBase,''), FilePath)
+                          ELSE FilePath END) as url,
                     FileSize as size,
                     'image' as type,
-                    UploadedAt as uploadedAt
+                    ${uploadedAtSelect} as uploadedAt
                 FROM MediaFiles
-                ORDER BY UploadedAt DESC
-            `);
+                ORDER BY ${orderByExpr}
+            `;
+
+            const publicBase = process.env.PUBLIC_BACKEND_URL || '';
+            const result = await pool.request()
+                .input('publicBase', sql.NVarChar, publicBase)
+                .query(query);
             res.json({ success: true, media: result.recordset });
         } catch (err) {
             console.error('Error fetching media:', err);
@@ -4172,7 +10081,7 @@ module.exports = function(sql, pool) {
     });
 
     // CMS Pages API
-    router.get('/api/cms/pages', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/api/cms/pages', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const result = await pool.request().query(`
@@ -4194,7 +10103,7 @@ module.exports = function(sql, pool) {
     });
 
     // CMS Templates API
-    router.get('/api/cms/templates', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/api/cms/templates', isAuthenticated, async (req, res) => {
         try {
             const templates = [
                 {
@@ -4224,7 +10133,7 @@ module.exports = function(sql, pool) {
     });
 
     // Theme Active API
-    router.get('/api/theme/active', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/api/theme/active', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const result = await pool.request().query(`
@@ -4394,7 +10303,7 @@ module.exports = function(sql, pool) {
     });
 
     // Theme Save API
-    router.post('/api/theme/active', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/api/theme/active', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const { activeTheme, backgroundImage } = req.body;
@@ -4425,7 +10334,7 @@ module.exports = function(sql, pool) {
     });
 
     // Theme Background Image Upload API
-    router.post('/api/theme/background-image', isAuthenticated, hasEmployeeAccess, (req, res) => {
+    router.post('/api/theme/background-image', isAuthenticated, (req, res) => {
         themeUpload.single('backgroundImage')(req, res, async (err) => {
             if (err) {
                 console.error('Multer error:', err);
@@ -4479,7 +10388,7 @@ module.exports = function(sql, pool) {
     });
 
     // Admin Products API
-    router.get('/api/admin/products', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/api/admin/products', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const result = await pool.request().query(`
@@ -4491,7 +10400,10 @@ module.exports = function(sql, pool) {
                     ImageURL,
                     Category,
                     IsFeatured,
-                    IsActive
+                    IsActive,
+                    Model3DURL,
+                    ThumbnailURLs,
+                    StockQuantity
                 FROM Products
                 WHERE IsActive = 1
                 ORDER BY ProductID DESC
@@ -4504,7 +10416,7 @@ module.exports = function(sql, pool) {
     });
 
     // Admin Terms API
-    router.get('/api/admin/terms', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/api/admin/terms', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const result = await pool.request().query(`
@@ -4541,10 +10453,13 @@ module.exports = function(sql, pool) {
     });
 
     // Admin Header Banner API
-    router.get('/api/admin/header-banner', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/api/admin/header-banner', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
-            const result = await pool.request().query(`
+            const publicBase = process.env.PUBLIC_BACKEND_URL || '';
+            const result = await pool.request()
+                .input('publicBase', sql.NVarChar, publicBase)
+                .query(`
                 SELECT TOP 1
                     ContactBgColor as contactBgColor,
                     ContactTextColor as contactTextColor,
@@ -4562,7 +10477,9 @@ module.exports = function(sql, pool) {
                     ContactFontSize as contactFontSize,
                     ContactSpacing as contactSpacing,
                     ContactShowIcons as contactShowIcons,
-                    LogoURL as logoUrl,
+                    (CASE WHEN LEFT(LogoURL, 1) = '/'
+                          THEN CONCAT(ISNULL(@publicBase,''), LogoURL)
+                          ELSE LogoURL END) as logoUrl,
                     UpdatedAt as updatedAt
                 FROM HeaderBanner
                 ORDER BY UpdatedAt DESC
@@ -4580,7 +10497,7 @@ module.exports = function(sql, pool) {
     });
 
     // Admin Header Banner Save API
-    router.post('/api/admin/header-banner', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/api/admin/header-banner', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const {
@@ -4667,7 +10584,7 @@ module.exports = function(sql, pool) {
     });
 
     // Admin Terms Save API
-    router.post('/api/admin/terms', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/api/admin/terms', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const {
@@ -4790,7 +10707,7 @@ module.exports = function(sql, pool) {
     });
 
     // Admin Contact Messages Statistics API
-    router.get('/api/admin/contact-messages/stats', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/api/admin/contact-messages/stats', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const result = await pool.request().query(`
@@ -4809,7 +10726,7 @@ module.exports = function(sql, pool) {
     });
 
     // Admin Contact Messages API
-    router.get('/api/admin/contact-messages', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/api/admin/contact-messages', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const result = await pool.request().query(`
@@ -4853,7 +10770,7 @@ module.exports = function(sql, pool) {
     });
 
     // CMS Auto Messages API
-    router.get('/api/cms/auto-messages', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/api/cms/auto-messages', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const result = await pool.request().query(`
@@ -4875,7 +10792,7 @@ module.exports = function(sql, pool) {
     });
 
     // CMS Auto Messages POST API
-    router.post('/api/cms/auto-messages', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/api/cms/auto-messages', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const { question, answer, keywords, isActive } = req.body;
@@ -4898,7 +10815,7 @@ module.exports = function(sql, pool) {
     });
 
     // CMS Auto Messages GET Single FAQ API
-    router.get('/api/cms/auto-messages/:id', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/api/cms/auto-messages/:id', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const { id } = req.params;
@@ -4929,7 +10846,7 @@ module.exports = function(sql, pool) {
     });
 
     // CMS Auto Messages PUT API (Update)
-    router.put('/api/cms/auto-messages/:id', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.put('/api/cms/auto-messages/:id', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const { id } = req.params;
@@ -4959,7 +10876,7 @@ module.exports = function(sql, pool) {
     });
 
     // CMS Auto Messages DELETE API
-    router.delete('/api/cms/auto-messages/:id', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.delete('/api/cms/auto-messages/:id', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const { id } = req.params;
@@ -4978,7 +10895,7 @@ module.exports = function(sql, pool) {
     });
 
     // CMS Header Offer API
-    router.get('/api/cms/header-offer', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/api/cms/header-offer', isAuthenticated, async (req, res) => {
         try {
             // Ensure pool is connected
             if (!pool.connected) {
@@ -5079,7 +10996,7 @@ module.exports = function(sql, pool) {
     });
 
     // CMS Header Offer POST API
-    router.post('/api/cms/header-offer', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/api/cms/header-offer', isAuthenticated, async (req, res) => {
         console.log('=== HEADER OFFER POST REQUEST ===');
         console.log('Request body:', req.body);
         try {
@@ -5162,7 +11079,7 @@ module.exports = function(sql, pool) {
         }
     });
 
-    router.put('/api/admin/products/:id/featured', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.put('/api/admin/products/:id/featured', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const { id } = req.params;
@@ -5180,7 +11097,7 @@ module.exports = function(sql, pool) {
         }
     });
 
-    router.delete('/api/admin/products/:id', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.delete('/api/admin/products/:id', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const { id } = req.params;
@@ -5197,7 +11114,7 @@ module.exports = function(sql, pool) {
     });
 
     // Product Discount Management API
-    router.post('/api/admin/products/:id/discount', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/api/admin/products/:id/discount', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const { id } = req.params;
@@ -5260,7 +11177,7 @@ module.exports = function(sql, pool) {
         }
     });
 
-    router.delete('/api/admin/products/:id/discount', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.delete('/api/admin/products/:id/discount', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const { id } = req.params;
@@ -5287,7 +11204,7 @@ module.exports = function(sql, pool) {
     });
 
     // Testimonials Management API
-    router.get('/api/cms/testimonials', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/api/cms/testimonials', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const result = await pool.request().query(`
@@ -5312,7 +11229,7 @@ module.exports = function(sql, pool) {
         }
     });
 
-    router.get('/api/cms/testimonials/:id', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/api/cms/testimonials/:id', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const { id } = req.params;
@@ -5345,7 +11262,7 @@ module.exports = function(sql, pool) {
         }
     });
 
-    router.post('/api/cms/testimonials', isAuthenticated, hasEmployeeAccess, upload.single('image'), async (req, res) => {
+    router.post('/api/cms/testimonials', isAuthenticated, testimonialsUpload.single('image'), async (req, res) => {
         try {
             await pool.connect();
             const { name, profession, text, rating, displayOrder } = req.body;
@@ -5375,7 +11292,7 @@ module.exports = function(sql, pool) {
         }
     });
 
-    router.put('/api/cms/testimonials/:id', isAuthenticated, hasEmployeeAccess, upload.single('image'), async (req, res) => {
+    router.put('/api/cms/testimonials/:id', isAuthenticated, testimonialsUpload.single('image'), async (req, res) => {
         try {
             await pool.connect();
             const { id } = req.params;
@@ -5424,7 +11341,7 @@ module.exports = function(sql, pool) {
         }
     });
 
-    router.delete('/api/cms/testimonials/:id', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.delete('/api/cms/testimonials/:id', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const { id } = req.params;
@@ -5441,7 +11358,7 @@ module.exports = function(sql, pool) {
     });
 
     // Testimonials Design Settings API
-    router.get('/api/cms/testimonials-design', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/api/cms/testimonials-design', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const result = await pool.request().query(`
@@ -5473,7 +11390,7 @@ module.exports = function(sql, pool) {
         }
     });
 
-    router.post('/api/cms/testimonials-design', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/api/cms/testimonials-design', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const { bgColor, accentColor, showRating, showImage, showTitle, showQuoteIcon } = req.body;
@@ -5525,7 +11442,10 @@ module.exports = function(sql, pool) {
     router.get('/api/header-banner', async (req, res) => {
         try {
             await pool.connect();
-            const result = await pool.request().query(`
+            const publicBase = process.env.PUBLIC_BACKEND_URL || '';
+            const result = await pool.request()
+                .input('publicBase', sql.NVarChar, publicBase)
+                .query(`
                 SELECT TOP 1
                     ContactBgColor as contactBgColor,
                     ContactTextColor as contactTextColor,
@@ -5543,7 +11463,9 @@ module.exports = function(sql, pool) {
                     ContactFontSize as contactFontSize,
                     ContactSpacing as contactSpacing,
                     ContactShowIcons as contactShowIcons,
-                    LogoURL as logoUrl,
+                    (CASE WHEN LEFT(LogoURL, 1) = '/'
+                          THEN CONCAT(ISNULL(@publicBase,''), LogoURL)
+                          ELSE LogoURL END) as logoUrl,
                     UpdatedAt as updatedAt
                 FROM HeaderBanner
                 ORDER BY UpdatedAt DESC
@@ -5748,7 +11670,7 @@ module.exports = function(sql, pool) {
     });
 
     // Projects Management API
-    router.get('/api/cms/projects', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/api/cms/projects', isAuthenticated, async (req, res) => {
         console.log('=== FETCHING PROJECTS ===');
         try {
             await pool.connect();
@@ -5898,7 +11820,7 @@ module.exports = function(sql, pool) {
 
 
     // Admin Logo Upload API
-    router.post('/api/admin/logo-upload', isAuthenticated, hasEmployeeAccess, logoUpload.single('logoUpload'), async (req, res) => {
+    router.post('/api/admin/logo-upload', isAuthenticated, logoUpload.single('logoUpload'), async (req, res) => {
         try {
             if (!req.file) {
                 return res.json({ success: false, message: 'No file uploaded' });
@@ -5918,7 +11840,7 @@ module.exports = function(sql, pool) {
         }
     });
 
-    router.post('/api/cms/projects', isAuthenticated, hasEmployeeAccess, projectsUpload.fields([
+    router.post('/api/cms/projects', isAuthenticated, projectsUpload.fields([
         { name: 'mainImage', maxCount: 1 },
         { name: 'thumbnails', maxCount: 8 }
     ]), async (req, res) => {
@@ -6027,7 +11949,7 @@ module.exports = function(sql, pool) {
         }
     });
 
-    router.put('/api/cms/projects/:id', isAuthenticated, hasEmployeeAccess, projectsUpload.fields([
+    router.put('/api/cms/projects/:id', isAuthenticated, projectsUpload.fields([
         { name: 'mainImage', maxCount: 1 },
         { name: 'thumbnails', maxCount: 8 }
     ]), async (req, res) => {
@@ -6124,7 +12046,7 @@ module.exports = function(sql, pool) {
         }
     });
 
-    router.delete('/api/cms/projects/:id', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.delete('/api/cms/projects/:id', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const { id } = req.params;
@@ -6195,7 +12117,7 @@ module.exports = function(sql, pool) {
     });
 
     // About Us Content API (for CMS - requires authentication)
-    router.get('/api/cms/about', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/api/cms/about', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const result = await pool.request().query(`
@@ -6249,7 +12171,7 @@ module.exports = function(sql, pool) {
     });
 
     // Save About Us Content API
-    router.post('/api/cms/about', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/api/cms/about', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const {
@@ -6390,7 +12312,7 @@ module.exports = function(sql, pool) {
     });
 
     // Contact Messages Management API
-    router.put('/api/admin/contact-messages/:id/read', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.put('/api/admin/contact-messages/:id/read', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const { id } = req.params;
@@ -6406,7 +12328,7 @@ module.exports = function(sql, pool) {
         }
     });
 
-    router.put('/api/admin/contact-messages/:id/replied', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.put('/api/admin/contact-messages/:id/replied', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const { id } = req.params;
@@ -6422,7 +12344,7 @@ module.exports = function(sql, pool) {
         }
     });
 
-    router.delete('/api/admin/contact-messages/:id', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.delete('/api/admin/contact-messages/:id', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const { id } = req.params;
@@ -6439,7 +12361,7 @@ module.exports = function(sql, pool) {
     });
 
     // Raw Materials API
-    router.get('/api/rawmaterials', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/api/rawmaterials', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const result = await pool.request().query(`
@@ -6462,7 +12384,7 @@ module.exports = function(sql, pool) {
     });
 
     // Categories API - Get unique categories from Products table
-    router.get('/api/categories', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/api/categories', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const result = await pool.request().query(`
@@ -6485,7 +12407,7 @@ module.exports = function(sql, pool) {
     });
 
     // Raw Materials CRUD API
-    router.post('/api/rawmaterials', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/api/rawmaterials', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const { name, unit, stockQuantity } = req.body;
@@ -6506,7 +12428,7 @@ module.exports = function(sql, pool) {
         }
     });
 
-    router.put('/api/rawmaterials/:id', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.put('/api/rawmaterials/:id', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const { id } = req.params;
@@ -6533,7 +12455,7 @@ module.exports = function(sql, pool) {
         }
     });
 
-    router.delete('/api/rawmaterials/:id', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.delete('/api/rawmaterials/:id', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const { id } = req.params;
@@ -6553,7 +12475,7 @@ module.exports = function(sql, pool) {
     // No separate Categories table exists - categories are stored as a column in Products
 
     // Archived Items Management API
-    router.get('/api/admin/archived', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/api/admin/archived', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             
@@ -6614,7 +12536,7 @@ module.exports = function(sql, pool) {
     });
 
     // Restore archived items API
-    router.put('/api/admin/archived/products/:id/restore', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.put('/api/admin/archived/products/:id/restore', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const { id } = req.params;
@@ -6630,7 +12552,7 @@ module.exports = function(sql, pool) {
         }
     });
 
-    router.put('/api/admin/archived/materials/:id/restore', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.put('/api/admin/archived/materials/:id/restore', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const { id } = req.params;
@@ -6646,7 +12568,7 @@ module.exports = function(sql, pool) {
         }
     });
 
-    router.put('/api/admin/archived/categories/:id/restore', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.put('/api/admin/archived/categories/:id/restore', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const { id } = req.params;
@@ -6663,7 +12585,7 @@ module.exports = function(sql, pool) {
     });
 
     // Permanently delete archived items API
-    router.delete('/api/admin/archived/products/:id/permanent', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.delete('/api/admin/archived/products/:id/permanent', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const { id } = req.params;
@@ -6679,7 +12601,7 @@ module.exports = function(sql, pool) {
         }
     });
 
-    router.delete('/api/admin/archived/materials/:id/permanent', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.delete('/api/admin/archived/materials/:id/permanent', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const { id } = req.params;
@@ -6695,7 +12617,7 @@ module.exports = function(sql, pool) {
         }
     });
 
-    router.delete('/api/admin/archived/categories/:id/permanent', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.delete('/api/admin/archived/categories/:id/permanent', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const { id } = req.params;
@@ -6723,7 +12645,7 @@ module.exports = function(sql, pool) {
     ];
 
     orderRoutes.forEach(({ route, status }) => {
-        router.get(`/Employee/Admin/${route}`, isAuthenticated, hasEmployeeAccess, async (req, res) => {
+        router.get(`/Employee/Admin/${route}`, isAuthenticated, async (req, res) => {
             try {
                 await pool.connect();
                 
@@ -6758,8 +12680,35 @@ module.exports = function(sql, pool) {
                 
                 const orders = ordersResult.recordset;
                 
-                // Fetch items for each order
+                // Decrypt customer and address data for each order
                 for (let order of orders) {
+                    // Decrypt customer data
+                    // Customer data is already plain text
+                    
+                    // Decrypt address data
+                    // Return address data as plain text
+                    const addressData = {
+                        Label: order.AddressLabel,
+                        HouseNumber: order.HouseNumber,
+                        Street: order.Street,
+                        Barangay: order.Barangay,
+                        City: order.City,
+                        Province: order.Province,
+                        Region: order.Region,
+                        PostalCode: order.PostalCode,
+                        Country: order.Country
+                    };
+                    order.AddressLabel = addressData.Label;
+                    order.HouseNumber = addressData.HouseNumber;
+                    order.Street = addressData.Street;
+                    order.Barangay = addressData.Barangay;
+                    order.City = addressData.City;
+                    order.Province = addressData.Province;
+                    order.Region = addressData.Region;
+                    order.PostalCode = addressData.PostalCode;
+                    order.Country = addressData.Country;
+                    
+                    // Fetch items for each order
                     const itemsResult = await pool.request()
                         .input('orderId', sql.Int, order.OrderID)
                         .query(`
@@ -6794,13 +12743,23 @@ module.exports = function(sql, pool) {
     // =============================================================================
 
     // Admin OrdersPending: Proceed to Processing
-    router.post('/Employee/Admin/OrdersPending/Proceed/:orderId', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/Employee/Admin/OrdersPending/Proceed/:orderId', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const orderId = parseInt(req.params.orderId);
             await pool.request()
                 .input('orderId', sql.Int, orderId)
                 .query(`UPDATE Orders SET Status = 'Processing' WHERE OrderID = @orderId`);
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'STATUS_CHANGE',
+                'Orders',
+                orderId,
+                `Order #${orderId} status changed to Processing by Admin`
+            );
+            
             res.json({ success: true });
         } catch (err) {
             res.json({ success: false, message: 'Failed to update order status.' });
@@ -6808,7 +12767,7 @@ module.exports = function(sql, pool) {
     });
 
     // Admin OrdersPending: Cancel order
-    router.post('/Employee/Admin/OrdersPending/Cancel/:orderId', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/Employee/Admin/OrdersPending/Cancel/:orderId', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const orderId = parseInt(req.params.orderId);
@@ -6836,11 +12795,11 @@ module.exports = function(sql, pool) {
                 // Additionally restore variation stock if there was a variation
                 if (item.VariationID) {
                     await pool.request()
-                        .input('variationId', sql.Int, item.VariationID)
+                        .input('variationID', sql.Int, item.VariationID)
                         .input('quantity', sql.Int, item.Quantity)
                         .query(`UPDATE ProductVariations 
                                 SET Quantity = Quantity + @quantity 
-                                WHERE VariationID = @variationId`);
+                                WHERE VariationID = @variationID`);
                     console.log(`[ADMIN ORDER CANCELLATION] Additionally restored ${item.Quantity} units to variation ${item.VariationID}`);
                 }
             }
@@ -6849,6 +12808,15 @@ module.exports = function(sql, pool) {
             await pool.request()
                 .input('orderId', sql.Int, orderId)
                 .query(`UPDATE Orders SET Status = 'Cancelled' WHERE OrderID = @orderId`);
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'CANCEL',
+                'Orders',
+                orderId,
+                `Order #${orderId} cancelled by Admin`
+            );
             
             console.log(`[ADMIN ORDER CANCELLATION] Order ${orderId} cancelled and stock restored`);
             res.json({ success: true, message: 'Order cancelled and stock restored successfully.' });
@@ -6859,13 +12827,23 @@ module.exports = function(sql, pool) {
     });
 
     // Admin OrdersProcessing: Proceed to Shipping
-    router.post('/Employee/Admin/OrdersProcessing/Proceed/:orderId', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/Employee/Admin/OrdersProcessing/Proceed/:orderId', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const orderId = parseInt(req.params.orderId);
             await pool.request()
                 .input('orderId', sql.Int, orderId)
                 .query(`UPDATE Orders SET Status = 'Shipping' WHERE OrderID = @orderId`);
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'STATUS_CHANGE',
+                'Orders',
+                orderId,
+                `Order #${orderId} status changed to Shipping by Admin`
+            );
+            
             res.json({ success: true });
         } catch (err) {
             res.json({ success: false, message: 'Failed to update order status.' });
@@ -6873,7 +12851,7 @@ module.exports = function(sql, pool) {
     });
 
     // Admin OrdersProcessing: Cancel order
-    router.post('/Employee/Admin/OrdersProcessing/Cancel/:orderId', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/Employee/Admin/OrdersProcessing/Cancel/:orderId', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const orderId = parseInt(req.params.orderId);
@@ -6901,11 +12879,11 @@ module.exports = function(sql, pool) {
                 // Additionally restore variation stock if there was a variation
                 if (item.VariationID) {
                     await pool.request()
-                        .input('variationId', sql.Int, item.VariationID)
+                        .input('variationID', sql.Int, item.VariationID)
                         .input('quantity', sql.Int, item.Quantity)
                         .query(`UPDATE ProductVariations 
                                 SET Quantity = Quantity + @quantity 
-                                WHERE VariationID = @variationId`);
+                                WHERE VariationID = @variationID`);
                     console.log(`[ADMIN ORDER CANCELLATION] Additionally restored ${item.Quantity} units to variation ${item.VariationID}`);
                 }
             }
@@ -6914,6 +12892,15 @@ module.exports = function(sql, pool) {
             await pool.request()
                 .input('orderId', sql.Int, orderId)
                 .query(`UPDATE Orders SET Status = 'Cancelled' WHERE OrderID = @orderId`);
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'CANCEL',
+                'Orders',
+                orderId,
+                `Order #${orderId} cancelled by Admin`
+            );
             
             console.log(`[ADMIN ORDER CANCELLATION] Order ${orderId} cancelled and stock restored`);
             res.json({ success: true, message: 'Order cancelled and stock restored successfully.' });
@@ -6924,13 +12911,23 @@ module.exports = function(sql, pool) {
     });
 
     // Admin OrdersShipping: Proceed to Delivery
-    router.post('/Employee/Admin/OrdersShipping/Proceed/:orderId', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/Employee/Admin/OrdersShipping/Proceed/:orderId', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const orderId = parseInt(req.params.orderId);
             await pool.request()
                 .input('orderId', sql.Int, orderId)
                 .query(`UPDATE Orders SET Status = 'Delivery' WHERE OrderID = @orderId`);
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'STATUS_CHANGE',
+                'Orders',
+                orderId,
+                `Order #${orderId} status changed to Delivery by Admin`
+            );
+            
             res.json({ success: true });
         } catch (err) {
             res.json({ success: false, message: 'Failed to update order status.' });
@@ -6938,7 +12935,7 @@ module.exports = function(sql, pool) {
     });
 
     // Admin OrdersShipping: Cancel order
-    router.post('/Employee/Admin/OrdersShipping/Cancel/:orderId', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/Employee/Admin/OrdersShipping/Cancel/:orderId', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const orderId = parseInt(req.params.orderId);
@@ -6966,11 +12963,11 @@ module.exports = function(sql, pool) {
                 // Additionally restore variation stock if there was a variation
                 if (item.VariationID) {
                     await pool.request()
-                        .input('variationId', sql.Int, item.VariationID)
+                        .input('variationID', sql.Int, item.VariationID)
                         .input('quantity', sql.Int, item.Quantity)
                         .query(`UPDATE ProductVariations 
                                 SET Quantity = Quantity + @quantity 
-                                WHERE VariationID = @variationId`);
+                                WHERE VariationID = @variationID`);
                     console.log(`[ADMIN ORDER CANCELLATION] Additionally restored ${item.Quantity} units to variation ${item.VariationID}`);
                 }
             }
@@ -6979,6 +12976,15 @@ module.exports = function(sql, pool) {
             await pool.request()
                 .input('orderId', sql.Int, orderId)
                 .query(`UPDATE Orders SET Status = 'Cancelled' WHERE OrderID = @orderId`);
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'CANCEL',
+                'Orders',
+                orderId,
+                `Order #${orderId} cancelled by Admin`
+            );
             
             console.log(`[ADMIN ORDER CANCELLATION] Order ${orderId} cancelled and stock restored`);
             res.json({ success: true, message: 'Order cancelled and stock restored successfully.' });
@@ -6989,13 +12995,23 @@ module.exports = function(sql, pool) {
     });
 
     // Admin OrdersDelivery: Proceed to Received
-    router.post('/Employee/Admin/OrdersDelivery/Proceed/:orderId', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/Employee/Admin/OrdersDelivery/Proceed/:orderId', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const orderId = parseInt(req.params.orderId);
             await pool.request()
                 .input('orderId', sql.Int, orderId)
                 .query(`UPDATE Orders SET Status = 'Received' WHERE OrderID = @orderId`);
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'STATUS_CHANGE',
+                'Orders',
+                orderId,
+                `Order #${orderId} status changed to Received by Admin`
+            );
+            
             res.json({ success: true });
         } catch (err) {
             res.json({ success: false, message: 'Failed to update order status.' });
@@ -7003,7 +13019,7 @@ module.exports = function(sql, pool) {
     });
 
     // Admin OrdersDelivery: Cancel order
-    router.post('/Employee/Admin/OrdersDelivery/Cancel/:orderId', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/Employee/Admin/OrdersDelivery/Cancel/:orderId', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const orderId = parseInt(req.params.orderId);
@@ -7031,11 +13047,11 @@ module.exports = function(sql, pool) {
                 // Additionally restore variation stock if there was a variation
                 if (item.VariationID) {
                     await pool.request()
-                        .input('variationId', sql.Int, item.VariationID)
+                        .input('variationID', sql.Int, item.VariationID)
                         .input('quantity', sql.Int, item.Quantity)
                         .query(`UPDATE ProductVariations 
                                 SET Quantity = Quantity + @quantity 
-                                WHERE VariationID = @variationId`);
+                                WHERE VariationID = @variationID`);
                     console.log(`[ADMIN ORDER CANCELLATION] Additionally restored ${item.Quantity} units to variation ${item.VariationID}`);
                 }
             }
@@ -7044,6 +13060,15 @@ module.exports = function(sql, pool) {
             await pool.request()
                 .input('orderId', sql.Int, orderId)
                 .query(`UPDATE Orders SET Status = 'Cancelled' WHERE OrderID = @orderId`);
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'CANCEL',
+                'Orders',
+                orderId,
+                `Order #${orderId} cancelled by Admin`
+            );
             
             console.log(`[ADMIN ORDER CANCELLATION] Order ${orderId} cancelled and stock restored`);
             res.json({ success: true, message: 'Order cancelled and stock restored successfully.' });
@@ -7054,13 +13079,23 @@ module.exports = function(sql, pool) {
     });
 
     // Admin OrdersReceive: Proceed to Completed
-    router.post('/Employee/Admin/OrdersReceive/Proceed/:orderId', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/Employee/Admin/OrdersReceive/Proceed/:orderId', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const orderId = parseInt(req.params.orderId);
             await pool.request()
                 .input('orderId', sql.Int, orderId)
                 .query(`UPDATE Orders SET Status = 'Completed' WHERE OrderID = @orderId`);
+            
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'COMPLETE',
+                'Orders',
+                orderId,
+                `Order #${orderId} completed by Admin`
+            );
+            
             res.json({ success: true });
         } catch (err) {
             res.json({ success: false, message: 'Failed to update order status.' });
@@ -7068,12 +13103,12 @@ module.exports = function(sql, pool) {
     });
 
     // Admin Alerts route
-    router.get('/Employee/Admin/Alerts', isAuthenticated, hasEmployeeAccess, (req, res) => {
+    router.get('/Employee/Admin/Alerts', isAuthenticated, (req, res) => {
         res.render('Employee/Admin/AdminAlerts', { user: req.session.user });
     });
 
     // Special handling for Archived route - needs to fetch archived items
-    router.get('/Employee/Admin/Archived', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/Employee/Admin/Archived', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             
@@ -7145,7 +13180,7 @@ module.exports = function(sql, pool) {
     adminRoutes.forEach(route => {
         if (route === 'Products') {
             // Special handling for Products route - needs to fetch products data
-            router.get(`/Employee/Admin/${route}`, isAuthenticated, hasEmployeeAccess, async (req, res) => {
+            router.get(`/Employee/Admin/${route}`, isAuthenticated, async (req, res) => {
                 try {
                     await pool.connect();
                     const page = parseInt(req.query.page) || 1;
@@ -7199,7 +13234,7 @@ module.exports = function(sql, pool) {
             });
         } else if (route === 'Materials') {
             // Special handling for Materials route - needs to fetch raw materials data
-            router.get(`/Employee/Admin/RawMaterials`, isAuthenticated, hasEmployeeAccess, async (req, res) => {
+            router.get(`/Employee/Admin/RawMaterials`, isAuthenticated, async (req, res) => {
                 try {
                     await pool.connect();
                     const result = await pool.request().query('SELECT * FROM RawMaterials WHERE IsActive = 1');
@@ -7213,7 +13248,7 @@ module.exports = function(sql, pool) {
             });
 
             // Admin - Add Raw Material
-            router.post('/Employee/Admin/RawMaterials/Add', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+            router.post('/Employee/Admin/RawMaterials/Add', isAuthenticated, async (req, res) => {
                 try {
                     await pool.connect();
                     const { name, quantity, unit } = req.body;
@@ -7237,7 +13272,7 @@ module.exports = function(sql, pool) {
             });
 
             // Admin - Edit Raw Material
-            router.post('/Employee/Admin/RawMaterials/Edit', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+            router.post('/Employee/Admin/RawMaterials/Edit', isAuthenticated, async (req, res) => {
                 try {
                     await pool.connect();
                     const { materialid, name, quantity, unit } = req.body;
@@ -7263,7 +13298,7 @@ module.exports = function(sql, pool) {
             });
         } else {
             // Default handling for other admin routes
-            router.get(`/Employee/Admin/${route}`, isAuthenticated, hasEmployeeAccess, (req, res) => {
+            router.get(`/Employee/Admin/${route}`, isAuthenticated, (req, res) => {
                 res.render(`Employee/Admin/Admin${route}`, { user: req.session.user });
             });
         }
@@ -7298,7 +13333,7 @@ module.exports = function(sql, pool) {
     // =============================================================================
 
     // Simple API to get all users (Admin only)
-    router.get('/api/admin/users', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/api/admin/users', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             
@@ -7311,7 +13346,7 @@ module.exports = function(sql, pool) {
                     r.RoleName,
                     u.IsActive
                 FROM Users u
-                INNER JOIN Roles r ON u.RoleID = r.RoleID
+                LEFT JOIN Roles r ON u.RoleID = r.RoleID
                 WHERE u.IsActive = 1
                 ORDER BY u.FullName
             `);
@@ -7350,7 +13385,7 @@ module.exports = function(sql, pool) {
                     return res.redirect('/');
             }
         }
-        res.render('auth/login', { 
+        res.render('EmpLogin/EmpLogin', { 
             title: 'Login',
             error: req.flash('error'),
             success: req.flash('success')
@@ -7402,12 +13437,12 @@ module.exports = function(sql, pool) {
             await pool.connect();
             console.log('Database connected successfully');
             
-            // Use stored procedure to get user with role information
-            const result = await pool.request()
+            // Find user by email using plain text query
+            const userResult = await pool.request()
                 .input('email', sql.NVarChar, email)
-                .execute('GetUserForAuth');
-
-            const user = result.recordset[0];
+                .query('SELECT * FROM Users WHERE Email = @email');
+            
+            const user = userResult.recordset[0];
 
             console.log('Login attempt for email:', email);
             console.log('User found:', user ? 'Yes' : 'No');
@@ -7416,8 +13451,9 @@ module.exports = function(sql, pool) {
                     UserID: user.UserID,
                     Username: user.Username,
                     Email: user.Email,
-                    IsActive: user.IsActive,
-                    PasswordHash: user.PasswordHash ? user.PasswordHash.substring(0, 10) + '...' : 'NULL'
+                    FullName: user.FullName,
+                    RoleID: user.RoleID,
+                    IsActive: user.IsActive
                 });
             }
 
@@ -7425,6 +13461,34 @@ module.exports = function(sql, pool) {
                 req.flash('error', 'Invalid email or password.');
                 return res.redirect('/login');
             }
+
+            // Get password hash for verification
+            const passwordResult = await pool.request()
+                .input('userId', sql.Int, user.UserID)
+                .query('SELECT PasswordHash FROM Users WHERE UserID = @userId');
+            
+            if (passwordResult.recordset.length === 0) {
+                console.log('No password hash found for user');
+                req.flash('error', 'Invalid email or password.');
+                return res.redirect('/login');
+            }
+            
+            const passwordHash = passwordResult.recordset[0].PasswordHash;
+            console.log('Password hash found:', passwordHash ? 'Yes' : 'No');
+
+            // Get role name from Roles table
+            const roleResult = await pool.request()
+                .input('roleId', sql.Int, user.RoleID)
+                .query('SELECT RoleName FROM Roles WHERE RoleID = @roleId');
+            
+            if (roleResult.recordset.length === 0) {
+                console.log('No role found for user');
+                req.flash('error', 'User role not found. Please contact administrator.');
+                return res.redirect('/login');
+            }
+            
+            const roleName = roleResult.recordset[0].RoleName;
+            console.log('Role name found:', roleName);
 
             if (!user.IsActive) {
                 req.flash('error', 'Your account has been deactivated. Please contact administrator.');
@@ -7434,15 +13498,24 @@ module.exports = function(sql, pool) {
             // Verify password (handle both bcrypt hashed and plain text)
             let passwordMatch = false;
             
-            // Check if password is bcrypt hashed (starts with $2b$)
-            if (user.PasswordHash.startsWith('$2b$')) {
-                passwordMatch = await bcrypt.compare(password, user.PasswordHash);
-            } else {
+            // Check if password is bcrypt hashed (starts with $2a$ or $2b$)
+            if (passwordHash && (passwordHash.startsWith('$2a$') || passwordHash.startsWith('$2b$'))) {
+                passwordMatch = await bcrypt.compare(password, passwordHash);
+            } else if (passwordHash) {
                 // Plain text comparison (for backward compatibility)
-                passwordMatch = user.PasswordHash === password;
+                passwordMatch = passwordHash === password;
             }
             
             if (!passwordMatch) {
+                // Log failed login attempt
+                await logActivity(
+                    user.UserID,
+                    'LOGIN_FAILED',
+                    'Users',
+                    user.UserID,
+                    `Failed login attempt - incorrect password from ${req.ip || 'unknown IP'}`
+                );
+                
                 req.flash('error', 'Invalid email or password.');
                 return res.redirect('/login');
             }
@@ -7453,11 +13526,20 @@ module.exports = function(sql, pool) {
                 username: user.Username,
                 fullName: user.FullName,
                 email: user.Email,
-                role: user.RoleName,
+                role: roleName,
                 type: 'employee'
             };
             
             req.session.user = userData;
+
+            // Log successful login
+            await logActivity(
+                user.UserID,
+                'LOGIN',
+                'Users',
+                user.UserID.toString(),
+                `Successful login from ${req.ip || 'unknown IP'}`
+            );
 
             // Generate JWT tokens for API access
             let jwtTokens = null;
@@ -7470,7 +13552,7 @@ module.exports = function(sql, pool) {
             }
 
             console.log('Login successful for:', email);
-            console.log('User role:', user.RoleName);
+            console.log('User role:', roleName);
 
             // Check if this is an API request (for mobile/frontend)
             const isApiRequest = req.headers.accept && req.headers.accept.includes('application/json');
@@ -7485,21 +13567,29 @@ module.exports = function(sql, pool) {
                 });
             }
 
-            // Redirect based on role for web interface
-            switch(user.RoleName) {
-                case 'Admin':
-                    return res.redirect('/Employee/AdminManager');
-                case 'InventoryManager':
-                    return res.redirect('/Employee/InventoryManager');
-                case 'TransactionManager':
-                    return res.redirect('/Employee/TransactionManager');
-                case 'UserManager':
-                    return res.redirect('/Employee/UserManager');
-                case 'OrderSupport':
-                    return res.redirect('/Employee/OrderSupport');
-                default:
-                    return res.redirect('/Employee/AdminManager');
-            }
+            // Ensure session is saved before redirecting (prevents lost session on redirect)
+            return req.session.save((err) => {
+                if (err) {
+                    console.error('Session save error:', err);
+                    req.flash('error', 'Session error, please try again.');
+                    return res.redirect('/login');
+                }
+                // Redirect based on role for web interface
+                switch(roleName) {
+                    case 'Admin':
+                        return res.redirect('/Employee/AdminManager');
+                    case 'InventoryManager':
+                        return res.redirect('/Employee/InventoryManager');
+                    case 'TransactionManager':
+                        return res.redirect('/Employee/TransactionManager');
+                    case 'UserManager':
+                        return res.redirect('/Employee/UserManager');
+                    case 'OrderSupport':
+                        return res.redirect('/Employee/OrderSupport');
+                    default:
+                        return res.redirect('/Employee/AdminManager');
+                }
+            });
 
         } catch (error) {
             console.error('Login error:', error);
@@ -7548,18 +13638,36 @@ module.exports = function(sql, pool) {
             await pool.connect();
             console.log('Database connected successfully');
             
-            // Check if customer exists and is active
-            const customerCheckResult = await pool.request()
+            console.log('Searching for customer with email:', email);
+            
+            // Find customer by email using plain text query
+            const allCustomersResult = await pool.request()
                 .input('email', sql.NVarChar, email)
                 .query(`
-                    SELECT CustomerID, Email, IsActive 
+                    SELECT 
+                        CustomerID,
+                        Email,
+                        FullName,
+                        PhoneNumber,
+                        IsActive,
+                        CreatedAt
                     FROM Customers 
                     WHERE Email = @email
                 `);
-
-            const customerCheck = customerCheckResult.recordset[0];
-
-            if (!customerCheck) {
+            
+            console.log('Customer query result:', allCustomersResult.recordset.length);
+            
+            // Customer data is already plain text
+            const customer = allCustomersResult.recordset[0] || null;
+            console.log('Customer found:', customer ? 'Yes' : 'No');
+            if (customer) {
+                console.log('Customer ID:', customer.CustomerID);
+                console.log('Customer Email:', customer.Email);
+                console.log('Customer IsActive:', customer.IsActive);
+            }
+            
+            if (!customer) {
+                console.log('Customer not found with email:', email);
                 return res.status(401).json({ 
                     success: false, 
                     message: 'Invalid email or password.',
@@ -7568,7 +13676,8 @@ module.exports = function(sql, pool) {
             }
 
             // Check if customer account is inactive
-            if (!customerCheck.IsActive) {
+            if (!customer.IsActive) {
+                console.log('Customer account is inactive');
                 return res.status(403).json({ 
                     success: false, 
                     message: 'Your account has been deactivated. Please contact customer support.',
@@ -7576,28 +13685,16 @@ module.exports = function(sql, pool) {
                 });
             }
 
-            // Get full customer data
-            const result = await pool.request()
-                .input('email', sql.NVarChar, email)
-                .query(`
-                    SELECT CustomerID, FullName, Email, PhoneNumber, PasswordHash, IsActive, CreatedAt
-                    FROM Customers 
-                    WHERE Email = @email AND IsActive = 1
-                `);
-
-            const customer = result.recordset[0];
-
-            if (!customer) {
-                return res.status(401).json({ 
-                    success: false, 
-                    message: 'Invalid email or password.',
-                    code: 'INVALID_CREDENTIALS'
-                });
-            }
+            // Get password hash for verification
+            const passwordResult = await pool.request()
+                .input('customerId', sql.Int, customer.CustomerID)
+                .query('SELECT PasswordHash FROM Customers WHERE CustomerID = @customerId');
+            
+            const passwordHash = passwordResult.recordset[0].PasswordHash;
 
             // Verify password using bcrypt
             console.log('Verifying password...');
-            const passwordMatch = await bcrypt.compare(password, customer.PasswordHash);
+            const passwordMatch = await bcrypt.compare(password, passwordHash);
             console.log('Password match result:', passwordMatch);
             if (!passwordMatch) {
                 console.log('Password verification failed');
@@ -7708,11 +13805,12 @@ module.exports = function(sql, pool) {
                 
                 if (result.recordset.length > 0) {
                     const customer = result.recordset[0];
+                    const decryptedCustomer = TransparentEncryptionService.processCustomerForDisplay(customer);
                     userData = {
                         id: customer.CustomerID,
-                        fullName: customer.FullName,
-                        email: customer.Email,
-                        phoneNumber: customer.PhoneNumber,
+                        fullName: decryptedCustomer.FullName,
+                        email: decryptedCustomer.Email,
+                        phoneNumber: decryptedCustomer.PhoneNumber,
                         role: 'Customer',
                         type: 'customer',
                         profileImage: customer.ProfileImage
@@ -7730,11 +13828,12 @@ module.exports = function(sql, pool) {
                 
                 if (result.recordset.length > 0) {
                     const user = result.recordset[0];
+                    const decryptedUser = TransparentEncryptionService.processUserForDisplay(user);
                     userData = {
                         id: user.UserID,
-                        username: user.Username,
-                        fullName: user.FullName,
-                        email: user.Email,
+                        username: decryptedUser.Username,
+                        fullName: decryptedUser.FullName,
+                        email: decryptedUser.Email,
                         role: user.RoleName,
                         type: 'employee'
                     };
@@ -8214,6 +14313,10 @@ module.exports = function(sql, pool) {
         }
     });
 
+
+
+
+
     // =============================================================================
     // CUSTOMER ORDER MANAGEMENT ROUTES
     // =============================================================================
@@ -8384,6 +14487,32 @@ module.exports = function(sql, pool) {
             
             const order = result.recordset[0];
             
+            // Decrypt address data if present
+            if (order.AddressLabel || order.HouseNumber || order.Street || order.Barangay || order.City || order.Province || order.Region || order.PostalCode || order.Country) {
+                // Return address data as plain text
+                const addressData = {
+                    Label: order.AddressLabel,
+                    HouseNumber: order.HouseNumber,
+                    Street: order.Street,
+                    Barangay: order.Barangay,
+                    City: order.City,
+                    Province: order.Province,
+                    Region: order.Region,
+                    PostalCode: order.PostalCode,
+                    Country: order.Country
+                };
+                
+                order.AddressLabel = decryptedAddress.Label;
+                order.HouseNumber = decryptedAddress.HouseNumber;
+                order.Street = decryptedAddress.Street;
+                order.Barangay = decryptedAddress.Barangay;
+                order.City = decryptedAddress.City;
+                order.Province = decryptedAddress.Province;
+                order.Region = decryptedAddress.Region;
+                order.PostalCode = decryptedAddress.PostalCode;
+                order.Country = decryptedAddress.Country;
+            }
+            
             // Fetch order items
             const itemsResult = await pool.request()
                 .input('orderId', sql.Int, orderId)
@@ -8402,12 +14531,175 @@ module.exports = function(sql, pool) {
         }
     });
 
+    // Get customer addresses
+    router.get('/api/customer/addresses', isAuthenticated, async (req, res) => {
+        const customerId = req.session.user && req.session.user.id;
+        if (!customerId) {
+            return res.status(401).json({ success: false, message: 'Not authenticated.' });
+        }
+        try {
+            await pool.connect();
+            const result = await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .query(`
+                    SELECT AddressID, Label, HouseNumber, Street, Barangay, City, Province, Region, PostalCode, Country, IsDefault
+                    FROM CustomerAddresses 
+                    WHERE CustomerID = @customerId
+                    ORDER BY IsDefault DESC, AddressID DESC
+                `);
+            
+            const addresses = result.recordset;
+            
+            // Decrypt address data using TransparentEncryptionService
+            const decryptedAddresses = addresses;
+            
+            return res.json({ success: true, addresses: decryptedAddresses });
+        } catch (err) {
+            console.error('Error fetching customer addresses:', err);
+            return res.status(500).json({ success: false, message: 'Failed to fetch addresses.' });
+        }
+    });
+
+    // Add customer address
+    router.post('/api/customer/addresses', isAuthenticated, async (req, res) => {
+        const customerId = req.session.user && req.session.user.id;
+        if (!customerId) {
+            return res.status(401).json({ success: false, message: 'Not authenticated.' });
+        }
+        try {
+            await pool.connect();
+            const { label, houseNumber, street, barangay, city, province, region, postalCode, country, isDefault } = req.body;
+            
+            // Encrypt address data using TransparentEncryptionService
+            const encryptedAddressData = TransparentEncryptionService.processAddressForStorage({
+                Label: label,
+                HouseNumber: houseNumber,
+                Street: street,
+                Barangay: barangay,
+                City: city,
+                Province: province,
+                Region: region,
+                PostalCode: postalCode,
+                Country: country || 'Philippines'
+            });
+            
+            // If this is set as default, unset other defaults first
+            if (isDefault) {
+                await pool.request()
+                    .input('customerId', sql.Int, customerId)
+                    .query('UPDATE CustomerAddresses SET IsDefault = 0 WHERE CustomerID = @customerId');
+            }
+            
+            const result = await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .input('label', sql.NVarChar, encryptedAddressData.Label)
+                .input('houseNumber', sql.NVarChar, encryptedAddressData.HouseNumber)
+                .input('street', sql.NVarChar, encryptedAddressData.Street)
+                .input('barangay', sql.NVarChar, encryptedAddressData.Barangay)
+                .input('city', sql.NVarChar, encryptedAddressData.City)
+                .input('province', sql.NVarChar, encryptedAddressData.Province)
+                .input('region', sql.NVarChar, encryptedAddressData.Region)
+                .input('postalCode', sql.NVarChar, encryptedAddressData.PostalCode)
+                .input('country', sql.NVarChar, encryptedAddressData.Country)
+                .input('isDefault', sql.Bit, isDefault ? 1 : 0)
+                .query(`
+                    INSERT INTO CustomerAddresses (CustomerID, Label, HouseNumber, Street, Barangay, City, Province, Region, PostalCode, Country, IsDefault)
+                    VALUES (@customerId, @label, @houseNumber, @street, @barangay, @city, @province, @region, @postalCode, @country, @isDefault)
+                `);
+            
+            return res.json({ success: true, message: 'Address added successfully.' });
+        } catch (err) {
+            console.error('Error adding customer address:', err);
+            return res.status(500).json({ success: false, message: 'Failed to add address.' });
+        }
+    });
+
+    // Update customer address
+    router.put('/api/customer/addresses/:addressId', isAuthenticated, async (req, res) => {
+        const customerId = req.session.user && req.session.user.id;
+        const addressId = req.params.addressId;
+        if (!customerId) {
+            return res.status(401).json({ success: false, message: 'Not authenticated.' });
+        }
+        try {
+            await pool.connect();
+            const { label, houseNumber, street, barangay, city, province, region, postalCode, country, isDefault } = req.body;
+            
+            // Encrypt address data using TransparentEncryptionService
+            const encryptedAddressData = TransparentEncryptionService.processAddressForStorage({
+                Label: label,
+                HouseNumber: houseNumber,
+                Street: street,
+                Barangay: barangay,
+                City: city,
+                Province: province,
+                Region: region,
+                PostalCode: postalCode,
+                Country: country || 'Philippines'
+            });
+            
+            // If this is set as default, unset other defaults first
+            if (isDefault) {
+                await pool.request()
+                    .input('customerId', sql.Int, customerId)
+                    .query('UPDATE CustomerAddresses SET IsDefault = 0 WHERE CustomerID = @customerId');
+            }
+            
+            await pool.request()
+                .input('addressId', sql.Int, addressId)
+                .input('customerId', sql.Int, customerId)
+                .input('label', sql.NVarChar, encryptedAddressData.Label)
+                .input('houseNumber', sql.NVarChar, encryptedAddressData.HouseNumber)
+                .input('street', sql.NVarChar, encryptedAddressData.Street)
+                .input('barangay', sql.NVarChar, encryptedAddressData.Barangay)
+                .input('city', sql.NVarChar, encryptedAddressData.City)
+                .input('province', sql.NVarChar, encryptedAddressData.Province)
+                .input('region', sql.NVarChar, encryptedAddressData.Region)
+                .input('postalCode', sql.NVarChar, encryptedAddressData.PostalCode)
+                .input('country', sql.NVarChar, encryptedAddressData.Country)
+                .input('isDefault', sql.Bit, isDefault ? 1 : 0)
+                .query(`
+                    UPDATE CustomerAddresses 
+                    SET Label = @label, HouseNumber = @houseNumber, Street = @street, Barangay = @barangay, 
+                        City = @city, Province = @province, Region = @region, PostalCode = @postalCode, 
+                        Country = @country, IsDefault = @isDefault
+                    WHERE AddressID = @addressId AND CustomerID = @customerId
+                `);
+            
+            return res.json({ success: true, message: 'Address updated successfully.' });
+        } catch (err) {
+            console.error('Error updating customer address:', err);
+            return res.status(500).json({ success: false, message: 'Failed to update address.' });
+        }
+    });
+
+    // Delete customer address
+    router.delete('/api/customer/addresses/:addressId', isAuthenticated, async (req, res) => {
+        const customerId = req.session.user && req.session.user.id;
+        const addressId = req.params.addressId;
+        if (!customerId) {
+            return res.status(401).json({ success: false, message: 'Not authenticated.' });
+        }
+        try {
+            await pool.connect();
+            await pool.request()
+                .input('addressId', sql.Int, addressId)
+                .input('customerId', sql.Int, customerId)
+                .query('DELETE FROM CustomerAddresses WHERE AddressID = @addressId AND CustomerID = @customerId');
+            
+            return res.json({ success: true, message: 'Address deleted successfully.' });
+        } catch (err) {
+            console.error('Error deleting customer address:', err);
+            return res.status(500).json({ success: false, message: 'Failed to delete address.' });
+        }
+    });
+
     // =============================================================================
     // DASHBOARD API ENDPOINTS
     // =============================================================================
 
     // API endpoint for products count
-    router.get('/api/dashboard/products-count', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/api/dashboard/products-count', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             
@@ -8425,7 +14717,7 @@ module.exports = function(sql, pool) {
     });
 
     // API endpoint for materials count
-    router.get('/api/dashboard/materials-count', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/api/dashboard/materials-count', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             
@@ -8443,7 +14735,7 @@ module.exports = function(sql, pool) {
     });
 
     // API endpoint for safety stock value
-    router.get('/api/safety-stock-value', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/api/safety-stock-value', isAuthenticated, async (req, res) => {
         try {
             // For now, return a default safety stock value of 10
             // This could be made configurable in the future
@@ -8455,7 +14747,7 @@ module.exports = function(sql, pool) {
     });
 
     // API endpoint for updating safety stock value
-    router.post('/api/safety-stock-value', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/api/safety-stock-value', isAuthenticated, async (req, res) => {
         try {
             const { value } = req.body;
             if (!value || value < 1) {
@@ -8472,7 +14764,7 @@ module.exports = function(sql, pool) {
 
 
     // API endpoint for alerts data
-    router.get('/Employee/Admin/Alerts/Data', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/Employee/Admin/Alerts/Data', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             
@@ -8512,7 +14804,7 @@ module.exports = function(sql, pool) {
     // =============================================================================
 
     // POST route for archiving products (used by AdminProducts.ejs form)
-    router.post('/Employee/Admin/Products/Delete/:id', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/Employee/Admin/Products/Delete/:id', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             
@@ -8535,6 +14827,16 @@ module.exports = function(sql, pool) {
                 .input('id', sql.Int, productId)
                 .query('UPDATE Products SET IsActive = 0 WHERE ProductID = @id');
             
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'UPDATE',
+                'Products',
+                productId.toString(),
+                `Admin archived product "${productName}" (ID: ${productId})`,
+                JSON.stringify({ IsActive: { old: 1, new: 0 } })
+            );
+            
             req.flash('success', `Product "${productName}" has been archived. You can restore it from the Archived page.`);
             res.redirect('/Employee/Admin/Products');
         } catch (err) {
@@ -8545,7 +14847,7 @@ module.exports = function(sql, pool) {
     });
 
     // POST route for archiving raw materials (used by AdminMaterials.ejs form)
-    router.post('/Employee/Admin/RawMaterials/Delete/:id', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/Employee/Admin/RawMaterials/Delete/:id', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             
@@ -8574,7 +14876,8 @@ module.exports = function(sql, pool) {
                 'DELETE',
                 'RawMaterials',
                 materialId.toString(),
-                `Admin archived raw material: "${materialName}" (ID: ${materialId})`
+                `Admin archived raw material: "${materialName}" (ID: ${materialId})`,
+                JSON.stringify({ IsActive: { old: 1, new: 0 } })
             );
             
             req.flash('success', `Raw material "${materialName}" has been archived. You can restore it from the Archived page.`);
@@ -8591,7 +14894,7 @@ module.exports = function(sql, pool) {
     // =============================================================================
 
     // POST route for reactivating archived products (used by AdminArchived.ejs form)
-    router.post('/Employee/Admin/Archived/ReactivateProduct/:id', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/Employee/Admin/Archived/ReactivateProduct/:id', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             
@@ -8624,7 +14927,8 @@ module.exports = function(sql, pool) {
                 'UPDATE',
                 'Products',
                 productId.toString(),
-                `Admin reactivated product: "${product.Name}" (ID: ${productId})`
+                `Admin reactivated product: "${product.Name}" (ID: ${productId})`,
+                JSON.stringify({ IsActive: { old: 0, new: 1 } })
             );
             
             req.flash('success', `Product "${product.Name}" has been reactivated and is now available on the Products page.`);
@@ -8637,7 +14941,7 @@ module.exports = function(sql, pool) {
     });
 
     // POST route for reactivating archived raw materials (used by AdminArchived.ejs form)
-    router.post('/Employee/Admin/Archived/ReactivateMaterial/:id', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/Employee/Admin/Archived/ReactivateMaterial/:id', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             
@@ -8670,7 +14974,8 @@ module.exports = function(sql, pool) {
                 'UPDATE',
                 'RawMaterials',
                 materialId.toString(),
-                `Admin reactivated raw material: "${material.Name}" (ID: ${materialId})`
+                `Admin reactivated raw material: "${material.Name}" (ID: ${materialId})`,
+                JSON.stringify({ IsActive: { old: 0, new: 1 } })
             );
             
             req.flash('success', `Raw material "${material.Name}" has been reactivated and is now available on the Raw Materials page.`);
@@ -8683,7 +14988,7 @@ module.exports = function(sql, pool) {
     });
 
     // POST route for reactivating archived categories (used by AdminArchived.ejs form)
-    router.post('/Employee/Admin/Archived/ReactivateCategory/:id', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/Employee/Admin/Archived/ReactivateCategory/:id', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             
@@ -8710,6 +15015,16 @@ module.exports = function(sql, pool) {
                 .input('id', sql.Int, categoryId)
                 .query('UPDATE Categories SET IsActive = 1 WHERE CategoryID = @id');
             
+            // Log the activity
+            await logActivity(
+                req.session.user.id,
+                'UPDATE',
+                'Categories',
+                categoryId.toString(),
+                `Admin reactivated category "${category.CategoryName}" (ID: ${categoryId})`,
+                JSON.stringify({ IsActive: { old: 0, new: 1 } })
+            );
+            
             req.flash('success', `Category "${category.CategoryName}" has been reactivated and is now available.`);
             res.redirect('/Employee/Admin/Archived');
         } catch (err) {
@@ -8720,7 +15035,7 @@ module.exports = function(sql, pool) {
     });
 
     // Product Management API
-    router.post('/Employee/Admin/Products/Add', isAuthenticated, hasEmployeeAccess, productUpload.fields([
+    router.post('/Employee/Admin/Products/Add', isAuthenticated, productUpload.fields([
         { name: 'image', maxCount: 1 },
         { name: 'thumbnail1', maxCount: 1 },
         { name: 'thumbnail2', maxCount: 1 },
@@ -8730,13 +15045,24 @@ module.exports = function(sql, pool) {
     ]), async (req, res) => {
         try {
             await pool.connect();
-            const { name, description, price, stockquantity, category, requiredMaterials } = req.body;
+            const { name, description, price, stockquantity, category, requiredMaterials, dimensions } = req.body;
             
             // Start transaction
             const transaction = new sql.Transaction(pool);
             await transaction.begin();
             
             try {
+                // Parse dimensions data
+                let dimensionsJson = '{}';
+                if (dimensions) {
+                    try {
+                        const dimensionsData = JSON.parse(dimensions);
+                        dimensionsJson = JSON.stringify(dimensionsData);
+                    } catch (e) {
+                        console.log('Error parsing dimensions:', e);
+                    }
+                }
+
                 // Insert product
                 const productResult = await transaction.request()
                     .input('name', sql.NVarChar, name)
@@ -8744,9 +15070,10 @@ module.exports = function(sql, pool) {
                     .input('price', sql.Decimal(10, 2), price)
                     .input('stockquantity', sql.Int, stockquantity)
                     .input('category', sql.NVarChar, category)
+                    .input('dimensions', sql.NVarChar, dimensionsJson)
                     .query(`
-                        INSERT INTO Products (Name, Description, Price, StockQuantity, Category, DateAdded, IsActive)
-                        VALUES (@name, @description, @price, @stockquantity, @category, GETDATE(), 1)
+                        INSERT INTO Products (Name, Description, Price, StockQuantity, Category, Dimensions, DateAdded, IsActive)
+                        VALUES (@name, @description, @price, @stockquantity, @category, @dimensions, GETDATE(), 1)
                         SELECT SCOPE_IDENTITY() as ProductID
                     `);
                 
@@ -8827,7 +15154,7 @@ module.exports = function(sql, pool) {
         }
     });
 
-    router.post('/Employee/Admin/Products/Edit', isAuthenticated, hasEmployeeAccess, productUpload.fields([
+    router.post('/Employee/Admin/Products/Edit', isAuthenticated, productUpload.fields([
         { name: 'image', maxCount: 1 },
         { name: 'thumbnail1', maxCount: 1 },
         { name: 'thumbnail2', maxCount: 1 },
@@ -8837,7 +15164,18 @@ module.exports = function(sql, pool) {
     ]), async (req, res) => {
         try {
             await pool.connect();
-            const { productid, name, description, price, stockquantity, category, requiredMaterials } = req.body;
+            const { productid, name, description, price, stockquantity, category, requiredMaterials, dimensions } = req.body;
+            
+            // Parse dimensions data
+            let dimensionsJson = '{}';
+            if (dimensions) {
+                try {
+                    const dimensionsData = JSON.parse(dimensions);
+                    dimensionsJson = JSON.stringify(dimensionsData);
+                } catch (e) {
+                    console.log('Error parsing dimensions:', e);
+                }
+            }
             
             // Start transaction
             const transaction = new sql.Transaction(pool);
@@ -8863,10 +15201,11 @@ module.exports = function(sql, pool) {
                     .input('price', sql.Decimal(10, 2), price)
                     .input('stockquantity', sql.Int, stockquantity)
                     .input('category', sql.NVarChar, category)
+                    .input('dimensions', sql.NVarChar, dimensionsJson)
                     .query(`
                         UPDATE Products 
                         SET Name = @name, Description = @description, Price = @price, 
-                            StockQuantity = @stockquantity, Category = @category, UpdatedAt = GETDATE()
+                            StockQuantity = @stockquantity, Category = @category, Dimensions = @dimensions, UpdatedAt = GETDATE()
                         WHERE ProductID = @productId
                     `);
                 
@@ -8875,10 +15214,11 @@ module.exports = function(sql, pool) {
                     // Get current image URLs before updating
                     const currentProduct = await transaction.request()
                         .input('productId', sql.Int, productid)
-                        .query('SELECT ImageURL, ThumbnailURLs FROM Products WHERE ProductID = @productId');
+                        .query('SELECT ImageURL, ThumbnailURLs, Model3DURL FROM Products WHERE ProductID = @productId');
                     
                     const currentImageUrl = currentProduct.recordset[0]?.ImageURL;
                     const currentThumbnailUrls = currentProduct.recordset[0]?.ThumbnailURLs;
+                    const currentModel3DURL = currentProduct.recordset[0]?.Model3DURL;
                     
                     // Handle main image
                     if (req.files.image) {
@@ -8910,6 +15250,22 @@ module.exports = function(sql, pool) {
                             .input('productId', sql.Int, productid)
                             .input('thumbnails', sql.NVarChar, JSON.stringify(thumbnails))
                             .query('UPDATE Products SET ThumbnailURLs = @thumbnails WHERE ProductID = @productId');
+                    }
+                    
+                    // Handle 3D model
+                    if (req.files.model3d) {
+                        // Delete old 3D model file
+                        if (currentModel3DURL) {
+                            await deleteOldImageFile(currentModel3DURL);
+                        }
+                        
+                        const model3dFile = req.files.model3d[0];
+                        const model3dUrl = `/uploads/products/models/${model3dFile.filename}`;
+                        await transaction.request()
+                            .input('productId', sql.Int, productid)
+                            .input('model3dUrl', sql.NVarChar, model3dUrl)
+                            .input('has3dModel', sql.Bit, 1)
+                            .query('UPDATE Products SET Model3DURL = @model3dUrl, Has3DModel = @has3dModel WHERE ProductID = @productId');
                     }
                 }
                 
@@ -8971,7 +15327,7 @@ module.exports = function(sql, pool) {
     });
 
     // Admin - Update Stock Only
-    router.post('/Employee/Admin/Products/UpdateStock', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/Employee/Admin/Products/UpdateStock', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const { productId, newStock } = req.body;
@@ -8983,19 +15339,41 @@ module.exports = function(sql, pool) {
                 });
             }
             
+            // Get current stock quantity before updating
+            const currentStockResult = await pool.request()
+                .input('productId', sql.Int, productId)
+                .query('SELECT StockQuantity FROM Products WHERE ProductID = @productId');
+            
+            if (currentStockResult.recordset.length === 0) {
+                return res.json({ 
+                    success: false, 
+                    message: 'Product not found.' 
+                });
+            }
+            
+            const oldStock = currentStockResult.recordset[0].StockQuantity;
+            
             // Update only the stock quantity
             await pool.request()
                 .input('productId', sql.Int, productId)
                 .input('newStock', sql.Int, newStock)
                 .query('UPDATE Products SET StockQuantity = @newStock, UpdatedAt = GETDATE() WHERE ProductID = @productId');
             
-            // Log the activity
+            // Log the activity with actual changes
+            const changes = JSON.stringify({
+                StockQuantity: {
+                    old: oldStock,
+                    new: newStock
+                }
+            });
+            
             await logActivity(
                 req.session.user.id,
                 'UPDATE',
                 'Products',
                 productId.toString(),
-                `Admin updated stock quantity to ${newStock} for product ID: ${productId}`
+                `Admin updated stock quantity from ${oldStock} to ${newStock} for product ID: ${productId}`,
+                changes
             );
             
             res.json({ 
@@ -9012,7 +15390,7 @@ module.exports = function(sql, pool) {
     });
 
     // Inventory Manager - Update Stock Only
-    router.post('/Employee/InventoryManager/InventoryProducts/UpdateStock', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/Employee/InventoryManager/InventoryProducts/UpdateStock', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const { productId, newStock } = req.body;
@@ -9024,19 +15402,41 @@ module.exports = function(sql, pool) {
                 });
             }
             
+            // Get current stock quantity before updating
+            const currentStockResult = await pool.request()
+                .input('productId', sql.Int, productId)
+                .query('SELECT StockQuantity FROM Products WHERE ProductID = @productId');
+            
+            if (currentStockResult.recordset.length === 0) {
+                return res.json({ 
+                    success: false, 
+                    message: 'Product not found.' 
+                });
+            }
+            
+            const oldStock = currentStockResult.recordset[0].StockQuantity;
+            
             // Update only the stock quantity
             await pool.request()
                 .input('productId', sql.Int, productId)
                 .input('newStock', sql.Int, newStock)
                 .query('UPDATE Products SET StockQuantity = @newStock, UpdatedAt = GETDATE() WHERE ProductID = @productId');
             
-            // Log the activity
+            // Log the activity with actual changes
+            const changes = JSON.stringify({
+                StockQuantity: {
+                    old: oldStock,
+                    new: newStock
+                }
+            });
+            
             await logActivity(
                 req.session.user.id,
                 'UPDATE',
                 'Products',
                 productId.toString(),
-                `InventoryManager updated stock quantity to ${newStock} for product ID: ${productId}`
+                `InventoryManager updated stock quantity from ${oldStock} to ${newStock} for product ID: ${productId}`,
+                changes
             );
             
             res.json({ 
@@ -9053,7 +15453,7 @@ module.exports = function(sql, pool) {
     });
 
     // Product Materials API
-    router.get('/api/products/:id/materials', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/api/products/:id/materials', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const { id } = req.params;
@@ -9089,7 +15489,7 @@ module.exports = function(sql, pool) {
     });
 
     // Add/Update Product Materials API
-    router.post('/api/products/:id/materials', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/api/products/:id/materials', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const { id } = req.params;
@@ -9151,7 +15551,7 @@ module.exports = function(sql, pool) {
     // =============================================================================
 
     // Get variations for a specific product (Admin)
-    router.get('/Employee/Admin/Variations/Get/:productId', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/Employee/Admin/Variations/Get/:productId', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const productId = parseInt(req.params.productId);
@@ -9189,7 +15589,7 @@ module.exports = function(sql, pool) {
     });
 
     // Get variations for a specific product (InventoryManager)
-    router.get('/Employee/InventoryManager/InventoryVariations/Get/:productId', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.get('/Employee/InventoryManager/InventoryVariations/Get/:productId', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
             const productId = parseInt(req.params.productId);
@@ -9227,7 +15627,7 @@ module.exports = function(sql, pool) {
     });
 
     // Add new variation
-    router.post('/Employee/Admin/Variations/Add', isAuthenticated, hasEmployeeAccess, variationUpload.single('variationImage'), async (req, res) => {
+    router.post('/Employee/Admin/Variations/Add', isAuthenticated, variationUpload.single('variationImage'), async (req, res) => {
         try {
             await pool.connect();
             const { variationName, color, quantity, productID, isActive } = req.body;
@@ -9273,7 +15673,7 @@ module.exports = function(sql, pool) {
     });
 
     // Edit variation
-    router.post('/Employee/Admin/Variations/Edit', isAuthenticated, hasEmployeeAccess, variationUpload.single('variationImage'), async (req, res) => {
+    router.post('/Employee/Admin/Variations/Edit', isAuthenticated, variationUpload.single('variationImage'), async (req, res) => {
         try {
             await pool.connect();
             const { variationID, variationName, color, quantity, isActive } = req.body;
@@ -9337,14 +15737,14 @@ module.exports = function(sql, pool) {
     });
 
     // Delete variation
-    router.post('/Employee/Admin/Variations/Delete/:variationId', isAuthenticated, hasEmployeeAccess, async (req, res) => {
+    router.post('/Employee/Admin/Variations/Delete/:variationID', isAuthenticated, async (req, res) => {
         try {
             await pool.connect();
-            const variationId = parseInt(req.params.variationId);
+            const variationID = parseInt(req.params.variationID);
             
             await pool.request()
-                .input('variationId', sql.Int, variationId)
-                .query(`DELETE FROM ProductVariations WHERE VariationID = @variationId`);
+                .input('variationID', sql.Int, variationID)
+                .query(`DELETE FROM ProductVariations WHERE VariationID = @variationID`);
             
             res.json({
                 success: true,
@@ -9355,6 +15755,123 @@ module.exports = function(sql, pool) {
             res.json({
                 success: false,
                 message: 'Failed to delete variation.'
+            });
+        }
+    });
+
+    // Get variations for a specific product (Transaction Manager)
+    router.get('/Employee/TransactionManager/TransactionVariations/Get/:productId', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const productId = parseInt(req.params.productId);
+            
+            const result = await pool.request()
+                .input('productId', sql.Int, productId)
+                .query(`
+                    SELECT 
+                        v.VariationID,
+                        v.ProductID,
+                        v.VariationName,
+                        v.Color,
+                        v.Quantity,
+                        v.VariationImageURL,
+                        v.IsActive,
+                        v.CreatedAt,
+                        p.Name as ProductName
+                    FROM ProductVariations v
+                    JOIN Products p ON v.ProductID = p.ProductID
+                    WHERE v.ProductID = @productId
+                    ORDER BY v.CreatedAt DESC
+                `);
+            
+            res.json({ 
+                success: true, 
+                variations: result.recordset 
+            });
+        } catch (err) {
+            console.error('Error fetching variations:', err);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to fetch variations',
+                error: err.message
+            });
+        }
+    });
+
+    // Get variations for a specific product (User Manager)
+    router.get('/Employee/UserManager/UserVariations/Get/:productId', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const productId = parseInt(req.params.productId);
+            
+            const result = await pool.request()
+                .input('productId', sql.Int, productId)
+                .query(`
+                    SELECT 
+                        v.VariationID,
+                        v.ProductID,
+                        v.VariationName,
+                        v.Color,
+                        v.Quantity,
+                        v.VariationImageURL,
+                        v.IsActive,
+                        v.CreatedAt,
+                        p.Name as ProductName
+                    FROM ProductVariations v
+                    JOIN Products p ON v.ProductID = p.ProductID
+                    WHERE v.ProductID = @productId
+                    ORDER BY v.CreatedAt DESC
+                `);
+            
+            res.json({ 
+                success: true, 
+                variations: result.recordset 
+            });
+        } catch (err) {
+            console.error('Error fetching variations:', err);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to fetch variations',
+                error: err.message
+            });
+        }
+    });
+
+    // Get variations for a specific product (Order Support)
+    router.get('/Employee/OrderSupport/OrderVariations/Get/:productId', isAuthenticated, async (req, res) => {
+        try {
+            await pool.connect();
+            const productId = parseInt(req.params.productId);
+            
+            const result = await pool.request()
+                .input('productId', sql.Int, productId)
+                .query(`
+                    SELECT 
+                        v.VariationID,
+                        v.ProductID,
+                        v.VariationName,
+                        v.Color,
+                        v.Quantity,
+                        v.VariationImageURL,
+                        v.IsActive,
+                        v.CreatedAt,
+                        p.Name as ProductName
+                    FROM ProductVariations v
+                    JOIN Products p ON v.ProductID = p.ProductID
+                    WHERE v.ProductID = @productId
+                    ORDER BY v.CreatedAt DESC
+                `);
+            
+            res.json({ 
+                success: true, 
+                variations: result.recordset 
+            });
+        } catch (err) {
+            console.error('Error fetching variations:', err);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Failed to fetch variations',
+                error: err.message
             });
         }
     });

@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to Design Excellence</title>
+    <style>
+        /* Reset styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f8fafc;
+        }
+        
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .email-header {
+            background: linear-gradient(135deg, #F0B21B 0%, #d69e16 100%);
+            padding: 2rem;
+            text-align: center;
+            color: #1f2937;
+        }
+        
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.025em;
+        }
+        
+        .logo-subtitle {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            font-weight: 500;
+        }
+        
+        .email-content {
+            padding: 2rem;
+        }
+        
+        .welcome-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        
+        .welcome-message {
+            font-size: 1rem;
+            color: #4b5563;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+        
+        .features-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+        
+        .feature-item {
+            text-align: center;
+            padding: 1rem;
+            background-color: #f9fafb;
+            border-radius: 8px;
+        }
+        
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .feature-title {
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 0.25rem;
+        }
+        
+        .feature-description {
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+        
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #F0B21B 0%, #d69e16 100%);
+            color: #1f2937;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            text-align: center;
+            margin: 1.5rem 0;
+            transition: transform 0.2s ease;
+        }
+        
+        .cta-button:hover {
+            transform: translateY(-1px);
+        }
+        
+        .email-footer {
+            background-color: #f9fafb;
+            padding: 1.5rem 2rem;
+            text-align: center;
+            border-top: 1px solid #e5e7eb;
+        }
+        
+        .footer-text {
+            font-size: 0.875rem;
+            color: #6b7280;
+            margin-bottom: 0.5rem;
+        }
+        
+        .footer-links {
+            margin-top: 1rem;
+        }
+        
+        .footer-links a {
+            color: #F0B21B;
+            text-decoration: none;
+            margin: 0 0.5rem;
+            font-size: 0.875rem;
+        }
+        
+        .footer-links a:hover {
+            text-decoration: underline;
+        }
+        
+        /* Mobile responsiveness */
+        @media (max-width: 600px) {
+            .email-container {
+                margin: 0;
+                border-radius: 0;
+            }
+            
+            .email-content {
+                padding: 1.5rem;
+            }
+            
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .email-header {
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="email-header">
+            <div class="logo">Design Excellence</div>
+            <div class="logo-subtitle">Premium Furniture & Design Solutions</div>
+        </div>
+        
+        <div class="email-content">
+            <h1 class="welcome-title">Welcome to Design Excellence, {{USER_NAME}}!</h1>
+            
+            <p class="welcome-message">
+                Thank you for joining our community of design enthusiasts. We're excited to help you create beautiful, functional spaces that inspire.
+            </p>
+            
+            <div class="features-grid">
+                <div class="feature-item">
+                    <div class="feature-icon">🏠</div>
+                    <div class="feature-title">Premium Furniture</div>
+                    <div class="feature-description">High-quality pieces for every space</div>
+                </div>
+                
+                <div class="feature-item">
+                    <div class="feature-icon">🎨</div>
+                    <div class="feature-title">3D Customization</div>
+                    <div class="feature-description">Visualize before you buy</div>
+                </div>
+                
+                <div class="feature-item">
+                    <div class="feature-icon">🚚</div>
+                    <div class="feature-title">Fast Delivery</div>
+                    <div class="feature-description">Quick and reliable shipping</div>
+                </div>
+                
+                <div class="feature-item">
+                    <div class="feature-icon">💬</div>
+                    <div class="feature-title">Expert Support</div>
+                    <div class="feature-description">Design consultation available</div>
+                </div>
+            </div>
+            
+            <div style="text-align: center;">
+                <a href="{{DASHBOARD_LINK}}" class="cta-button">Explore Your Dashboard</a>
+            </div>
+            
+            <p style="text-align: center; color: #6b7280; font-size: 0.875rem; margin-top: 2rem;">
+                Need help getting started? Our support team is here to assist you.
+            </p>
+        </div>
+        
+        <div class="email-footer">
+            <p class="footer-text">
+                You're receiving this email because you created an account with Design Excellence.
+            </p>
+            
+            <div class="footer-links">
+                <a href="{{UNSUBSCRIBE_LINK}}">Unsubscribe</a>
+                <a href="{{PRIVACY_LINK}}">Privacy Policy</a>
+                <a href="{{TERMS_LINK}}">Terms of Service</a>
+            </div>
+            
+            <p class="footer-text" style="margin-top: 1rem;">
+                © 2024 Design Excellence. All rights reserved.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

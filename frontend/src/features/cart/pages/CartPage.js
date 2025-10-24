@@ -4,7 +4,9 @@ import { useCart } from '../../../shared/contexts/CartContext';
 import { useCurrency } from '../../../shared/contexts/CurrencyContext';
 import CartItem from '../components/CartItem';
 import ConfirmationModal from '../../../shared/components/ui/ConfirmationModal';
-import ModernPageHeader from '../../../shared/components/layout/ModernPageHeader';
+import PageHeader from '../../../shared/components/layout/PageHeader';
+import { ChristmasHeaderDecoration, ChristmasFooterDecoration } from '../../../shared/components/christmas';
+import '../components/cart.css';
 import { 
   ShoppingCartIcon, 
   TrashIcon, 
@@ -18,31 +20,54 @@ import '../components/cart-discounts.css';
 
 const Cart = () => {
     const navigate = useNavigate();
-    const { items, updateQuantity, removeFromCart, clearCart, getCartTotal } = useCart();
+    const { items, updateQuantity, removeFromCart, clearCart, getTotal, getSubtotal, getItemCount } = useCart();
     const { formatPrice } = useCurrency();
     const [showClearConfirmation, setShowClearConfirmation] = useState(false);
     const [showRemoveModal, setShowRemoveModal] = useState(false);
     const [itemToRemove, setItemToRemove] = useState(null);
+    const [currentTheme, setCurrentTheme] = useState('default');
 
     // Track checked state for each cart item
     const [checkedItems, setCheckedItems] = useState(() =>
       Object.fromEntries(items.map(item => [item.id, true]))
     );
 
-    // Update checked state if items change (e.g., add/remove)
-    React.useEffect(() => {
-      setCheckedItems(prev => {
-        const newChecked = { ...prev };
-        items.forEach(item => {
-          if (!(item.id in newChecked)) newChecked[item.id] = true;
+    // Update checked state when items change
+    useEffect(() => {
+        // Update checked state for new items
+        setCheckedItems(prev => {
+            const newChecked = { ...prev };
+            items.forEach(item => {
+                if (!(item.id in newChecked)) {
+                    newChecked[item.id] = true;
+                }
+            });
+            return newChecked;
         });
-        // Remove unchecked items that no longer exist
-        Object.keys(newChecked).forEach(id => {
-          if (!items.find(item => item.id === id)) delete newChecked[id];
-        });
-        return newChecked;
-      });
     }, [items]);
+
+    // Detect current theme from body class
+    useEffect(() => {
+        const detectTheme = () => {
+            const bodyClasses = document.body.className;
+            if (bodyClasses.includes('theme-christmas')) {
+                setCurrentTheme('christmas');
+            } else if (bodyClasses.includes('theme-dark')) {
+                setCurrentTheme('dark');
+            } else {
+                setCurrentTheme('default');
+            }
+        };
+
+        // Initial detection
+        detectTheme();
+
+        // Listen for theme changes
+        const observer = new MutationObserver(detectTheme);
+        observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
+        return () => observer.disconnect();
+    }, []);
 
     const handleCheck = (id, checked) => {
       setCheckedItems(prev => ({ ...prev, [id]: checked }));
@@ -74,6 +99,7 @@ const Cart = () => {
     const checkedCartItems = items.filter(item => checkedItems[item.id]);
     const subtotal = checkedCartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const total = subtotal;
+    const totalQuantity = checkedCartItems.reduce((sum, item) => sum + item.quantity, 0);
 
     // Handler for checkout button
     const handleProceedToCheckout = () => {
@@ -94,11 +120,9 @@ const Cart = () => {
                             <p>Looks like you haven't added any items to your cart yet.</p>
                             <div className="empty-cart-actions">
                                 <Link to="/products" className="btn btn-primary btn-large">
-                                    <PlusIcon size={16} color="#ffffff" style={{ marginRight: '8px' }} />
                                     Continue Shopping
                                 </Link>
                                 <Link to="/" className="btn btn-secondary">
-                                    <ArrowLeftIcon size={16} color="#6b7280" style={{ marginRight: '8px' }} />
                                     Back to Home
                                 </Link>
                             </div>
@@ -112,7 +136,8 @@ const Cart = () => {
     return (
         <div className="cart-page">
             <div className="container">
-                <ModernPageHeader
+                {currentTheme === 'christmas' && <ChristmasHeaderDecoration />}
+                <PageHeader
                     breadcrumbs={[
                         { label: 'Home', href: '/' },
                         { label: 'Shopping Cart' }
@@ -129,9 +154,15 @@ const Cart = () => {
                                 className="clear-cart-btn"
                                 onClick={() => setShowClearConfirmation(true)}
                             >
-                                <TrashIcon size={16} color="#ef4444" style={{ marginRight: '6px' }} />
                                 Clear All
                             </button>
+                        </div>
+
+                        <div className="cart-table-header">
+                            <div className="header-product">Product</div>
+                            <div className="header-price">Price</div>
+                            <div className="header-quantity">Quantity</div>
+                            <div className="header-subtotal">Subtotal</div>
                         </div>
 
                         <div className="cart-items-list">
@@ -153,7 +184,6 @@ const Cart = () => {
 
                         <div className="cart-actions-bottom">
                             <Link to="/products" className="btn btn-secondary">
-                                <ArrowLeftIcon size={16} color="#6b7280" style={{ marginRight: '8px' }} />
                                 Continue Shopping
                             </Link>
                         </div>
@@ -161,11 +191,10 @@ const Cart = () => {
 
                     <div className="cart-sidebar-summary">
                         <div className="cart-summary-card">
-                            <h3>Order Summary</h3>
                             
                             <div className="summary-details">
                                 <div className="summary-row total">
-                                    <span>Total ({checkedCartItems.length} items):</span>
+                                    <span>Total ({totalQuantity} {totalQuantity === 1 ? 'item' : 'items'}):</span>
                                     <span>{formatPrice(total)}</span>
                                 </div>
                             </div>
@@ -176,17 +205,11 @@ const Cart = () => {
                                     onClick={handleProceedToCheckout}
                                     disabled={items.filter(item => checkedItems[item.id]).length === 0}
                                 >
-                                    <CheckCircleIcon size={16} color="#ffffff" style={{ marginRight: '8px' }} />
                                     Proceed to Checkout
                                 </button>
 
                                 <div className="payment-methods">
-                                    <p>We accept:</p>
-                                    <div className="payment-icons">
-                                        <CreditCardIcon size={20} color="#6b7280" />
-                                        <CreditCardIcon size={20} color="#6b7280" />
-                                        <CreditCardIcon size={20} color="#6b7280" />
-                                    </div>
+                                    <p>We accept all major credit cards</p>
                                 </div>
                             </div>
                         </div>
@@ -218,6 +241,7 @@ const Cart = () => {
                 cancelText="Cancel"
                 type="warning"
             />
+            {currentTheme === 'christmas' && <ChristmasFooterDecoration />}
         </div>
     );
 };

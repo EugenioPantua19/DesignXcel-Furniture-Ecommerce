@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Manager Dashboard - Design Excellence</title>
     <link rel="stylesheet" href="/css/Employee/Admin/AdminIndexStyles.css">
+    <link rel="stylesheet" href="/css/dark-mode.css">
     <style>
         .sidebar {
             display: flex;
@@ -139,7 +140,7 @@
         .metric-card {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 25px;
+            padding: 15px;
             border-radius: 12px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
             text-align: center;
@@ -420,6 +421,7 @@
             z-index: 10;
         }
 
+
         /* Dashboard Container Styles */
         .dashboard-container {
             display: flex;
@@ -430,7 +432,6 @@
         .main-content {
             flex: 1;
             padding: 20px;
-            margin-left: 250px;
         }
 
         .header {
@@ -445,52 +446,6 @@
             background: transparent;
         }
 
-        /* Sidebar Styles */
-        .sidebar-header {
-            padding: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            text-align: center;
-            border-bottom: 1px solid #ddd;
-        }
-
-        .sidebar-header h3 {
-            margin: 0;
-            font-size: 1.2em;
-        }
-
-        .sidebar-section-label {
-            padding: 10px 20px;
-            background-color: #f8f9fa;
-            color: #495057;
-            font-weight: bold;
-            border-bottom: 1px solid #dee2e6;
-            margin: 0;
-        }
-
-        .sidebar-submenu {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-
-        .sidebar-submenu li {
-            margin: 0;
-        }
-
-        .sidebar-submenu a {
-            display: block;
-            padding: 12px 20px;
-            color: #495057;
-            text-decoration: none;
-            border-bottom: 1px solid #f1f3f4;
-            transition: background-color 0.3s;
-        }
-
-        .sidebar-submenu a:hover {
-            background-color: #e9ecef;
-            color: #212529;
-        }
     </style>
 </head>
 <body>
@@ -502,66 +457,59 @@
             <ul class="sidebar-menu">
                 <li><a href="/Employee/UserManager">Dashboard</a></li>
                 
-                <!-- User Section -->
-                <li>
-                    <div class="sidebar-section-label">User</div>
-                    <ul class="sidebar-submenu" style="display:block;">
-                        <li><a href="/Employee/UserManager/UserProducts">Products</a></li>
-                        <li><a href="/Employee/UserManager/UserVariations">Variations</a></li>
-                        <li><a href="/Employee/UserManager/UserMaterials">Raw Materials</a></li>
-                        <li><a href="/Employee/UserManager/UserAlerts">Alerts</a></li>
-                        <li><a href="/Employee/UserManager/UserArchived">Archived Items</a></li>
-                    </ul>
-                </li>
+                <!-- Inventory Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">Inventory</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/UserManager/UserProducts">Products</a></li>
+                    <li><a href="/Employee/UserManager/UserVariations">Variations</a></li>
+                    <li><a href="/Employee/UserManager/UserMaterials">Raw Materials</a></li>
+                    <li><a href="/Employee/UserManager/UserAlerts">Alerts</a></li>
+                    <li><a href="/Employee/UserManager/UserArchived">Archived Items</a></li>
+                </ul>
                 
                 <!-- Transactions Section -->
-                <li>
-                    <div class="sidebar-section-label">Transactions</div>
-                    <ul class="sidebar-submenu" style="display:block;">
-                        <li><a href="/Employee/UserManager/UserRates">Delivery Rates</a></li>
-                        <li><a href="/Employee/UserManager/UserWalkIn">Walk In</a></li>
-                        <li><a href="/Employee/UserManager/UserOrdersPending">Orders Pending</a></li>
-                        <li><a href="/Employee/UserManager/UserOrdersProcessing">Orders Processing</a></li>
-                        <li><a href="/Employee/UserManager/UserOrdersShipping">Orders Shipping</a></li>
-                        <li><a href="/Employee/UserManager/UserOrdersDelivery">Orders Delivery</a></li>
-                        <li><a href="/Employee/UserManager/UserOrdersReceive">Orders Receive</a></li>
-                        <li><a href="/Employee/UserManager/UserCancelledOrders">Cancelled Orders</a></li>
-                        <li><a href="/Employee/UserManager/UserCompletedOrders">Completed Orders</a></li>
-                    </ul>
-                </li>
+                <li class="sidebar-section-label" style="font-weight:normal;">Transactions</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/UserManager/UserRates">Delivery Rates</a></li>
+                    <li><a href="/Employee/UserManager/UserWalkIn">Walk In</a></li>
+                </ul>
+                
+                <!-- Orders Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">Orders Section</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/UserManager/UserOrdersPending">Orders Pending</a></li>
+                    <li><a href="/Employee/UserManager/UserOrdersProcessing">Orders Processing</a></li>
+                    <li><a href="/Employee/UserManager/UserOrdersShipping">Orders Shipping</a></li>
+                    <li><a href="/Employee/UserManager/UserOrdersDelivery">Orders Delivery</a></li>
+                    <li><a href="/Employee/UserManager/UserOrdersReceive">Orders Receive</a></li>
+                    <li><a href="/Employee/UserManager/UserCancelledOrders">Cancelled Orders</a></li>
+                    <li><a href="/Employee/UserManager/UserCompletedOrders">Completed Orders</a></li>
+                </ul>
                 
                 <!-- User Management Section -->
-                <li>
-                    <div class="sidebar-section-label">User Management</div>
-                    <ul class="sidebar-submenu" style="display:block;">
-                        <li><a href="/Employee/UserManager/UserManageUsers">Manage Users</a></li>
-                    </ul>
-                </li>
+                <li class="sidebar-section-label" style="font-weight:normal;">User Management</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/UserManager/UserManageUsers">Manage Users</a></li>
+                </ul>
                 
                 <!-- Customer Reviews Section -->
-                <li>
-                    <div class="sidebar-section-label">Customer Reviews</div>
-                    <ul class="sidebar-submenu" style="display:block;">
-                        <li><a href="/Employee/UserManager/UserReviews">Reviews</a></li>
-                    </ul>
-                </li>
+                <li class="sidebar-section-label" style="font-weight:normal;">Customer Reviews</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/UserManager/UserReviews">Reviews</a></li>
+                </ul>
                 
                 <!-- Support & Communication Section -->
-                <li>
-                    <div class="sidebar-section-label">Support & Communication</div>
-                    <ul class="sidebar-submenu" style="display:block;">
-                        <li><a href="/Employee/UserManager/UserChatSupport">Chat Support</a></li>
-                    </ul>
-                </li>
+                <li class="sidebar-section-label" style="font-weight:normal;">Support & Communication</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/UserManager/UserChatSupport">Chat Support</a></li>
+                </ul>
                 
                 <!-- Content & System Section -->
-                <li>
-                    <div class="sidebar-section-label">Content & System</div>
-                    <ul class="sidebar-submenu" style="display:block;">
-                        <li><a href="/Employee/UserManager/UserCMS">Content Management</a></li>
-                        <li><a href="/Employee/UserManager/UserLogs">Activity Logs</a></li>
-                    </ul>
-                </li>
+                <li class="sidebar-section-label" style="font-weight:normal;">Content & System</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/UserManager/UserCMS">Content Management</a></li>
+                    <li><a href="/Employee/UserManager/UserLogs">Activity Logs</a></li>
+                </ul>
             </ul>
             <div class="logout-section">
                 <a href="/logout" class="logout-button" onclick="handleLogout(event)">Logout</a>
@@ -599,7 +547,7 @@
                     <div class="metric-card products">
                         <span class="metric-number" id="totalProducts">-</span>
                         <div class="metric-label">Total Products</div>
-                        <div class="metric-description">Active products in system</div>
+                        <div class="metric-description">Active products in transaction</div>
                     </div>
                     
                     <div class="metric-card materials">
@@ -851,7 +799,70 @@
         // Load dashboard data when page loads
         document.addEventListener('DOMContentLoaded', function() {
             loadDashboardData();
+            checkUserPermissions();
         });
+
+        // Check user permissions for each section
+        async function checkUserPermissions() {
+            try {
+                const response = await fetch('/api/user-permissions');
+                const data = await response.json();
+                
+                if (data.success && data.permissions) {
+                    const permissions = data.permissions;
+                    
+                    // Check each sidebar link and hide/disable based on permissions
+                    const sidebarLinks = {
+                        '/Employee/UserManager/UserProducts': 'inventory_products',
+                        '/Employee/UserManager/UserVariations': 'inventory_variations',
+                        '/Employee/UserManager/UserMaterials': 'inventory_materials',
+                        '/Employee/UserManager/UserAlerts': 'inventory_alerts',
+                        '/Employee/UserManager/UserArchived': 'inventory_archived',
+                        '/Employee/UserManager/UserRates': 'transactions_delivery_rates',
+                        '/Employee/UserManager/UserWalkIn': 'transactions_walk_in',
+                        '/Employee/UserManager/UserOrdersPending': 'orders_orders_pending',
+                        '/Employee/UserManager/UserOrdersProcessing': 'orders_orders_processing',
+                        '/Employee/UserManager/UserOrdersShipping': 'orders_orders_shipping',
+                        '/Employee/UserManager/UserOrdersDelivery': 'orders_orders_delivery',
+                        '/Employee/UserManager/UserOrdersReceive': 'orders_orders_receive',
+                        '/Employee/UserManager/UserCancelledOrders': 'orders_orders_cancelled',
+                        '/Employee/UserManager/UserCompletedOrders': 'orders_orders_completed',
+                        '/Employee/UserManager/UserManageUsers': 'users_manage_users',
+                        '/Employee/UserManager/UserReviews': 'reviews_reviews',
+                        '/Employee/UserManager/UserChatSupport': 'chat_chat_support',
+                        '/Employee/UserManager/UserCMS': 'content_cms',
+                        '/Employee/UserManager/UserLogs': 'content_logs'
+                    };
+                    
+                    // Process each sidebar link
+                    Object.entries(sidebarLinks).forEach(([url, permissionKey]) => {
+                        const hasAccess = permissions[permissionKey] && permissions[permissionKey].CanAccess;
+                        const linkElement = document.querySelector(`a[href="${url}"]`);
+                        
+                        if (linkElement) {
+                            if (!hasAccess) {
+                                // Replace link with disabled state or redirect to forbidden
+                                linkElement.style.color = '#ccc';
+                                linkElement.style.cursor = 'not-allowed';
+                                linkElement.addEventListener('click', function(e) {
+                                    e.preventDefault();
+                                    window.location.href = '/Employee/Forbidden';
+                                });
+                            } else {
+                                // Ensure link is fully enabled
+                                linkElement.style.color = '';
+                                linkElement.style.cursor = 'pointer';
+                                linkElement.style.opacity = '1';
+                                linkElement.style.pointerEvents = 'auto';
+                            }
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Error checking user permissions:', error);
+                // On error, allow access (fail open for now)
+            }
+        }
 
         // Custom Logout Modal Logic
         const logoutConfirmModal = document.getElementById('logoutConfirmModal');
@@ -980,6 +991,7 @@
     <!-- Include AdminAlerts.js for popup alerts -->
     
     <!-- Admin Session Handler -->
+        <script src="/js/dark-mode.js"></script>
 </body>
 </html>
 

@@ -26,7 +26,6 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [token, setToken] = useState(null);
-    const [permissions, setPermissions] = useState({});
     const [sessionId, setSessionId] = useState(null);
 
     /**
@@ -66,11 +65,10 @@ export const AuthProvider = ({ children }) => {
         try {
             const response = await apiClient.get('/api/auth/status');
             
-            if (response.data.success && response.data.authenticated) {
-                const { user: userData, permissions: userPermissions, sessionId: userSessionId } = response.data;
+            if (response.success && response.authenticated) {
+                const { user: userData, sessionId: userSessionId } = response;
                 
                 setUser(userData);
-                setPermissions(userPermissions || {});
                 setSessionId(userSessionId);
                 
                 // Update localStorage if we have user data
@@ -108,15 +106,21 @@ export const AuthProvider = ({ children }) => {
                 rememberMe
             });
 
-            if (response.data.success) {
-                const { user: userData, token: authToken, sessionId: userSessionId } = response.data;
+            if (response.success) {
+                const { user: userData, tokens, sessionId: userSessionId } = response;
                 
                 setUser(userData);
                 setSessionId(userSessionId);
                 
-                if (authToken) {
-                    setToken(authToken);
-                    localStorage.setItem('authToken', authToken);
+                // Store JWT tokens if available
+                if (tokens) {
+                    if (tokens.accessToken) {
+                        setToken(tokens.accessToken);
+                        localStorage.setItem('accessToken', tokens.accessToken);
+                    }
+                    if (tokens.refreshToken) {
+                        localStorage.setItem('refreshToken', tokens.refreshToken);
+                    }
                 }
                 
                 localStorage.setItem('userData', JSON.stringify(userData));
@@ -129,14 +133,14 @@ export const AuthProvider = ({ children }) => {
             
             return {
                 success: false,
-                error: response.data.message || 'Login failed'
+                error: response.message || 'Login failed'
             };
             
         } catch (error) {
             console.error('Customer login error:', error);
             
-            const errorMessage = error.response?.data?.message || error.message || 'Login failed';
-            const errorCode = error.response?.data?.code;
+            const errorMessage = error.message || 'Login failed';
+            const errorCode = error.code;
             
             return {
                 success: false,
@@ -158,14 +162,20 @@ export const AuthProvider = ({ children }) => {
             
             const response = await apiClient.post('/api/auth/customer/register', userData);
             
-            if (response.data.success) {
-                const { user: newUser, token: authToken } = response.data;
+            if (response.success) {
+                const { user: newUser, tokens } = response;
                 
                 setUser(newUser);
                 
-                if (authToken) {
-                    setToken(authToken);
-                    localStorage.setItem('authToken', authToken);
+                // Store JWT tokens if available
+                if (tokens) {
+                    if (tokens.accessToken) {
+                        setToken(tokens.accessToken);
+                        localStorage.setItem('accessToken', tokens.accessToken);
+                    }
+                    if (tokens.refreshToken) {
+                        localStorage.setItem('refreshToken', tokens.refreshToken);
+                    }
                 }
                 
                 localStorage.setItem('userData', JSON.stringify(newUser));
@@ -178,7 +188,7 @@ export const AuthProvider = ({ children }) => {
             
             return {
                 success: false,
-                error: response.data.message || 'Registration failed'
+                error: response.message || 'Registration failed'
             };
             
         } catch (error) {
@@ -186,8 +196,8 @@ export const AuthProvider = ({ children }) => {
             
             return {
                 success: false,
-                error: error.response?.data?.message || error.message || 'Registration failed',
-                code: error.response?.data?.code
+                error: error.message || 'Registration failed',
+                code: error.code
             };
         } finally {
             setLoading(false);
@@ -215,7 +225,6 @@ export const AuthProvider = ({ children }) => {
     const clearAuthData = useCallback(() => {
         setUser(null);
         setToken(null);
-        setPermissions({});
         setSessionId(null);
         localStorage.removeItem('authToken');
         localStorage.removeItem('userData');
@@ -292,12 +301,20 @@ export const AuthProvider = ({ children }) => {
      */
     const refreshToken = useCallback(async () => {
         try {
-            const response = await apiClient.post('/api/auth/refresh-token');
+            const storedRefreshToken = localStorage.getItem('refreshToken');
             
-            if (response.data.success) {
-                const newToken = response.data.token;
+            if (!storedRefreshToken) {
+                throw new Error('Refresh token is required');
+            }
+            
+            const response = await apiClient.post('/api/auth/refresh-token', {
+                refreshToken: storedRefreshToken
+            });
+            
+            if (response.success) {
+                const newToken = response.accessToken;
                 setToken(newToken);
-                localStorage.setItem('authToken', newToken);
+                localStorage.setItem('accessToken', newToken);
                 
                 return {
                     success: true,
@@ -307,7 +324,7 @@ export const AuthProvider = ({ children }) => {
             
             return {
                 success: false,
-                error: response.data.message || 'Token refresh failed'
+                error: response.message || 'Token refresh failed'
             };
             
         } catch (error) {
@@ -350,10 +367,6 @@ export const AuthProvider = ({ children }) => {
      */
     const getUserRole = () => user?.role || null;
 
-    /**
-     * Get user's permissions
-     */
-    const getUserPermissions = () => permissions;
 
     // Initialize auth on mount
     useEffect(() => {
@@ -362,7 +375,7 @@ export const AuthProvider = ({ children }) => {
 
     // Setup axios interceptors for token management
     useEffect(() => {
-        const requestInterceptor = apiClient.interceptors.request.use(
+        const requestInterceptor = apiClient.client.interceptors.request.use(
             (config) => {
                 if (token) {
                     config.headers.Authorization = `Bearer ${token}`;
@@ -372,7 +385,7 @@ export const AuthProvider = ({ children }) => {
             (error) => Promise.reject(error)
         );
 
-        const responseInterceptor = apiClient.interceptors.response.use(
+        const responseInterceptor = apiClient.client.interceptors.response.use(
             (response) => response,
             async (error) => {
                 if (error.response?.status === 401 && !error.config._retry) {
@@ -384,7 +397,7 @@ export const AuthProvider = ({ children }) => {
                     if (refreshResult.success) {
                         // Retry the original request with new token
                         error.config.headers.Authorization = `Bearer ${refreshResult.token}`;
-                        return apiClient.request(error.config);
+                        return apiClient.client.request(error.config);
                     } else {
                         // Refresh failed, logout user
                         clearAuthData();
@@ -397,10 +410,11 @@ export const AuthProvider = ({ children }) => {
 
         // Cleanup interceptors
         return () => {
-            apiClient.interceptors.request.eject(requestInterceptor);
-            apiClient.interceptors.response.eject(responseInterceptor);
+            apiClient.client.interceptors.request.eject(requestInterceptor);
+            apiClient.client.interceptors.response.eject(responseInterceptor);
         };
     }, [token, refreshToken, clearAuthData]);
+
 
     // Context value
     const value = {
@@ -408,7 +422,6 @@ export const AuthProvider = ({ children }) => {
         user,
         token,
         loading,
-        permissions,
         sessionId,
         
         // Actions
@@ -425,8 +438,7 @@ export const AuthProvider = ({ children }) => {
         isCustomer,
         isEmployee,
         isAdmin,
-        getUserRole,
-        getUserPermissions
+        getUserRole
     };
 
     return (

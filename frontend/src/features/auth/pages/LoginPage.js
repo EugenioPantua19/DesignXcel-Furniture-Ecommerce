@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import { usePermissions } from '../hooks/usePermissions';
+import { useAuth } from '../../../shared/hooks/useAuth';
 import PasswordStrengthIndicator from '../components/PasswordStrengthIndicator';
 import Captcha from '../components/Captcha';
+import TermsModal from '../components/TermsModal';
+import SignupSuccessModal from '../components/SignupSuccessModal';
 import { validatePassword } from '../../../shared/utils/validation/passwordValidation';
+import { Bars } from 'react-loader-spinner';
 import './auth.css';
 import apiClient from '../../../shared/services/api/apiClient';
 
@@ -17,13 +19,13 @@ const Login = () => {
     // Visual section data - fallback data in case API fails
     const fallbackVisualData = [
         {
-            backgroundImage: '/img/login-bg.jpg',
+            backgroundImage: `${process.env.REACT_APP_API_URL || ''}/img/login-bg.jpg`,
             testimonial: "Design Excellence transformed our office space into a modern, functional environment that boosts productivity and employee satisfaction.",
             author: "Cameron Williamson",
             role: "Interior Designer"
         },
         {
-            backgroundImage: '/img/pexels-staircase.jpg',
+            backgroundImage: `${process.env.REACT_APP_API_URL || ''}/img/pexels-staircase.jpg`,
             testimonial: "The attention to detail and quality craftsmanship in every piece we've purchased has exceeded our expectations.",
             author: "Annette Black",
             role: "Architecture"
@@ -45,6 +47,12 @@ const Login = () => {
     const [error, setError] = useState('');
     const [passwordValidation, setPasswordValidation] = useState(null);
     
+    // Modal states
+    const [showTermsModal, setShowTermsModal] = useState(false);
+    const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+    const [showSignupSuccessModal, setShowSignupSuccessModal] = useState(false);
+    const [signupUserData, setSignupUserData] = useState(null);
+    
     // --- OTP registration states ---
     const [registerStep, setRegisterStep] = useState(1); // 1=email, 2=otp, 3=full
     const [otp, setOtp] = useState('');
@@ -58,7 +66,7 @@ const Login = () => {
     const [captchaVerified, setCaptchaVerified] = useState(false);
     // ---
     
-    const { login, register } = useAuth();
+    const { loginCustomer, registerCustomer } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -89,8 +97,9 @@ const Login = () => {
                 const response = await apiClient.get('/api/testimonials');
                 if (response && response.length > 0) {
                     // Transform backend data to match our visual data format
+                    const apiBase = process.env.REACT_APP_API_URL || '';
                     const transformedTestimonials = response.map((testimonial, index) => ({
-                        backgroundImage: index % 2 === 0 ? '/img/login-bg.jpg' : '/img/pexels-staircase.jpg',
+                        backgroundImage: index % 2 === 0 ? `${apiBase}/img/login-bg.jpg` : `${apiBase}/img/pexels-staircase.jpg`,
                         testimonial: testimonial.text,
                         author: testimonial.name,
                         role: testimonial.profession,
@@ -162,8 +171,21 @@ const Login = () => {
 
         try {
             if (isLogin) {
-                const result = await login(formData.email, formData.password, rememberMe);
+                const result = await loginCustomer(formData.email, formData.password, rememberMe);
                 if (result.success) {
+                    // Check if user has guest cart items
+                    const guestCart = localStorage.getItem('shopping-cart-guest');
+                    let hasGuestCartItems = false;
+                    
+                    if (guestCart) {
+                        try {
+                            const guestCartData = JSON.parse(guestCart);
+                            hasGuestCartItems = guestCartData.items && guestCartData.items.length > 0;
+                        } catch (error) {
+                            console.error('Error checking guest cart:', error);
+                        }
+                    }
+
                     // Determine redirect destination based on role and intended destination
                     let redirectTo = from;
 
@@ -174,10 +196,13 @@ const Login = () => {
                         } else {
                             redirectTo = '/'; // Redirect customers away from admin
                         }
-                    } else if (from === '/') {
-                        // Default redirect based on role
+                    } else if (from === '/' || from === '/login') {
+                        // Default redirect based on role and guest cart
                         if (result.user.role === 'Admin' || result.user.role === 'Employee') {
                             redirectTo = '/admin';
+                        } else if (hasGuestCartItems) {
+                            // If user has guest cart items, redirect to cart
+                            redirectTo = '/cart';
                         } else {
                             redirectTo = '/';
                         }
@@ -233,12 +258,14 @@ const Login = () => {
                     fullName: (formData.firstName + ' ' + formData.lastName).trim(),
                     email: formData.email,
                     phoneNumber: formData.phone,
-                    password: formData.password
+                    password: formData.password,
+                    confirmPassword: formData.confirmPassword
                 };
-                const result = await register(registrationData);
+                const result = await registerCustomer(registrationData);
                 if (result.success) {
-                    // New users are customers by default, redirect to home
-                    navigate('/', { replace: true });
+                    // Store user data and show success modal
+                    setSignupUserData(result.user);
+                    setShowSignupSuccessModal(true);
                 } else {
                     setError(result.error);
                 }
@@ -253,6 +280,14 @@ const Login = () => {
     // --- Captcha handlers ---
     const handleCaptchaVerified = () => {
         setCaptchaVerified(true);
+    };
+
+    // --- Signup success modal handlers ---
+    const handleSignupSuccessClose = () => {
+        setShowSignupSuccessModal(false);
+        setSignupUserData(null);
+        // Navigate to home page after modal closes
+        navigate('/', { replace: true });
     };
 
     const handleCaptchaReset = () => {
@@ -273,7 +308,8 @@ const Login = () => {
         setOtpLoading(true);
         setOtpError('');
         try {
-            const res = await fetch('/api/auth/send-otp', {
+            const apiBase = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+            const res = await fetch(`${apiBase}/api/auth/send-otp`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: formData.email })
@@ -284,7 +320,12 @@ const Login = () => {
                 setRegisterStep(2);
                 setPasswordValidation(null); // Reset password validation when moving to next step
             } else {
-                setOtpError(data.message || 'Failed to send OTP');
+                // Handle specific error cases
+                if (data.code === 'EMAIL_ALREADY_EXISTS') {
+                    setOtpError('This email is already registered. Please use a different email or try logging in instead.');
+                } else {
+                    setOtpError(data.message || 'Failed to send OTP');
+                }
             }
         } catch (err) {
             setOtpError('Failed to send OTP');
@@ -298,7 +339,8 @@ const Login = () => {
         setOtpLoading(true);
         setOtpError('');
         try {
-            const res = await fetch('/api/auth/verify-otp', {
+            const apiBase = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+            const res = await fetch(`${apiBase}/api/auth/verify-otp`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: formData.email, otp })
@@ -414,7 +456,20 @@ const Login = () => {
                                                         {otpLoading ? 'Sending OTP...' : 
                                                          !captchaVerified ? 'Complete Security Verification' : 'Send OTP'}
                                                     </button>
-                                                    {otpError && <div className="error-message-modern"><span>{otpError}</span></div>}
+                                                    {otpError && (
+                                                        <div className="error-message-modern">
+                                                            <span>{otpError}</span>
+                                                            {otpError.includes('already registered') && (
+                                                                <button 
+                                                                    type="button"
+                                                                    onClick={() => setIsLogin(true)}
+                                                                    className="error-login-link"
+                                                                >
+                                                                    Click here to login instead
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             )}
                                             {/* Step 2: OTP input and verify */}
@@ -582,7 +637,13 @@ const Login = () => {
                                             required
                                         />
                                         <label htmlFor="acceptTerms">
-                                            Agree with <a href="/terms">Terms & Condition</a> and <a href="/privacy">Privacy Policy</a>
+                                            Agree with <span 
+                                                className="terms-link" 
+                                                onClick={() => setShowTermsModal(true)}
+                                            >Terms & Condition</span> and <span 
+                                                className="terms-link" 
+                                                onClick={() => setShowPrivacyModal(true)}
+                                            >Privacy Policy</span>
                                         </label>
                                     </div>
                                 </>
@@ -658,11 +719,12 @@ const Login = () => {
                             {/* Submit Button */}
                             <button type="submit" className="auth-submit-btn-new" disabled={loading || (!isLogin && registerStep !== 3) || (!isLogin && !acceptedTerms)}>
                                 {loading ? (
-                                    <div className="loading-spinner-new"></div>
+                                    <Bars color="#ffffff" height={20} width={20} />
                                 ) : (
                                     isLogin ? 'Sign In' : 'Sign Up'
                                 )}
                             </button>
+
                         </form>
 
                         {/* Sign Up Link */}
@@ -747,7 +809,7 @@ const Login = () => {
                             {testimonialsLoading ? (
                                 <div className="testimonial-overlay">
                                     <div className="loading-spinner">
-                                        <div className="spinner"></div>
+                                        <Bars color="#F0B21B" height={80} width={80} />
                                         <p>Loading testimonials...</p>
                                     </div>
                                 </div>
@@ -799,6 +861,27 @@ const Login = () => {
                     </div>
                 </div>
             </div>
+            
+            {/* Terms and Conditions Modal */}
+            <TermsModal 
+                isOpen={showTermsModal}
+                onClose={() => setShowTermsModal(false)}
+                type="terms"
+            />
+            
+            {/* Privacy Policy Modal */}
+            <TermsModal 
+                isOpen={showPrivacyModal}
+                onClose={() => setShowPrivacyModal(false)}
+                type="privacy"
+            />
+            
+            {/* Signup Success Modal */}
+            <SignupSuccessModal 
+                isOpen={showSignupSuccessModal}
+                onClose={handleSignupSuccessClose}
+                userData={signupUserData}
+            />
         </div>
     );
 };

@@ -1,6 +1,5 @@
 // Public Routes - Accessible to all users
 import React from 'react';
-import { Route } from 'react-router-dom';
 
 // App-level pages
 import Home from '../Home';
@@ -10,8 +9,12 @@ import Contact from '../Contact';
 
 // Feature pages
 import { LoginPage } from '../../features/auth/pages/LoginPage';
+import { ForgotPasswordPage } from '../../features/auth/pages/ForgotPasswordPage';
+import { ResetPasswordPage } from '../../features/auth/pages/ResetPasswordPage';
 import { ProductCatalogPage, ProductDetailPage } from '../../features/products';
-import { CustomFurniturePage, ThreeDCustomizationPage } from '../../features/customization';
+import { ThreeDProductsFurniturePage, ThreeDProductsPage } from '../../features/3d-products';
+import { CartPage } from '../../features/cart';
+import { WishlistPage } from '../../features/wishlist';
 
 const publicRoutes = [
   {
@@ -35,6 +38,14 @@ const publicRoutes = [
     element: <LoginPage />
   },
   {
+    path: '/forgot-password',
+    element: <ForgotPasswordPage />
+  },
+  {
+    path: '/reset-password',
+    element: <ResetPasswordPage />
+  },
+  {
     path: '/products',
     element: <ProductCatalogPage />
   },
@@ -47,12 +58,20 @@ const publicRoutes = [
     element: <ProductDetailPage />
   },
   {
-    path: '/custom-furniture',
-    element: <CustomFurniturePage />
+    path: '/3d-products-furniture',
+    element: <ThreeDProductsFurniturePage />
   },
   {
-    path: '/3d-customization/:id',
-    element: <ThreeDCustomizationPage />
+    path: '/3d-products/:id',
+    element: <ThreeDProductsPage />
+  },
+  {
+    path: '/cart',
+    element: <CartPage />
+  },
+  {
+    path: '/wishlist',
+    element: <WishlistPage />
   }
 ];
 

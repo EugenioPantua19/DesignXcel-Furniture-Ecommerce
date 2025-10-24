@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../auth/hooks/useAuth';
+import { useAuth } from '../../../shared/hooks/useAuth';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useCurrency } from '../../../shared/contexts/CurrencyContext';
+import { Bars } from 'react-loader-spinner';
 import ProfileManagement from '../components/ProfileManagement';
 import AddressManagement from '../components/AddressManagement';
 import OrderHistory from '../components/OrderHistory';
-import AccountPreferences from '../components/AccountPreferences';
+// import AccountPreferences from '../components/AccountPreferences'; // Unused
 import SecuritySettings from '../components/SecuritySettings';
 import apiClient from '../../../shared/services/api/apiClient';
 import { 
@@ -14,18 +15,18 @@ import {
   PackageIcon, 
   CreditCardIcon, 
   LockIcon,
-  OrdersIcon,
-  DollarIcon,
+  MenuIcon,
+  // OrdersIcon, // Unused
+  // DollarIcon, // Unused
   ClockIcon,
   CheckCircleIcon,
   ShoppingBagIcon,
   LogoutIcon,
   ArrowRightIcon,
   EyeIcon,
-  TruckIcon,
-  SpinnerIcon
+  TruckIcon
 } from '../../../shared/components/ui/SvgIcons';
-import { PageLoader, LoadingSpinner } from '../../../shared/components/ui';
+import { PageLoader } from '../../../shared/components/ui';
 import '../components/account.css';
 
 const Account = () => {
@@ -42,7 +43,7 @@ const Account = () => {
     });
     const [recentOrders, setRecentOrders] = useState([]);
     const [statsLoading, setStatsLoading] = useState(true);
-    const [orderDetailsModal, setOrderDetailsModal] = useState({ open: false, order: null });
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     // Handle URL parameter changes for tab switching
     useEffect(() => {
@@ -64,7 +65,7 @@ const Account = () => {
                 
                 try {
                     setStatsLoading(true);
-                    const [ordersResponse, addressesResponse] = await Promise.all([
+                    const [ordersResponse] = await Promise.all([
                     apiClient.get('/api/customer/orders-with-items'),
                     apiClient.get('/api/customer/addresses')
                 ]);
@@ -72,7 +73,13 @@ const Account = () => {
                 if (ordersResponse.success && ordersResponse.orders) {
                     const orders = ordersResponse.orders;
                     const totalOrders = orders.length;
-                    const totalSpent = orders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
+                    
+                    // Fix total spent calculation - ensure we're getting numeric values
+                    const totalSpent = orders.reduce((sum, order) => {
+                        const amount = parseFloat(order.totalAmount) || 0;
+                        return sum + amount;
+                    }, 0);
+                    
                     const pendingOrders = orders.filter(order => 
                         order.status === 'pending' || order.status === 'processing'
                     ).length;
@@ -87,18 +94,19 @@ const Account = () => {
                         completedOrders
                     });
 
-                    // Set recent orders (last 3)
-                    setRecentOrders(orders.slice(0, 3));
+                    // Set recent orders (last 3) - sort by date descending
+                    const sortedOrders = orders.sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate));
+                    setRecentOrders(sortedOrders.slice(0, 3));
                 }
             } catch (error) {
-                console.error('Failed to fetch account stats:', error);
+                // Failed to fetch account stats
             } finally {
                 setStatsLoading(false);
             }
         };
 
         fetchAccountData();
-    }, [isAuthenticated]);
+    }, [isAuthenticated, loading, navigate]);
 
     // Show loading while authentication is being checked
     if (loading) {
@@ -126,7 +134,7 @@ const Account = () => {
                 recentOrders={recentOrders} 
                 loading={statsLoading} 
                 formatPrice={formatPrice}
-                onViewOrderDetails={(order) => setOrderDetailsModal({ open: true, order })}
+                onLogout={handleLogout}
             />
         },
         {
@@ -176,20 +184,31 @@ const Account = () => {
                             Manage your account, track orders, and update your preferences
                         </p>
                     </div>
-                    <div className="account-actions">
-                        <button className="btn-secondary" onClick={() => navigate('/products')}>
-                            <ShoppingBagIcon size={16} />
-                            Continue Shopping
-                        </button>
-                        <button className="btn-danger" onClick={handleLogout}>
-                            <LogoutIcon size={16} />
-                            Logout
-                        </button>
-                    </div>
+                </div>
+
+                {/* Mobile Menu Toggle - Centered */}
+                <div className="mobile-menu-toggle-container">
+                    <button 
+                        className="mobile-menu-toggle"
+                        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                        aria-label="Toggle navigation menu"
+                    >
+                        <MenuIcon size={24} color="#374151" />
+                    </button>
                 </div>
 
                 <div className="account-layout">
-                    <div className="account-sidebar">
+                    <div className={`account-sidebar ${isMobileMenuOpen ? 'mobile-menu-open' : ''}`}>
+                        {/* Mobile Close Button */}
+                        <div className="mobile-close-button">
+                            <button 
+                                className="close-btn"
+                                onClick={() => setIsMobileMenuOpen(false)}
+                                aria-label="Close menu"
+                            >
+                                ×
+                            </button>
+                        </div>
                         <nav className="account-nav">
                             {tabs.map(tab => (
                                 <button
@@ -198,6 +217,7 @@ const Account = () => {
                                     onClick={() => {
                                         setActiveTab(tab.id);
                                         navigate(`/account?tab=${tab.id}`);
+                                        setIsMobileMenuOpen(false); // Close mobile menu when item is selected
                                     }}
                                 >
                                     <span className="nav-icon">{tab.icon}</span>
@@ -208,6 +228,13 @@ const Account = () => {
                     </div>
 
                     <div className="account-main">
+                        {/* Mobile Menu Overlay */}
+                        {isMobileMenuOpen && (
+                            <div 
+                                className="mobile-menu-overlay"
+                                onClick={() => setIsMobileMenuOpen(false)}
+                            />
+                        )}
                         <div className="account-content">
                             {ActiveComponent && <ActiveComponent />}
                         </div>
@@ -215,26 +242,40 @@ const Account = () => {
                 </div>
             </div>
 
-            {/* Order Details Modal */}
-            {orderDetailsModal.open && (
-                <OrderDetailsModal 
-                    order={orderDetailsModal.order}
-                    onClose={() => setOrderDetailsModal({ open: false, order: null })}
-                    formatPrice={formatPrice}
-                />
-            )}
         </div>
     );
 };
 
 // Dashboard Tab Component
-const DashboardTab = ({ stats, recentOrders, loading, formatPrice, onViewOrderDetails }) => {
+const DashboardTab = ({ stats, recentOrders, loading, formatPrice, onLogout }) => {
     const navigate = useNavigate();
 
     if (loading) {
         return (
-            <div style={{ padding: '40px', textAlign: 'center' }}>
-                <LoadingSpinner size="large" text="Loading dashboard..." color="#F0B21B" />
+            <div style={{ 
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '60px 20px',
+                minHeight: '300px',
+                textAlign: 'center'
+            }}>
+                <Bars 
+                    color="#F0B21B" 
+                    height={window.innerWidth < 768 ? 32 : 40} 
+                    width={window.innerWidth < 768 ? 32 : 40} 
+                />
+                <div style={{ 
+                    fontSize: window.innerWidth < 768 ? '14px' : '16px', 
+                    color: '#6b7280', 
+                    marginTop: '16px',
+                    fontWeight: '500',
+                    maxWidth: '280px',
+                    lineHeight: '1.5'
+                }}>
+                    Loading dashboard...
+                </div>
             </div>
         );
     }
@@ -272,12 +313,16 @@ const DashboardTab = ({ stats, recentOrders, loading, formatPrice, onViewOrderDe
                 
                 {recentOrders.length > 0 ? (
                     <div className="recent-orders">
-                        {recentOrders.slice(0, 3).map((order) => (
+                        {recentOrders.map((order) => (
                             <div key={order.orderID} className="recent-order-card">
                                 <div className="order-info">
                                     <div className="order-number">Order #{order.orderID}</div>
                                     <div className="order-date">
-                                        {new Date(order.orderDate).toLocaleDateString()}
+                                        {new Date(order.orderDate).toLocaleDateString('en-US', {
+                                            year: 'numeric',
+                                            month: 'short',
+                                            day: 'numeric'
+                                        })}
                                     </div>
                                     <div className="order-items-count">
                                         {order.items ? `${order.items.length} item${order.items.length !== 1 ? 's' : ''}` : '1 item'}
@@ -290,34 +335,7 @@ const DashboardTab = ({ stats, recentOrders, loading, formatPrice, onViewOrderDe
                                     </span>
                                 </div>
                                 <div className="order-total">
-                                    {formatPrice(order.totalAmount || 0)}
-                                </div>
-                                <div className="order-actions">
-                                    <button 
-                                        className="order-action-btn"
-                                        onClick={() => onViewOrderDetails(order)}
-                                        title="View Order Details"
-                                    >
-                                        <EyeIcon size={16} />
-                                    </button>
-                                    {order.status?.toLowerCase() === 'delivered' && (
-                                        <button 
-                                            className="order-action-btn"
-                                            onClick={() => navigate('/products')}
-                                            title="Reorder Items"
-                                        >
-                                            <SpinnerIcon size={16} />
-                                        </button>
-                                    )}
-                                    {order.status?.toLowerCase() === 'shipped' && (
-                                        <button 
-                                            className="order-action-btn"
-                                            onClick={() => navigate('/tracking')}
-                                            title="Track Package"
-                                        >
-                                            <TruckIcon size={16} />
-                                        </button>
-                                    )}
+                                    {formatPrice(parseFloat(order.totalAmount) || 0)}
                                 </div>
                             </div>
                         ))}
@@ -335,6 +353,18 @@ const DashboardTab = ({ stats, recentOrders, loading, formatPrice, onViewOrderDe
                 )}
             </div>
 
+            {/* Dashboard Actions */}
+            <div className="dashboard-actions">
+                <button className="btn-secondary" onClick={() => navigate('/products')}>
+                    <ShoppingBagIcon size={16} />
+                    Continue Shopping
+                </button>
+                <button className="btn-danger" onClick={onLogout}>
+                    <LogoutIcon size={16} />
+                    Logout
+                </button>
+            </div>
+
         </div>
     );
 };
@@ -345,7 +375,7 @@ const getStatusIcon = (status) => {
         case 'pending':
             return <ClockIcon size={14} />;
         case 'processing':
-            return <SpinnerIcon size={14} />;
+            return <ClockIcon size={14} />;
         case 'shipped':
             return <TruckIcon size={14} />;
         case 'delivered':
@@ -356,98 +386,5 @@ const getStatusIcon = (status) => {
     }
 };
 
-// Order Details Modal Component
-const OrderDetailsModal = ({ order, onClose, formatPrice }) => {
-    if (!order) return null;
-
-    return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                <div className="modal-header">
-                    <h3>Order Details - #{order.orderID}</h3>
-                    <button className="close-btn" onClick={onClose}>
-                        ×
-                    </button>
-                </div>
-                
-                <div className="modal-body">
-                    <div className="order-details-grid">
-                        <div className="detail-section">
-                            <h4>Order Information</h4>
-                            <div className="detail-item">
-                                <span className="detail-label">Order Date:</span>
-                                <span className="detail-value">
-                                    {new Date(order.orderDate).toLocaleDateString()}
-                                </span>
-                            </div>
-                            <div className="detail-item">
-                                <span className="detail-label">Status:</span>
-                                <span className={`status-badge ${order.status?.toLowerCase()}`}>
-                                    {getStatusIcon(order.status)}
-                                    {order.status}
-                                </span>
-                            </div>
-                            <div className="detail-item">
-                                <span className="detail-label">Total Amount:</span>
-                                <span className="detail-value total-amount">
-                                    {formatPrice(order.totalAmount || 0)}
-                                </span>
-                            </div>
-                        </div>
-
-                        {order.items && order.items.length > 0 && (
-                            <div className="detail-section">
-                                <h4>Order Items</h4>
-                                <div className="order-items-list">
-                                    {order.items.map((item, index) => (
-                                        <div key={index} className="order-item-detail">
-                                            <div className="item-info">
-                                                <div className="item-name">{item.productName || item.name}</div>
-                                                <div className="item-quantity">Qty: {item.quantity}</div>
-                                            </div>
-                                            <div className="item-price">
-                                                {formatPrice(item.price * item.quantity)}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {order.shippingAddress && (
-                            <div className="detail-section">
-                                <h4>Shipping Address</h4>
-                                <div className="address-details">
-                                    <p>{order.shippingAddress.fullName}</p>
-                                    <p>{order.shippingAddress.address}</p>
-                                    <p>{order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.zipCode}</p>
-                                    <p>{order.shippingAddress.country}</p>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                <div className="modal-footer">
-                    <button className="btn-secondary" onClick={onClose}>
-                        Close
-                    </button>
-                    {order.status?.toLowerCase() === 'delivered' && (
-                        <button 
-                            className="btn-primary"
-                            onClick={() => {
-                                onClose();
-                                window.location.href = '/products';
-                            }}
-                        >
-                            <SpinnerIcon size={16} />
-                            Reorder Items
-                        </button>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
-};
 
 export default Account;

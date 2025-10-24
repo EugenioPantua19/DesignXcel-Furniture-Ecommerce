@@ -1,0 +1,440 @@
+/* Slider Component Styles */
+.slider-container {
+  width: 100%;
+  position: relative;
+  margin: 2rem 0;
+  overflow: visible;
+  max-width: 100%;
+}
+
+.slider-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.slider-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 0.5rem 0;
+  letter-spacing: -0.025em;
+}
+
+.slider-subtitle {
+  font-size: 1.125rem;
+  color: #6b7280;
+  margin: 0;
+  line-height: 1.6;
+}
+
+.slider-wrapper {
+  position: relative;
+  overflow: visible;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 100%;
+  padding: 0 30px;
+}
+
+.slider-track {
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.slider-content {
+  display: flex;
+  transition: transform 0.3s ease-in-out;
+}
+
+.slider-slide {
+  flex: 0 0 100%;
+  display: flex;
+  gap: 1.5rem;
+  padding: 0 1rem;
+}
+
+/* Desktop slider - show 3 items per slide when 6+ items */
+@media (min-width: 769px) {
+  .slider-slide {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    padding: 0 1rem;
+  }
+  
+  /* Categories and Products - 3 per row on desktop */
+  .categories-slider .slider-slide,
+  .products-slider .slider-slide {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  /* Testimonials - 2 per row on desktop */
+  .testimonials-slider .slider-slide {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  /* Larger screens - 4 items per slide */
+  @media (min-width: 1200px) {
+    .slider-slide {
+      grid-template-columns: repeat(4, 1fr);
+      gap: 2rem;
+      padding: 0 1.5rem;
+    }
+    
+    .categories-slider .slider-slide,
+    .products-slider .slider-slide {
+      grid-template-columns: repeat(4, 1fr);
+    }
+    
+    .testimonials-slider .slider-slide {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+}
+
+.slider-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #e5e7eb;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  color: #374151;
+}
+
+.slider-arrow:hover {
+  background: #F0B21B;
+  color: white;
+  border-color: #F0B21B;
+  transform: translateY(-50%) scale(1.1);
+  box-shadow: 0 6px 16px rgba(240, 178, 27, 0.3);
+}
+
+.slider-arrow:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: translateY(-50%);
+}
+
+.slider-arrow:disabled:hover {
+  background: rgba(255, 255, 255, 0.9);
+  color: #374151;
+  border-color: #e5e7eb;
+  transform: translateY(-50%);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.slider-arrow-prev {
+  left: -24px;
+}
+
+.slider-arrow-next {
+  right: -24px;
+}
+
+.slider-dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+.slider-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: none;
+  background: #d1d5db;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.slider-dot:hover {
+  background: #9ca3af;
+  transform: scale(1.2);
+}
+
+.slider-dot.active {
+  background: #F0B21B;
+  transform: scale(1.3);
+}
+
+.slider-dot:disabled {
+  cursor: not-allowed;
+}
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+  .slider-container {
+    margin: 1.5rem 0;
+    padding: 0 1rem;
+    overflow: visible;
+  }
+
+  .slider-header {
+    margin-bottom: 1.5rem;
+    text-align: center;
+  }
+
+  .slider-title {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .slider-subtitle {
+    font-size: 1rem;
+  }
+
+  .slider-wrapper {
+    position: relative;
+    padding: 0;
+    overflow: visible;
+  }
+
+  .slider-slide {
+    gap: 0.5rem;
+    padding: 0 0.25rem;
+    justify-content: center;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    align-items: stretch;
+  }
+
+  /* Hide arrows on mobile - touch only */
+  .slider-container .slider-arrow,
+  .slider-wrapper .slider-arrow {
+    display: none !important;
+  }
+
+  .slider-dots {
+    margin-top: 1.5rem;
+    gap: 0.75rem;
+  }
+
+  .slider-dot {
+    width: 12px;
+    height: 12px;
+    background: #d1d5db;
+    border: 2px solid transparent;
+  }
+
+  .slider-dot:hover {
+    background: #F0B21B;
+    transform: scale(1.2);
+    border-color: #F0B21B;
+  }
+
+  .slider-dot.active {
+    background: #F0B21B;
+    transform: scale(1.3);
+    border-color: #F0B21B;
+  }
+
+  /* Testimonials specific - 1 per row for better readability */
+  .testimonials-slider .slider-slide {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  /* Products specific - 2 per row for mobile */
+  .products-slider .slider-slide {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+  
+  /* Categories specific - 3 per row with ultra-compact gap */
+  .categories-slider .slider-slide {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.125rem;
+    row-gap: 0.125rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .slider-container {
+    margin: 1rem 0;
+    padding: 0 0.5rem;
+    overflow: visible;
+  }
+
+  .slider-header {
+    margin-bottom: 1rem;
+    text-align: center;
+  }
+
+  .slider-title {
+    font-size: 1.25rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .slider-subtitle {
+    font-size: 0.9rem;
+  }
+
+  .slider-wrapper {
+    padding: 0;
+    overflow: visible;
+  }
+
+  .slider-slide {
+    gap: 0.25rem;
+    padding: 0 0.125rem;
+    justify-content: center;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    align-items: stretch;
+  }
+
+  /* Hide arrows on small mobile - touch only */
+  .slider-container .slider-arrow,
+  .slider-wrapper .slider-arrow {
+    display: none !important;
+  }
+
+  .slider-dots {
+    margin-top: 1rem;
+    gap: 0.5rem;
+  }
+
+  /* Testimonials specific - 1 per row for better readability */
+  .testimonials-slider .slider-slide {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  /* Products specific - 2 per row for small mobile */
+  .products-slider .slider-slide {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+  
+  /* Categories specific - 3 per row with ultra-compact gap for small mobile */
+  .categories-slider .slider-slide {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.0625rem;
+    row-gap: 0.0625rem;
+  }
+}
+
+/* Touch/Swipe Support */
+@media (hover: none) and (pointer: coarse) {
+  .slider-container .slider-arrow,
+  .slider-wrapper .slider-arrow {
+    display: none !important;
+  }
+  
+  .slider-wrapper {
+    touch-action: pan-x;
+  }
+}
+
+/* Accessibility */
+.slider-arrow:focus,
+.slider-dot:focus {
+  outline: 2px solid #F0B21B;
+  outline-offset: 2px;
+}
+
+/* Animation for smooth transitions */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.slider-slide {
+  animation: slideIn 0.3s ease-out;
+}
+
+/* Loading state */
+.slider-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+  background: #f8f9fa;
+  border-radius: 12px;
+}
+
+.slider-loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #F0B21B;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Empty state */
+.slider-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  color: #6b7280;
+  text-align: center;
+  padding: 2rem;
+}
+
+.slider-empty-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.slider-empty-text {
+  font-size: 1.125rem;
+  margin: 0;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .slider-arrow {
+    border: 2px solid #000;
+  }
+  
+  .slider-dot {
+    border: 1px solid #000;
+  }
+  
+  .slider-dot.active {
+    background: #000;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .slider-content {
+    transition: none;
+  }
+  
+  .slider-slide {
+    animation: none;
+  }
+  
+  .slider-loading-spinner {
+    animation: none;
+  }
+}

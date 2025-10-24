@@ -15,125 +15,36 @@ body {
     font-variant-numeric: tabular-nums;
     font-weight: 400;
     letter-spacing: -0.01em;
+    overflow-x: hidden;
+    max-width: 100vw;
+    margin: 0;
+    padding: 0;
+}
+
+/* Fix viewport gap issue across all breakpoints */
+html, body {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+}
+
+#root {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+}
+
+/* Additional viewport fixes for all screen sizes */
+* {
+    margin-top: 0;
+}
+
+.app {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
 }
 
 /* Override background color when background image is set */
 body[style*="background-image"] {
     background-color: transparent !important;
-}
-
-/* Christmas theme global styling */
-body.theme-christmas {
-    background: linear-gradient(135deg, #1a472a 0%, #2d5016 50%, #1a472a 100%);
-    color: #ffffff;
-    position: relative;
-}
-
-/* Christmas theme container styling */
-body.theme-christmas .container {
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(10px);
-    border-radius: 16px;
-    padding: 20px;
-    margin: 20px 0;
-}
-
-/* Christmas theme header styling */
-body.theme-christmas .header {
-    background: rgba(255, 255, 255, 0.1) !important;
-    backdrop-filter: blur(15px);
-    border-bottom: 2px solid #ff6b6b;
-}
-
-body.theme-christmas .header-top {
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(10px);
-}
-
-body.theme-christmas .header-main {
-    background: rgba(255, 255, 255, 0.1) !important;
-    backdrop-filter: blur(15px);
-    border-bottom: 2px solid #ff6b6b;
-    border-top: 2px solid #4ecdc4;
-}
-
-/* Christmas theme navigation styling */
-body.theme-christmas .nav-menu {
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(10px);
-    border-radius: 8px;
-}
-
-body.theme-christmas .nav-link {
-    color: #ffffff !important;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
-}
-
-body.theme-christmas .nav-link:hover {
-    color: #ffd93d !important;
-    text-shadow: 0 0 10px rgba(255, 217, 61, 0.5);
-}
-
-/* Christmas theme footer styling */
-body.theme-christmas .footer {
-    background: rgba(255, 255, 255, 0.1) !important;
-    backdrop-filter: blur(15px);
-    border-top: 2px solid #4ecdc4;
-}
-
-body.theme-christmas .footer-content {
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(10px);
-    border-radius: 16px;
-    padding: 20px;
-}
-
-/* Christmas theme form styling */
-body.theme-christmas .contact-form {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(15px);
-    border-radius: 16px;
-    padding: 30px;
-}
-
-body.theme-christmas .form-group input,
-body.theme-christmas .form-group textarea {
-    background: rgba(255, 255, 255, 0.1) !important;
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: #ffffff;
-}
-
-body.theme-christmas .form-group input::placeholder,
-body.theme-christmas .form-group textarea::placeholder {
-    color: rgba(255, 255, 255, 0.7);
-}
-
-/* Christmas theme button styling */
-body.theme-christmas .btn {
-    background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
-    border: none;
-    color: white;
-    box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
-}
-
-body.theme-christmas .btn:hover {
-    background: linear-gradient(45deg, #ff5252, #26a69a);
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
-}
-
-body.theme-christmas .btn-secondary {
-    background: linear-gradient(45deg, #4ecdc4, #45b7d1);
-    border: none;
-    color: white;
-    box-shadow: 0 4px 15px rgba(78, 205, 196, 0.3);
-}
-
-body.theme-christmas .btn-secondary:hover {
-    background: linear-gradient(45deg, #26a69a, #26c6da);
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(78, 205, 196, 0.4);
 }
 
 .container {
@@ -535,8 +446,10 @@ small, .text-sm {
     position: sticky;
     top: 0;
     z-index: 1100;
-    background: var(--white);
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
     box-shadow: var(--shadow);
+    transition: all 0.3s ease;
 }
 
 .header-top {
@@ -595,6 +508,19 @@ small, .text-sm {
 /* Add spacer to avoid content hiding under sticky header */
 .App main {
   padding-top: 20px;
+}
+
+/* Responsive main content padding */
+@media (max-width: 768px) {
+  .App main {
+    padding-top: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .App main {
+    padding-top: 5px;
+  }
 }
 
 .search-bar {
@@ -936,19 +862,10 @@ small, .text-sm {
     color: var(--white);
 }
 
-.btn-primary:hover {
-    background: var(--primary-dark);
-}
-
 .btn-secondary {
     background: transparent;
     color: var(--text-dark);
     border: 2px solid var(--border-color);
-}
-
-.btn-secondary:hover {
-    border-color: var(--primary-color);
-    color: var(--primary-color);
 }
 
 /* Contact Page */
@@ -1025,6 +942,7 @@ small, .text-sm {
 
 .form-group {
     margin-bottom: 25px;
+    background: #ffffff;
 }
 
 .form-group input,
@@ -1270,10 +1188,12 @@ small, .text-sm {
     display: flex;
     align-items: center;
     justify-content: center;
+    color: #FFFFFF;
 }
 
 .social-link:hover {
     background: #e6a632;
+    color: #FFFFFF;
     transform: translateY(-2px);
 }
 
@@ -1286,20 +1206,7 @@ small, .text-sm {
     color: var(--text-light);
 }
 
-.spinner {
-    border: 3px solid var(--border-color);
-    border-top: 3px solid var(--primary-color);
-    border-radius: 50%;
-    width: 30px;
-    height: 30px;
-    animation: spin 1s linear infinite;
-    margin-right: 15px;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
+/* Loading Spinner - Removed old CSS spinner, now using react-loader-spinner */
 
 
 
@@ -1308,6 +1215,11 @@ small, .text-sm {
     .header-content {
         flex-direction: column;
         gap: 20px;
+    }
+    
+    .header-main {
+        background: rgba(255, 255, 255, 0.98);
+        backdrop-filter: blur(15px);
     }
 
     .search-bar {
@@ -1371,6 +1283,12 @@ small, .text-sm {
     .hero {
         padding: 60px 0;
     }
+    
+    .header-main {
+        background: rgba(255, 255, 255, 0.99);
+        backdrop-filter: blur(20px);
+        padding: 10px 0;
+    }
 
     .hero h1 {
         font-size: var(--font-size-3xl);
@@ -1389,139 +1307,7 @@ small, .text-sm {
     }
 }
 
-/* Floating Message Icon */
-.floating-message-icon {
-  position: fixed;
-  bottom: 32px;
-  left: 32px;
-  z-index: 2000;
-  background: #F0B21B !important;
-  border: 3px solid #2c3e50 !important;
-  cursor: pointer;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-  border-radius: 50%;
-  transition: transform 0.2s, box-shadow 0.2s;
-  display: flex !important;
-  align-items: center;
-  justify-content: center;
-  width: 60px !important;
-  height: 60px !important;
-}
-.floating-message-icon:hover {
-  transform: scale(1.08);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.22);
-}
-
-/* Floating Chat Window */
-.floating-chat-window {
-  position: fixed;
-  bottom: 32px;
-  left: 32px;
-  width: 340px;
-  max-width: 95vw;
-  height: 420px;
-  background: #fff;
-  border-radius: 18px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
-  z-index: 2100;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  animation: chat-fade-in 0.2s;
-}
-@keyframes chat-fade-in {
-  from { opacity: 0; transform: translateY(40px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-.chat-header {
-  background: var(--primary-color, #F0B21B);
-  color: #2c3e50;
-  font-weight: 600;
-  padding: 14px 18px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 1.1rem;
-  border-bottom: 1px solid #f3e6c2;
-}
-.chat-close-btn {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  color: #2c3e50;
-  cursor: pointer;
-  line-height: 1;
-  padding: 0 4px;
-  border-radius: 4px;
-  transition: background 0.2s;
-}
-.chat-close-btn:hover {
-  background: #f7e6b0;
-}
-.chat-messages {
-  flex: 1;
-  padding: 16px 12px 8px 12px;
-  overflow-y: auto;
-  background: #f9f9f9;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.chat-message {
-  max-width: 80%;
-  padding: 9px 14px;
-  border-radius: 16px;
-  font-size: 0.98rem;
-  line-height: 1.5;
-  word-break: break-word;
-  margin-bottom: 2px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-}
-.chat-message.support {
-  background: #fffbe6;
-  color: #2c3e50;
-  align-self: flex-start;
-  border-bottom-left-radius: 4px;
-}
-.chat-message.user {
-  background: var(--primary-color, #F0B21B);
-  color: #2c3e50;
-  align-self: flex-end;
-  border-bottom-right-radius: 4px;
-}
-.chat-input-area {
-  display: flex;
-  padding: 10px 12px;
-  border-top: 1px solid #f3e6c2;
-  background: #fff;
-}
-.chat-input {
-  flex: 1;
-  border: 1px solid #e9ecef;
-  border-radius: 16px;
-  padding: 8px 14px;
-  font-size: 1rem;
-  outline: none;
-  margin-right: 8px;
-  transition: border 0.2s;
-}
-.chat-input:focus {
-  border: 1.5px solid var(--primary-color, #F0B21B);
-}
-.chat-send-btn {
-  background: var(--primary-color, #F0B21B);
-  color: #2c3e50;
-  border: none;
-  border-radius: 16px;
-  padding: 8px 18px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-.chat-send-btn:hover {
-  background: #e6a632;
-}
+/* Floating Message Icon - Styles moved to MessageFloatingIcon.css for better organization */
 
 .header-icon-svg {
   color: var(--primary-color);

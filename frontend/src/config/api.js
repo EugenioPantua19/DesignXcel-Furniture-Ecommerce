@@ -4,8 +4,8 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 // API endpoints
 export const API_ENDPOINTS = {
   // Theme endpoints
-  THEME_ACTIVE: `${API_BASE_URL}/api/theme/active`,
-  THEME_UPDATE: `${API_BASE_URL}/api/theme/update`,
+  THEME_ACTIVE: `${API_BASE_URL}/api/theme/public`,
+  THEME_UPDATE: `${API_BASE_URL}/api/theme/public`,
   
   // Background image endpoints
   BACKGROUND_IMAGE: `${API_BASE_URL}/api/background-image`,

@@ -1,23 +1,11 @@
 // Protected Routes - Require authentication
 import React from 'react';
-import { Route } from 'react-router-dom';
 import ProtectedRoute from '../../features/auth/components/ProtectedRoute';
-
-// Feature pages
-import { CartPage } from '../../features/cart';
 import { CheckoutPage, PaymentPage, OrderSuccessPage } from '../../features/checkout';
 import { OrdersPage } from '../../features/orders';
 import { AccountPage } from '../../features/account';
 
 const protectedRoutes = [
-  {
-    path: '/cart',
-    element: (
-      <ProtectedRoute>
-        <CartPage />
-      </ProtectedRoute>
-    )
-  },
   {
     path: '/checkout',
     element: (

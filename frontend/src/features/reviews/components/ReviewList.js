@@ -1,4 +1,6 @@
 import React from 'react';
+import { getImageUrl } from '../../../shared/utils/imageUtils';
+import { Bars } from 'react-loader-spinner';
 
 const ReviewList = ({ reviews, loading, currentPage, totalPages, onPageChange }) => {
   const formatDate = (dateString) => {
@@ -51,8 +53,15 @@ const ReviewList = ({ reviews, loading, currentPage, totalPages, onPageChange })
   if (loading) {
     return (
       <div className="review-list loading">
-        <div className="loading-spinner">
-          <div className="spinner"></div>
+        <div style={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          padding: '2rem',
+          gap: '1rem'
+        }}>
+          <Bars color="#F0B21B" height={60} width={60} />
           <p>Loading reviews...</p>
         </div>
       </div>
@@ -78,7 +87,7 @@ const ReviewList = ({ reviews, loading, currentPage, totalPages, onPageChange })
             <div className="reviewer-info">
               <div className="reviewer-avatar">
                 {review.profileImage ? (
-                  <img src={review.profileImage} alt={review.customerName} />
+                  <img src={getImageUrl(review.profileImage)} alt={review.customerName} />
                 ) : (
                   <div className="avatar-placeholder">
                     {getInitials(review.customerName)}
@@ -114,9 +123,9 @@ const ReviewList = ({ reviews, loading, currentPage, totalPages, onPageChange })
                 {review.images.map((image, index) => (
                   <div key={index} className="review-image">
                     <img 
-                      src={image.url} 
+                      src={getImageUrl(image.url)} 
                       alt={`Review image ${index + 1}`}
-                      onClick={() => window.open(image.url, '_blank')}
+                      onClick={() => window.open(getImageUrl(image.url), '_blank')}
                     />
                     {image.type === 'video' && (
                       <div className="play-overlay">

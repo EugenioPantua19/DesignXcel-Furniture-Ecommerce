@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory Manager Cancelled Orders - Design Excellence</title>
+    <link rel="stylesheet" href="/css/Employee/Admin/AdminIndexStyles.css">
+    <link rel="stylesheet" href="/css/dark-mode.css">
+    <style>
+        /* Custom Confirmation Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            visibility: hidden;
+            opacity: 0;
+            transition: visibility 0s, opacity 0.3s ease;
+        }
+        .modal-overlay.show {
+            visibility: visible;
+            opacity: 1;
+        }
+        .modal-content {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+        .modal-overlay.show .modal-content {
+            transform: scale(1);
+        }
+        .modal-content h3 {
+            margin-top: 0;
+            color: #333;
+            font-size: 1.5em;
+            margin-bottom: 20px;
+        }
+        .modal-content p {
+            color: #555;
+            font-size: 1.1em;
+            margin-bottom: 30px;
+        }
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+        .modal-button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .modal-button.confirm {
+            background-color: #dc3545;
+            color: white;
+        }
+        .modal-button.confirm:hover {
+            background-color: #c82333;
+        }
+        .modal-button.cancel {
+            background-color: #f0f0f0;
+            color: #555;
+            border: 1px solid #ccc;
+        }
+        .modal-button.cancel:hover {
+            background-color: #e0e0e0;
+        }
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        .sidebar-menu {
+            flex-grow: 1;
+        }
+        .logout-section {
+            padding: 40px;
+            border-top: 1px solid #ddd;
+            margin-top: auto;
+            text-align: center;
+        }
+        .logout-button {
+            display: inline-block;
+            width: auto;
+            padding: 12px 25px;
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            font-weight: bold;
+            transition: background-color 0.3s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        .logout-button:hover {
+            background-color: #c82333;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h3>Inventory Manager Panel</h3>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="/Employee/InventoryManager">Dashboard</a></li>
+                <li class="sidebar-section-label" style="font-weight:normal;">Inventory</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/InventoryManager/InventoryProducts">Products</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryVariations">Variations</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryMaterials">Raw Materials</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryAlerts">Alerts</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryArchived">Archived items</a></li>
+                </ul>
+                <li class="sidebar-section-label" style="font-weight:normal;">Transactions</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/InventoryManager/InventoryRates">Delivery Rates</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryWalkIn">Walk In</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryOrdersPending">Orders Pending</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryOrdersProcessing">Orders Processing</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryOrdersShipping">Orders Shipping</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryOrdersDelivery">Orders Delivery</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryOrdersReceive">Orders Receive</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryCancelledOrders">Cancelled Orders</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryCompletedOrders">Completed Orders</a></li>
+                </ul>
+                <!-- User Management Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">User Management</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/InventoryManager/InventoryManageUsers">Manage Users</a></li>
+                </ul>
+                
+                <!-- Customer Reviews Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">Customer Reviews</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/InventoryManager/InventoryReviews">Reviews</a></li>
+                </ul>
+                
+                <!-- Support & Communication Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">Support & Communication</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/InventoryManager/InventoryChatSupport">Chat Support</a></li>
+                </ul>
+                
+                <!-- Content & System Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">Content & System</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/InventoryManager/InventoryCMS">Content Management</a></li>
+                    <li><a href="/Employee/InventoryManager/InventoryLogs">Activity Logs</a></li>
+                </ul>
+            </ul>
+            <div class="logout-section">
+                <a href="/logout" class="logout-button" onclick="handleLogout(event)">Logout</a>
+            </div>
+        </div>
+        <div class="main-content">
+            <div class="header">
+                <h2>Cancelled Orders</h2>
+            </div>
+            <div class="content-area">
+                <% if (orders && orders.length > 0) { %>
+                    <div style="display: flex; flex-wrap: wrap; gap: 24px;">
+                        <% orders.forEach(function(order) { %>
+                            <div style="background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 24px; min-width: 340px; max-width: 420px; flex: 1 1 340px; border-left: 6px solid #e74c3c; margin-bottom: 12px; display: flex; flex-direction: column; height: 520px;">
+                                <div style="flex: 1 1 auto; overflow-y: auto; min-height: 0;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                        <div style="font-weight: 600; font-size: 1.1em;">Order #<%= order.OrderID %></div>
+                                        <span style="background: #e74c3c; color: #fff; border-radius: 12px; padding: 4px 14px; font-size: 0.95em; font-weight: 600;">Cancelled</span>
+                                    </div>
+                                    <div style="font-size: 0.97em; color: #555; margin-bottom: 8px;">Placed: <%= order.FormattedOrderDate || new Date(order.OrderDate).toLocaleString('en-US') %></div>
+                                    <hr style="border: none; border-top: 1.5px solid #e0e0e0; margin: 10px 0;" />
+                                    <div style="margin-bottom: 10px;">
+                                        <div style="font-weight: bold;">Customer:</div>
+                                        <div><%= order.CustomerName %> (<%= order.CustomerEmail %>)<br>Phone: <%= order.CustomerPhone %></div>
+                                    </div>
+                                    <hr style="border: none; border-top: 1.5px solid #e0e0e0; margin: 10px 0;" />
+                                    <div style="margin-bottom: 10px;">
+                                        <div style="font-weight: bold;">Shipping Address:</div>
+                                        <div><%= order.AddressLabel ? order.AddressLabel + ': ' : '' %><%= [order.HouseNumber, order.Street, order.Barangay, order.City, order.Province, order.Region, order.PostalCode, order.Country].filter(Boolean).join(', ') %></div>
+                                    </div>
+                                    <hr style="border: none; border-top: 1.5px solid #e0e0e0; margin: 10px 0;" />
+                                    <div style="margin-bottom: 10px;">
+                                        <div style="font-weight: bold;">Products:</div>
+                                        <% if (order.items && order.items.length > 0) { %>
+                                            <% order.items.forEach(function(item) { %>
+                                                <div style="display: flex; align-items: center; gap: 12px; background: #f8f9fa; border-radius: 6px; padding: 7px 10px; margin-bottom: 6px;">
+                                                    <% if (item.ImageURL) { %>
+                                                        <img src="<%= item.ImageURL %>" alt="<%= item.Name %>" style="width: 44px; height: 44px; object-fit: cover; border-radius: 6px; background: #eee;" />
+                                                    <% } else { %>
+                                                        <div style="width: 44px; height: 44px; background: #eee; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #aaa; font-size: 20px;">🖼️</div>
+                                                    <% } %>
+                                                    <div style="flex:1;">
+                                                        <div style="font-weight: 600; font-size: 1em;"><%= item.Name %></div>
+                                                        <div style="font-size: 0.93em; color: #888;">Qty: <%= item.Quantity %></div>
+                                                    </div>
+                                                    <div style="font-weight: 600; color: #333;">₱<%= Number(item.PriceAtPurchase).toLocaleString(undefined, { minimumFractionDigits: 2 }) %></div>
+                                                </div>
+                                            <% }); %>
+                                        <% } else { %>
+                                            <div>No products found.</div>
+                                        <% } %>
+                                    </div>
+                                    <hr style="border: none; border-top: 1.5px solid #e0e0e0; margin: 10px 0;" />
+                                    <div style="margin-bottom: 10px;">
+                                        <div style="font-weight: bold;">Payment Method:</div>
+                                        <div><%= order.PaymentMethod %></div>
+                                    </div>
+                                    <hr style="border: none; border-top: 1.5px solid #e0e0e0; margin: 10px 0;" />
+                                    <div style="margin-bottom: 10px;">
+                                        <div style="font-weight: bold;">Delivery Method:</div>
+                                        <div><%= order.DeliveryTypeName || 'Pick up' %></div>
+                                    </div>
+                                    <hr style="border: none; border-top: 1.5px solid #e0e0e0; margin: 10px 0;" />
+                                    <div style="margin-bottom: 10px;">
+                                        <div style="font-weight: bold;">Delivery Cost:</div>
+                                        <div>₱<%= Number(order.DeliveryCost || 0).toLocaleString(undefined, { minimumFractionDigits: 2 }) %></div>
+                                    </div>
+                                    <hr style="border: none; border-top: 1.5px solid #e0e0e0; margin: 10px 0;" />
+                                    <div style="margin-bottom: 10px;">
+                                        <div style="font-weight: bold;">Order Total:</div>
+                                        <div style="font-weight: bold; font-size: 1.1em; color: #222;">₱<%= Number(order.TotalAmount).toLocaleString(undefined, { minimumFractionDigits: 2 }) %></div>
+                                    </div>
+                                </div>
+                            </div>
+                        <% }); %>
+                    </div>
+                <% } else { %>
+                    <div style="text-align:center; color:#888; font-size:1.1em;">No cancelled orders found.</div>
+                <% } %>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Confirmation Modal -->
+    <div id="logoutConfirmModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Confirm Logout</h3>
+            <p>Are you sure you want to log out?</p>
+            <div class="modal-buttons">
+                <button class="modal-button confirm" id="confirmLogoutBtn">Logout</button>
+                <button class="modal-button cancel" id="cancelLogoutBtn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Custom Logout Modal Logic
+        const logoutConfirmModal = document.getElementById('logoutConfirmModal');
+        const confirmLogoutBtn = document.getElementById('confirmLogoutBtn');
+        const cancelLogoutBtn = document.getElementById('cancelLogoutBtn');
+
+        async function handleLogout(event) {
+            event.preventDefault();
+            logoutConfirmModal.classList.add('show');
+        }
+
+        confirmLogoutBtn.addEventListener('click', async () => {
+            logoutConfirmModal.classList.remove('show');
+            try {
+                const response = await fetch('/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    window.location.href = '/login';
+                } else {
+                    console.error('Logout failed');
+                    alert('Failed to logout. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error during logout:', error);
+                alert('An error occurred during logout. Please try again.');
+            }
+        });
+
+        cancelLogoutBtn.addEventListener('click', () => {
+            logoutConfirmModal.classList.remove('show');
+        });
+
+        // Close modal if clicked outside content
+        logoutConfirmModal.addEventListener('click', (event) => {
+            if (event.target === logoutConfirmModal) {
+                logoutConfirmModal.classList.remove('show');
+            }
+        });
+    </script>
+        <script src="/js/dark-mode.js"></script>
+</body>
+</html> 
+
+
+
+

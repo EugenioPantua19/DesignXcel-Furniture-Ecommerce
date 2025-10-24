@@ -34,11 +34,41 @@ class CheckoutSessionManager {
             console.log('🛒 Validating session for checkout...');
             
             // Check if we have basic auth data
-            const token = localStorage.getItem('token');
+            const accessToken = localStorage.getItem('accessToken');
+            const authToken = localStorage.getItem('authToken');
+            const userData = localStorage.getItem('userData');
             const user = localStorage.getItem('user');
             
-            if (!token || !user) {
-                console.log('🔒 No auth data found for checkout');
+            // Use either userData or user (for compatibility)
+            const userInfo = userData || user;
+            
+            
+            const token = accessToken || authToken;
+            
+            // Check if JWT token is expired
+            if (token) {
+                try {
+                    const parts = token.split('.');
+                    if (parts.length === 3) {
+                        const payload = JSON.parse(atob(parts[1]));
+                        const currentTime = Math.floor(Date.now() / 1000);
+                        const isExpired = payload.exp < currentTime;
+                        
+                        if (isExpired) {
+                            sessionManager.clearSession();
+                            return { 
+                                valid: false, 
+                                error: 'JWT token expired',
+                                shouldRedirect: true 
+                            };
+                        }
+                    }
+                } catch (error) {
+                    // Token format error - continue with validation
+                }
+            }
+            
+            if (!token || !userInfo) {
                 return { 
                     valid: false, 
                     error: 'No authentication data found',
@@ -48,35 +78,44 @@ class CheckoutSessionManager {
 
             // Check if session needs validation
             if (!sessionManager.needsValidation()) {
-                console.log('✅ Session recently validated, proceeding with checkout');
                 return { 
                     valid: true, 
-                    user: JSON.parse(user) 
+                    user: JSON.parse(userInfo) 
                 };
             }
 
+            // Skip session validation if we have valid user data
+            if (userInfo) {
+                try {
+                    const parsedUserData = JSON.parse(userInfo);
+                    if (parsedUserData && parsedUserData.id && parsedUserData.email) {
+                        return { 
+                            valid: true, 
+                            user: parsedUserData 
+                        };
+                    }
+                } catch (parseError) {
+                    // Continue to session validation
+                }
+            }
+
             // Perform session validation
-            console.log('🔄 Performing session validation for checkout...');
             const validation = await authService.validateSession();
             
             if (validation.success && validation.user) {
-                console.log('✅ Checkout session validation successful');
                 sessionManager.updateValidationTimestamp();
                 return { 
                     valid: true, 
                     user: validation.user 
                 };
             } else {
-                console.log('❌ Checkout session validation failed');
                 return { 
                     valid: false, 
-                    error: validation.error || 'Session validation failed',
+                    error: validation.error || validation.message || 'Session validation failed',
                     shouldRedirect: true 
                 };
             }
         } catch (error) {
-            console.error('🚨 Checkout session validation error:', error);
-            
             // Don't redirect on network errors, just warn
             if (error.message && error.message.includes('Network')) {
                 return { 
@@ -108,20 +147,13 @@ class CheckoutSessionManager {
             return false;
         }
         
-        if (validation.warning) {
-            console.warn('⚠️ Checkout proceeding with warning:', validation.warning);
-        }
         
         return validation.valid;
     }
 
     // Handle checkout-specific errors
     handleCheckoutError(error, endpoint) {
-        console.error(`🚨 Checkout error on ${endpoint}:`, error);
-        
         if (error.response && error.response.status === 401) {
-            console.log('🔒 401 error during checkout - session expired');
-            
             // Show user-friendly message
             const message = 'Your session has expired. Please log in again to continue with checkout.';
             

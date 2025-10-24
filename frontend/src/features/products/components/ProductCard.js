@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useCart } from '../../../shared/contexts/CartContext';
 import { useCurrency } from '../../../shared/contexts/CurrencyContext';
-import apiConfig from '../../../shared/services/api/apiConfig';
+import { useWishlist } from '../../../shared/contexts/WishlistContext';
 import { StarIcon } from '../../../shared/components/ui/SvgIcons';
 import QuickViewModal from '../../../shared/components/ui/QuickViewModal';
+import { getPrimaryImageUrl } from '../../../shared/utils/imageUtils';
 import './product-card.css';
 
 const ProductCard = ({ product }) => {
@@ -12,25 +13,22 @@ const ProductCard = ({ product }) => {
     id, 
     name, 
     price, 
-    images, 
-    image, 
-    description, 
-    rating = 0, 
-    reviews = 0,
+    rating = 0,
     hasDiscount = false,
     discountInfo = null,
     categoryName,
     stockQuantity = 0,
     stock = 0,
-    soldQuantity = 0
+    soldQuantity = 0,
+    has3DModel = false,
+    Has3DModel = false,
+    model3D = null,
+    Model3D = null
   } = product || {
     id: 1,
     name: 'Product Name',
     price: 0,
-    image: '/logo192.png',
-    description: 'Product description.',
-    rating: 0,
-    reviews: 0
+    rating: 0
   };
 
   const { formatPrice } = useCurrency();
@@ -58,48 +56,34 @@ const ProductCard = ({ product }) => {
 
   const stockStatus = getStockStatus();
 
-  // Handle images - support both single image and images array
-  const getImageUrl = () => {
-    // First try to get from images array (from API)
-    if (images && images.length > 0) {
-      const imageUrl = images[0];
-      if (imageUrl && imageUrl.startsWith('/')) {
-        // Use relative URL since proxy is configured
-        return imageUrl;
-      }
-      return imageUrl;
-    }
-    
-    // Fallback to single image field
-    if (image) {
-      if (image.startsWith('/')) {
-        // Use relative URL since proxy is configured
-        return image;
-      }
-      return image;
-    }
-    
-    // Final fallback
-    return '/logo192.png';
-  };
+  // Check if product has 3D model
+  const has3DModelData = has3DModel || Has3DModel || model3D || Model3D;
 
-  const imageUrl = getImageUrl();
+  // Use the utility function to get the primary image URL
+  const imageUrl = getPrimaryImageUrl(product);
 
   const { addToCart } = useCart();
+  const { toggleWishlist, isInWishlist } = useWishlist();
   const navigate = useNavigate();
   const [quickOpen, setQuickOpen] = useState(false);
-  
-  const handleAddToCart = () => {
-    addToCart(product, 1);
-  };
 
   const handleCardClick = () => {
-    navigate(`/product/${id}`);
+    // If product has 3D model, redirect to 3d-products-furniture page
+    if (has3DModelData) {
+      navigate('/3d-products-furniture');
+    } else {
+      navigate(`/product/${id}`);
+    }
   };
 
   return (
     <div className="product-card-redesigned" onClick={handleCardClick}>
       <div className="product-card-image-container">
+        {/* 3D Model badge - top left (only show if product has 3D model) */}
+        {has3DModelData && (
+          <div className="model3d-badge">3D</div>
+        )}
+        
         {/* Discount badge - top left (only show if there's a discount) */}
         {hasDiscount && originalPrice && discountPercentage && (
           <div className="discount-badge">{discountPercentage}% off</div>
@@ -111,8 +95,22 @@ const ProductCard = ({ product }) => {
         
         {/* Action icons - top right */}
         <div className="action-icons">
-          <button className="action-icon" aria-label="Add to wishlist" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <button 
+            className={`action-icon wishlist-btn ${isInWishlist(id) ? 'in-wishlist' : ''}`} 
+            aria-label={isInWishlist(id) ? "Remove from wishlist" : "Add to wishlist"} 
+            title={isInWishlist(id) ? "Remove from wishlist" : "Add to wishlist"}
+            onClick={(e) => { 
+              e.preventDefault(); 
+              e.stopPropagation(); 
+              toggleWishlist(product);
+            }}
+            onDoubleClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              navigate('/wishlist');
+            }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill={isInWishlist(id) ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
             </svg>
           </button>
@@ -129,20 +127,39 @@ const ProductCard = ({ product }) => {
               <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
             </svg>
           </button>
+          {/* 3D Customize button - only show if product has 3D model */}
+          {has3DModelData && (
+            <button 
+              className="action-icon" 
+              aria-label="3D Customize" 
+              onClick={(e) => { 
+                e.preventDefault(); 
+                e.stopPropagation(); 
+                navigate('/3d-products-furniture'); 
+              }}
+              style={{ backgroundColor: '#FFC107', color: '#333' }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                <path d="M2 17l10 5 10-5"/>
+                <path d="M2 12l10 5 10-5"/>
+              </svg>
+            </button>
+          )}
         </div>
       </div>
 
       <div className="product-card-content">
         {/* Category */}
-        <div className="product-category">{categoryName || 'Product'}</div>
+        <div className="product-category" style={{ fontWeight: 'bold' }}>{categoryName || 'Product'}</div>
         
         {/* Product name */}
-        <div className="product-name">{name || 'Product Name'}</div>
+        <div className="product-name" style={{ fontWeight: 'bold' }}>{name || 'Product Name'}</div>
         
         {/* Price section */}
         <div className="product-price-section">
-          <span className="current-price">{formatPrice(displayPrice)}</span>
-          {originalPrice && <span className="original-price">{formatPrice(originalPrice)}</span>}
+          <span className="current-price" style={{ fontWeight: 'bold' }}>{formatPrice(displayPrice)}</span>
+          {originalPrice && <span className="original-price" style={{ fontWeight: 'bold' }}>{formatPrice(originalPrice)}</span>}
         </div>
         
         {/* Stock indicator */}
@@ -151,7 +168,7 @@ const ProductCard = ({ product }) => {
             className="stock-dot" 
             style={{ backgroundColor: stockStatus.color }}
           ></div>
-          <span className="stock-text">{stockStatus.label}</span>
+          <span className="stock-text" style={{ fontWeight: 'bold' }}>{stockStatus.label}</span>
         </div>
         
         {/* Sold quantity */}
@@ -162,13 +179,13 @@ const ProductCard = ({ product }) => {
             <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
             <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
           </svg>
-          <span className="sold-text">{soldQuantity || 0} sold</span>
+          <span className="sold-text" style={{ fontWeight: 'bold' }}>{soldQuantity || 0} sold</span>
         </div>
         
         {/* Rating */}
         <div className="product-rating">
           <StarIcon size={16} color="#fbbf24" />
-          <span className="rating-value">{rating ? rating.toFixed(1) : '0.0'}</span>
+          <span className="rating-value" style={{ fontWeight: 'bold' }}>{rating ? rating.toFixed(1) : '0.0'}</span>
         </div>
       </div>
 

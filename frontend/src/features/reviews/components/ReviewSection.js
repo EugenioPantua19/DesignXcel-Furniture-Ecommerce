@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../auth/hooks/useAuth';
+import { useAuth } from '../../../shared/hooks/useAuth';
 import ReviewForm from './ReviewForm';
 import ReviewList from './ReviewList';
 import ReviewStats from './ReviewStats';
@@ -36,14 +36,15 @@ const ReviewSection = ({ productId, productName }) => {
   const loadReviews = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/products/${productId}/reviews?sort=${sortBy}&page=${currentPage}&limit=${reviewsPerPage}`);
+      const apiBase = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${apiBase}/api/products/${productId}/reviews?sort=${sortBy}&page=${currentPage}&limit=${reviewsPerPage}`);
       const data = await response.json();
       
       if (data.success) {
         setReviews(data.reviews || []);
       }
     } catch (error) {
-      console.error('Error loading reviews:', error);
+      // Error loading reviews
     } finally {
       setLoading(false);
     }
@@ -53,20 +54,15 @@ const ReviewSection = ({ productId, productName }) => {
     try {
       // Add cache-busting parameter to ensure fresh data
       const timestamp = new Date().getTime();
-      const response = await fetch(`/api/products/${productId}/reviews/stats?_t=${timestamp}`);
+      const apiBase2 = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${apiBase2}/api/products/${productId}/reviews/stats?_t=${timestamp}`);
       const data = await response.json();
       
-      console.log('Frontend: Loading review stats for product', productId);
-      console.log('Frontend: Stats API response:', data);
-      
       if (data.success) {
-        console.log('Frontend: Setting review stats:', data.stats);
         setReviewStats(data.stats);
-      } else {
-        console.error('Frontend: Stats API error:', data.error);
       }
     } catch (error) {
-      console.error('Error loading review stats:', error);
+      // Error loading review stats
     }
   };
 
@@ -91,10 +87,14 @@ const ReviewSection = ({ productId, productName }) => {
         });
       }
 
-      const response = await fetch(`/api/products/${productId}/reviews`, {
+
+
+      const apiBase3 = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${apiBase3}/api/products/${productId}/reviews`, {
         method: 'POST',
         headers: headers,
         body: requestBody,
+        credentials: 'include', // Include cookies for authentication
       });
 
       const data = await response.json();
@@ -109,7 +109,7 @@ const ReviewSection = ({ productId, productName }) => {
         return { success: false, error: data.error };
       }
     } catch (error) {
-      console.error('Error submitting review:', error);
+      // Error submitting review
       return { success: false, error: 'Failed to submit review' };
     }
   };

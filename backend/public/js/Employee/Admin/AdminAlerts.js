@@ -1,5 +1,5 @@
 // Admin Alerts JavaScript
-// Handles system alerts and notifications for admin users
+// Handles inventory alerts for products and raw materials
 
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize admin alerts functionality
@@ -15,611 +15,141 @@ document.addEventListener('DOMContentLoaded', function() {
 function initializeAdminAlerts() {
     console.log('Initializing Admin Alerts...');
     
-    // Wait for userPermissions to be initialized
-    if (window.userPermissions) {
-        // Check if user has admin permissions
-        if (!window.userPermissions.hasPermission('admin')) {
-            console.log('User does not have admin permissions');
-            window.userPermissions.redirectToForbidden();
-            return;
-        }
-        
-        // Update UI based on permissions
-        window.userPermissions.updateUI();
-    } else {
-        // Fallback: wait a bit and try again
-        setTimeout(initializeAdminAlerts, 100);
-        return;
-    }
+    // Admin-only system - no permission checking needed
     
-    // Initialize alert-specific features
-    initializeSystemAlerts();
-    initializeSecurityAlerts();
-    initializePerformanceAlerts();
+    // Initialize inventory alert features
+    initializeInventoryAlerts();
+    
+    // Check for critical alerts on page load
+    checkCriticalAlerts();
 }
 
 function loadAlertsData() {
-    // Load system alerts
-    loadSystemAlerts();
+    // Load product alerts
+    loadProductAlerts();
     
-    // Load security alerts
-    loadSecurityAlerts();
-    
-    // Load performance alerts
-    loadPerformanceAlerts();
-    
-    // Load user activity alerts
-    loadUserActivityAlerts();
+    // Load raw material alerts
+    loadRawMaterialAlerts();
 }
 
-function loadSystemAlerts() {
-    fetch('/api/admin/alerts/system')
+function loadProductAlerts() {
+    fetch('/Employee/Admin/Alerts/Data')
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                displaySystemAlerts(data.alerts);
+                displayProductAlerts(data.products);
             }
         })
         .catch(error => {
-            console.error('Error loading system alerts:', error);
+            console.error('Error loading product alerts:', error);
         });
 }
 
-function displaySystemAlerts(alerts) {
-    const alertsContainer = document.getElementById('systemAlertsList');
-    if (!alertsContainer) return;
+function displayProductAlerts(products) {
+    const tableBody = document.getElementById('lowStockProductsTable').querySelector('tbody');
+    const noProductsMsg = document.getElementById('noLowStockProducts');
     
-    alertsContainer.innerHTML = '';
+    if (!tableBody) return;
     
-    alerts.forEach(alert => {
-        const alertElement = document.createElement('div');
-        alertElement.className = `alert-item alert-${alert.severity}`;
-        alertElement.innerHTML = `
-            <div class="alert-header">
-                <div class="alert-title">${alert.title}</div>
-                <div class="alert-severity severity-${alert.severity}">${alert.severity.toUpperCase()}</div>
-            </div>
-            <div class="alert-message">${alert.message}</div>
-            <div class="alert-meta">
-                <span class="alert-timestamp">${formatTimestamp(alert.timestamp)}</span>
-                <span class="alert-source">${alert.source}</span>
-            </div>
-            <div class="alert-actions">
-                <button class="btn-dismiss" data-alert-id="${alert.id}">Dismiss</button>
-                <button class="btn-acknowledge" data-alert-id="${alert.id}">Acknowledge</button>
-            </div>
+    tableBody.innerHTML = '';
+    
+    if (products.length === 0) {
+        noProductsMsg.style.display = 'block';
+        return;
+    }
+    
+    noProductsMsg.style.display = 'none';
+    
+    products.forEach(product => {
+        const row = document.createElement('tr');
+        const status = getStockStatus(product.StockQuantity);
+        
+        row.innerHTML = `
+            <td>${product.ProductID}</td>
+            <td>${product.Name}</td>
+            <td>${product.StockQuantity}</td>
+            <td><span class="${status.class}">${status.label}</span></td>
         `;
-        alertsContainer.appendChild(alertElement);
+        
+        tableBody.appendChild(row);
     });
-    
-    // Add event listeners to alert buttons
-    setupAlertActions();
 }
 
-function loadSecurityAlerts() {
-    fetch('/api/admin/alerts/security')
+function loadRawMaterialAlerts() {
+    fetch('/Employee/Admin/Alerts/Data')
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                displaySecurityAlerts(data.alerts);
+                displayRawMaterialAlerts(data.rawMaterials);
             }
         })
         .catch(error => {
-            console.error('Error loading security alerts:', error);
+            console.error('Error loading raw material alerts:', error);
         });
 }
 
-function displaySecurityAlerts(alerts) {
-    const alertsContainer = document.getElementById('securityAlertsList');
-    if (!alertsContainer) return;
+function displayRawMaterialAlerts(rawMaterials) {
+    const tableBody = document.getElementById('lowStockMaterialsTable').querySelector('tbody');
+    const noMaterialsMsg = document.getElementById('noLowStockMaterials');
     
-    alertsContainer.innerHTML = '';
+    if (!tableBody) return;
     
-    alerts.forEach(alert => {
-        const alertElement = document.createElement('div');
-        alertElement.className = `security-alert-item alert-${alert.severity}`;
-        alertElement.innerHTML = `
-            <div class="alert-header">
-                <div class="alert-title">${alert.title}</div>
-                <div class="alert-severity severity-${alert.severity}">${alert.severity.toUpperCase()}</div>
-            </div>
-            <div class="alert-message">${alert.message}</div>
-            <div class="alert-details">
-                <div class="alert-ip">IP: ${alert.ipAddress}</div>
-                <div class="alert-user">User: ${alert.userName || 'Unknown'}</div>
-                <div class="alert-timestamp">${formatTimestamp(alert.timestamp)}</div>
-            </div>
-            <div class="alert-actions">
-                <button class="btn-block-ip" data-ip="${alert.ipAddress}">Block IP</button>
-                <button class="btn-investigate" data-alert-id="${alert.id}">Investigate</button>
-            </div>
+    tableBody.innerHTML = '';
+    
+    if (rawMaterials.length === 0) {
+        noMaterialsMsg.style.display = 'block';
+        return;
+    }
+    
+    noMaterialsMsg.style.display = 'none';
+    
+    rawMaterials.forEach(material => {
+        const row = document.createElement('tr');
+        const status = getStockStatus(material.QuantityAvailable);
+        
+        row.innerHTML = `
+            <td>${material.MaterialID}</td>
+            <td>${material.Name}</td>
+            <td>${material.QuantityAvailable}</td>
+            <td>${material.Unit}</td>
+            <td><span class="${status.class}">${status.label}</span></td>
         `;
-        alertsContainer.appendChild(alertElement);
+        
+        tableBody.appendChild(row);
     });
-    
-    // Add event listeners to security alert buttons
-    setupSecurityAlertActions();
 }
 
-function loadPerformanceAlerts() {
-    fetch('/api/admin/alerts/performance')
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                displayPerformanceAlerts(data.alerts);
-            }
-        })
-        .catch(error => {
-            console.error('Error loading performance alerts:', error);
-        });
+function initializeInventoryAlerts() {
+    console.log('Inventory alerts initialized');
+    
+    // Setup real-time updates for inventory alerts
+    setupInventoryAlertUpdates();
 }
 
-function displayPerformanceAlerts(alerts) {
-    const alertsContainer = document.getElementById('performanceAlertsList');
-    if (!alertsContainer) return;
-    
-    alertsContainer.innerHTML = '';
-    
-    alerts.forEach(alert => {
-        const alertElement = document.createElement('div');
-        alertElement.className = `performance-alert-item alert-${alert.severity}`;
-        alertElement.innerHTML = `
-            <div class="alert-header">
-                <div class="alert-title">${alert.title}</div>
-                <div class="alert-metric">${alert.metric}: ${alert.value}</div>
-            </div>
-            <div class="alert-message">${alert.message}</div>
-            <div class="alert-chart" id="chart-${alert.id}"></div>
-            <div class="alert-actions">
-                <button class="btn-optimize" data-alert-id="${alert.id}">Optimize</button>
-                <button class="btn-monitor" data-alert-id="${alert.id}">Monitor</button>
-            </div>
-        `;
-        alertsContainer.appendChild(alertElement);
-    });
-    
-    // Add event listeners to performance alert buttons
-    setupPerformanceAlertActions();
-}
-
-function loadUserActivityAlerts() {
-    fetch('/api/admin/alerts/user-activity')
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                displayUserActivityAlerts(data.alerts);
-            }
-        })
-        .catch(error => {
-            console.error('Error loading user activity alerts:', error);
-        });
-}
-
-function displayUserActivityAlerts(alerts) {
-    const alertsContainer = document.getElementById('userActivityAlertsList');
-    if (!alertsContainer) return;
-    
-    alertsContainer.innerHTML = '';
-    
-    alerts.forEach(alert => {
-        const alertElement = document.createElement('div');
-        alertElement.className = `user-activity-alert-item alert-${alert.severity}`;
-        alertElement.innerHTML = `
-            <div class="alert-header">
-                <div class="alert-title">${alert.title}</div>
-                <div class="alert-user">User: ${alert.userName}</div>
-            </div>
-            <div class="alert-message">${alert.message}</div>
-            <div class="alert-details">
-                <div class="alert-activity">Activity: ${alert.activity}</div>
-                <div class="alert-timestamp">${formatTimestamp(alert.timestamp)}</div>
-            </div>
-            <div class="alert-actions">
-                <button class="btn-view-user" data-user-id="${alert.userId}">View User</button>
-                <button class="btn-suspend-user" data-user-id="${alert.userId}">Suspend User</button>
-            </div>
-        `;
-        alertsContainer.appendChild(alertElement);
-    });
-    
-    // Add event listeners to user activity alert buttons
-    setupUserActivityAlertActions();
-}
-
-function initializeSystemAlerts() {
-    console.log('System alerts initialized');
-    
-    // Setup real-time updates
-    setupSystemAlertUpdates();
-}
-
-function initializeSecurityAlerts() {
-    console.log('Security alerts initialized');
-    
-    // Setup security monitoring
-    setupSecurityMonitoring();
-}
-
-function initializePerformanceAlerts() {
-    console.log('Performance alerts initialized');
-    
-    // Setup performance monitoring
-    setupPerformanceMonitoring();
-}
-
-function setupSystemAlertUpdates() {
-    // Update system alerts every 30 seconds
+function setupInventoryAlertUpdates() {
+    // Update inventory alerts every 30 seconds
     setInterval(() => {
-        loadSystemAlerts();
+        loadProductAlerts();
+        loadRawMaterialAlerts();
+        checkCriticalAlerts();
     }, 30000);
 }
 
-function setupSecurityMonitoring() {
-    // Monitor for security events
-    setInterval(() => {
-        loadSecurityAlerts();
-    }, 15000);
-}
-
-function setupPerformanceMonitoring() {
-    // Monitor system performance
-    setInterval(() => {
-        loadPerformanceAlerts();
-    }, 60000);
-}
-
-function setupEventListeners() {
-    // Setup alert filtering
-    setupAlertFiltering();
+function getStockStatus(quantity) {
+    const safetyStock = parseInt(document.getElementById('safetyStockInput')?.value || 10);
     
-    // Setup alert actions
-    setupAlertActions();
-    
-    // Setup real-time updates
-    setupRealTimeUpdates();
-}
-
-function setupAlertFiltering() {
-    // Filter by severity
-    const severityFilter = document.getElementById('severityFilter');
-    if (severityFilter) {
-        severityFilter.addEventListener('change', function() {
-            filterAlertsBySeverity(this.value);
-        });
-    }
-    
-    // Filter by type
-    const typeFilter = document.getElementById('typeFilter');
-    if (typeFilter) {
-        typeFilter.addEventListener('change', function() {
-            filterAlertsByType(this.value);
-        });
-    }
-    
-    // Search alerts
-    const searchInput = document.getElementById('alertSearch');
-    if (searchInput) {
-        searchInput.addEventListener('input', function() {
-            searchAlerts(this.value);
-        });
+    if (quantity === 0) {
+        return { class: 'out-of-stock', label: 'Out of Stock' };
+    } else if (quantity <= safetyStock) {
+        return { class: 'critical-stock', label: 'Critical Stock' };
+    } else if (quantity <= safetyStock * 2) {
+        return { class: 'low-stock', label: 'Low Stock' };
+    } else {
+        return { class: 'normal-stock', label: 'Normal Stock' };
     }
 }
 
-function filterAlertsBySeverity(severity) {
-    const alertItems = document.querySelectorAll('.alert-item, .security-alert-item, .performance-alert-item, .user-activity-alert-item');
-    
-    alertItems.forEach(item => {
-        if (severity === 'all' || item.classList.contains(`alert-${severity}`)) {
-            item.style.display = 'block';
-        } else {
-            item.style.display = 'none';
-        }
-    });
-}
-
-function filterAlertsByType(type) {
-    const containers = {
-        'system': document.getElementById('systemAlertsList'),
-        'security': document.getElementById('securityAlertsList'),
-        'performance': document.getElementById('performanceAlertsList'),
-        'user-activity': document.getElementById('userActivityAlertsList')
-    };
-    
-    Object.entries(containers).forEach(([containerType, container]) => {
-        if (container) {
-            if (type === 'all' || containerType === type) {
-                container.style.display = 'block';
-            } else {
-                container.style.display = 'none';
-            }
-        }
-    });
-}
-
-function searchAlerts(searchTerm) {
-    const alertItems = document.querySelectorAll('.alert-item, .security-alert-item, .performance-alert-item, .user-activity-alert-item');
-    
-    alertItems.forEach(item => {
-        const text = item.textContent.toLowerCase();
-        if (text.includes(searchTerm.toLowerCase())) {
-            item.style.display = 'block';
-        } else {
-            item.style.display = 'none';
-        }
-    });
-}
-
-function setupAlertActions() {
-    // Dismiss alert
-    document.addEventListener('click', function(e) {
-        if (e.target.classList.contains('btn-dismiss')) {
-            const alertId = e.target.getAttribute('data-alert-id');
-            dismissAlert(alertId);
-        }
-    });
-    
-    // Acknowledge alert
-    document.addEventListener('click', function(e) {
-        if (e.target.classList.contains('btn-acknowledge')) {
-            const alertId = e.target.getAttribute('data-alert-id');
-            acknowledgeAlert(alertId);
-        }
-    });
-}
-
-function setupSecurityAlertActions() {
-    // Block IP
-    document.addEventListener('click', function(e) {
-        if (e.target.classList.contains('btn-block-ip')) {
-            const ip = e.target.getAttribute('data-ip');
-            blockIP(ip);
-        }
-    });
-    
-    // Investigate alert
-    document.addEventListener('click', function(e) {
-        if (e.target.classList.contains('btn-investigate')) {
-            const alertId = e.target.getAttribute('data-alert-id');
-            investigateAlert(alertId);
-        }
-    });
-}
-
-function setupPerformanceAlertActions() {
-    // Optimize system
-    document.addEventListener('click', function(e) {
-        if (e.target.classList.contains('btn-optimize')) {
-            const alertId = e.target.getAttribute('data-alert-id');
-            optimizeSystem(alertId);
-        }
-    });
-    
-    // Monitor performance
-    document.addEventListener('click', function(e) {
-        if (e.target.classList.contains('btn-monitor')) {
-            const alertId = e.target.getAttribute('data-alert-id');
-            monitorPerformance(alertId);
-        }
-    });
-}
-
-function setupUserActivityAlertActions() {
-    // View user
-    document.addEventListener('click', function(e) {
-        if (e.target.classList.contains('btn-view-user')) {
-            const userId = e.target.getAttribute('data-user-id');
-            viewUser(userId);
-        }
-    });
-    
-    // Suspend user
-    document.addEventListener('click', function(e) {
-        if (e.target.classList.contains('btn-suspend-user')) {
-            const userId = e.target.getAttribute('data-user-id');
-            suspendUser(userId);
-        }
-    });
-}
-
-function setupRealTimeUpdates() {
-    // Setup WebSocket connection for real-time alerts
-    if (window.WebSocket) {
-        const ws = new WebSocket('ws://localhost:3000/admin-alerts');
-        
-        ws.onmessage = function(event) {
-            const alert = JSON.parse(event.data);
-            addNewAlert(alert);
-        };
-        
-        ws.onclose = function() {
-            console.log('WebSocket connection closed');
-        };
-    }
-}
-
-// Alert action functions
-function dismissAlert(alertId) {
-    fetch(`/api/admin/alerts/${alertId}/dismiss`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            if (window.EmployeeUtils) {
-                window.EmployeeUtils.showNotification('Alert dismissed successfully!');
-            }
-            // Remove alert from UI
-            const alertElement = document.querySelector(`[data-alert-id="${alertId}"]`);
-            if (alertElement) {
-                alertElement.remove();
-            }
-        } else {
-            if (window.EmployeeUtils) {
-                window.EmployeeUtils.showNotification('Failed to dismiss alert', 'error');
-            }
-        }
-    })
-    .catch(error => {
-        console.error('Error dismissing alert:', error);
-        if (window.EmployeeUtils) {
-            window.EmployeeUtils.showNotification('Error dismissing alert', 'error');
-        }
-    });
-}
-
-function acknowledgeAlert(alertId) {
-    fetch(`/api/admin/alerts/${alertId}/acknowledge`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            if (window.EmployeeUtils) {
-                window.EmployeeUtils.showNotification('Alert acknowledged!');
-            }
-        } else {
-            if (window.EmployeeUtils) {
-                window.EmployeeUtils.showNotification('Failed to acknowledge alert', 'error');
-            }
-        }
-    })
-    .catch(error => {
-        console.error('Error acknowledging alert:', error);
-        if (window.EmployeeUtils) {
-            window.EmployeeUtils.showNotification('Error acknowledging alert', 'error');
-        }
-    });
-}
-
-function blockIP(ip) {
-    if (window.EmployeeUtils) {
-        window.EmployeeUtils.confirm(`Are you sure you want to block IP address ${ip}?`, 'Block IP Address')
-            .then(confirmed => {
-                if (confirmed) {
-                    fetch('/api/admin/security/block-ip', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ ip })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            window.EmployeeUtils.showNotification(`IP address ${ip} blocked successfully!`);
-                        } else {
-                            window.EmployeeUtils.showNotification('Failed to block IP address', 'error');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error blocking IP:', error);
-                        window.EmployeeUtils.showNotification('Error blocking IP address', 'error');
-                    });
-                }
-            });
-    }
-}
-
-function investigateAlert(alertId) {
-    window.location.href = `/Employee/Admin/SecurityInvestigation?alertId=${alertId}`;
-}
-
-function optimizeSystem(alertId) {
-    fetch(`/api/admin/performance/optimize/${alertId}`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            if (window.EmployeeUtils) {
-                window.EmployeeUtils.showNotification('System optimization started!');
-            }
-        } else {
-            if (window.EmployeeUtils) {
-                window.EmployeeUtils.showNotification('Failed to start optimization', 'error');
-            }
-        }
-    })
-    .catch(error => {
-        console.error('Error optimizing system:', error);
-        if (window.EmployeeUtils) {
-            window.EmployeeUtils.showNotification('Error optimizing system', 'error');
-        }
-    });
-}
-
-function monitorPerformance(alertId) {
-    window.location.href = `/Employee/Admin/PerformanceMonitor?alertId=${alertId}`;
-}
-
-function viewUser(userId) {
-    window.location.href = `/Employee/UserManager/ViewUser?id=${userId}`;
-}
-
-function suspendUser(userId) {
-    if (window.EmployeeUtils) {
-        window.EmployeeUtils.confirm('Are you sure you want to suspend this user?', 'Suspend User')
-            .then(confirmed => {
-                if (confirmed) {
-                    fetch(`/api/admin/users/${userId}/suspend`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        }
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            window.EmployeeUtils.showNotification('User suspended successfully!');
-                        } else {
-                            window.EmployeeUtils.showNotification('Failed to suspend user', 'error');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error suspending user:', error);
-                        window.EmployeeUtils.showNotification('Error suspending user', 'error');
-                    });
-                }
-            });
-    }
-}
-
-function addNewAlert(alert) {
-    // Add new alert to the appropriate container
-    const container = document.getElementById(`${alert.type}AlertsList`);
-    if (container) {
-        const alertElement = document.createElement('div');
-        alertElement.className = `alert-item alert-${alert.severity}`;
-        alertElement.innerHTML = `
-            <div class="alert-header">
-                <div class="alert-title">${alert.title}</div>
-                <div class="alert-severity severity-${alert.severity}">${alert.severity.toUpperCase()}</div>
-            </div>
-            <div class="alert-message">${alert.message}</div>
-            <div class="alert-meta">
-                <span class="alert-timestamp">${formatTimestamp(alert.timestamp)}</span>
-                <span class="alert-source">${alert.source}</span>
-            </div>
-        `;
-        
-        container.insertBefore(alertElement, container.firstChild);
-        
-        // Show notification
-        if (window.EmployeeUtils) {
-            window.EmployeeUtils.showNotification(`New ${alert.severity} alert: ${alert.title}`, alert.severity);
-        }
-    }
-}
-
+// Utility function to format timestamps
 function formatTimestamp(timestamp) {
     return new Date(timestamp).toLocaleString('en-US', {
         year: 'numeric',
@@ -631,20 +161,332 @@ function formatTimestamp(timestamp) {
     });
 }
 
+function setupEventListeners() {
+    // Setup refresh functionality
+    setupRefreshButton();
+    
+    // Setup safety stock form
+    setupSafetyStockForm();
+}
+
+function setupRefreshButton() {
+    // Add refresh functionality if needed
+    const refreshBtn = document.getElementById('refreshAlerts');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', function() {
+            loadAlertsData();
+        });
+    }
+}
+
+function setupSafetyStockForm() {
+    // Safety stock form is handled in the EJS template
+    // This function can be used for additional form handling if needed
+}
+
+// Check for critical alerts and show popup
+function checkCriticalAlerts() {
+    fetch('/Employee/Admin/Alerts/Data')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const criticalItems = [];
+                const safetyStock = parseInt(document.getElementById('safetyStockInput')?.value || 10);
+                
+                // Check products
+                if (data.products && data.products.length > 0) {
+                    data.products.forEach(product => {
+                        if (product.StockQuantity === 0) {
+                            criticalItems.push({
+                                type: 'product',
+                                name: product.Name,
+                                id: product.ProductID,
+                                quantity: product.StockQuantity,
+                                status: 'out-of-stock'
+                            });
+                        } else if (product.StockQuantity <= safetyStock) {
+                            criticalItems.push({
+                                type: 'product',
+                                name: product.Name,
+                                id: product.ProductID,
+                                quantity: product.StockQuantity,
+                                status: 'critical'
+                            });
+                        }
+                    });
+                }
+                
+                // Check raw materials
+                if (data.rawMaterials && data.rawMaterials.length > 0) {
+                    data.rawMaterials.forEach(material => {
+                        if (material.QuantityAvailable === 0) {
+                            criticalItems.push({
+                                type: 'raw material',
+                                name: material.Name,
+                                id: material.MaterialID,
+                                quantity: material.QuantityAvailable,
+                                status: 'out-of-stock'
+                            });
+                        } else if (material.QuantityAvailable <= safetyStock) {
+                            criticalItems.push({
+                                type: 'raw material',
+                                name: material.Name,
+                                id: material.MaterialID,
+                                quantity: material.QuantityAvailable,
+                                status: 'critical'
+                            });
+                        }
+                    });
+                }
+                
+                // Show popup if there are critical items
+                if (criticalItems.length > 0) {
+                    showCriticalAlertPopup(criticalItems, safetyStock);
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error checking critical alerts:', error);
+        });
+}
+
+// Show critical alert popup
+function showCriticalAlertPopup(criticalItems, safetyStock) {
+    // Don't show popup if it's already visible
+    if (document.getElementById('criticalAlertModal') && 
+        document.getElementById('criticalAlertModal').style.display !== 'none') {
+        return;
+    }
+    
+    const outOfStockItems = criticalItems.filter(item => item.status === 'out-of-stock');
+    const criticalStockItems = criticalItems.filter(item => item.status === 'critical');
+    
+    let alertMessage = '';
+    let alertType = 'warning';
+    
+    if (outOfStockItems.length > 0) {
+        alertMessage = `Critical Alert: ${outOfStockItems.length} item(s) are out of stock!`;
+        alertType = 'critical';
+    } else if (criticalStockItems.length > 0) {
+        alertMessage = `Warning: ${criticalStockItems.length} item(s) are at or below safety stock (${safetyStock})!`;
+        alertType = 'warning';
+    }
+    
+    // Create or update the popup modal
+    let modal = document.getElementById('criticalAlertModal');
+    if (!modal) {
+        modal = createCriticalAlertModal();
+    }
+    
+    // Update modal content
+    const modalIcon = modal.querySelector('.modal-icon');
+    const modalMessage = modal.querySelector('.modal-message');
+    const modalDetails = modal.querySelector('.modal-details');
+    
+    if (alertType === 'critical') {
+        modalIcon.innerHTML = '&#9888;';
+        modalIcon.style.color = '#dc3545';
+        modalMessage.style.color = '#dc3545';
+    } else {
+        modalIcon.innerHTML = '&#9888;';
+        modalIcon.style.color = '#ff9800';
+        modalMessage.style.color = '#ff9800';
+    }
+    
+    modalMessage.textContent = alertMessage;
+    
+    // Hide details section - only show general warning
+    modalDetails.style.display = 'none';
+    
+    // Show modal
+    modal.style.display = 'flex';
+    
+    // Auto-hide after 10 seconds if not critical
+    if (alertType !== 'critical') {
+        setTimeout(() => {
+            if (modal.style.display === 'flex') {
+                modal.style.display = 'none';
+            }
+        }, 10000);
+    }
+}
+
+// Create critical alert modal
+function createCriticalAlertModal() {
+    const modal = document.createElement('div');
+    modal.id = 'criticalAlertModal';
+    modal.style.cssText = `
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.6);
+        z-index: 4000;
+        justify-content: center;
+        align-items: center;
+        animation: fadeIn 0.3s ease;
+    `;
+    
+    modal.innerHTML = `
+        <div style="
+            background: #fff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 90vw;
+            position: relative;
+            text-align: center;
+            animation: slideIn 0.3s ease;
+        ">
+            <span class="close-modal" style="
+                position: absolute;
+                top: 15px;
+                right: 20px;
+                font-size: 1.8em;
+                color: #888;
+                cursor: pointer;
+                transition: color 0.2s;
+            ">&times;</span>
+            
+            <div class="modal-icon" style="
+                font-size: 3em;
+                margin-bottom: 15px;
+            ">&#9888;</div>
+            
+            <div class="modal-message" style="
+                font-size: 1.3em;
+                font-weight: 600;
+                margin-bottom: 20px;
+                line-height: 1.4;
+            "></div>
+            
+            <div class="modal-details" style="
+                font-size: 1em;
+                color: #555;
+                margin-bottom: 25px;
+            "></div>
+            
+            <div style="display: flex; gap: 15px; justify-content: center;">
+                <button id="viewAlertsBtn" style="
+                    background: #ff9800;
+                    color: #fff;
+                    border: none;
+                    border-radius: 6px;
+                    padding: 12px 24px;
+                    font-size: 1em;
+                    font-weight: 500;
+                    cursor: pointer;
+                    transition: background 0.2s;
+                ">View Alerts</button>
+                <button id="dismissAlertBtn" style="
+                    background: #6c757d;
+                    color: #fff;
+                    border: none;
+                    border-radius: 6px;
+                    padding: 12px 24px;
+                    font-size: 1em;
+                    font-weight: 500;
+                    cursor: pointer;
+                    transition: background 0.2s;
+                ">Dismiss</button>
+            </div>
+        </div>
+    `;
+    
+    // Add event listeners
+    modal.querySelector('.close-modal').addEventListener('click', () => {
+        modal.style.display = 'none';
+    });
+    
+    modal.querySelector('#viewAlertsBtn').addEventListener('click', () => {
+        modal.style.display = 'none';
+        // Already on alerts page, just scroll to top
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+    
+    modal.querySelector('#dismissAlertBtn').addEventListener('click', () => {
+        modal.style.display = 'none';
+    });
+    
+    // Close on background click
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.style.display = 'none';
+        }
+    });
+    
+    // Add CSS animations
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes slideIn {
+            from { transform: scale(0.9) translateY(-20px); opacity: 0; }
+            to { transform: scale(1) translateY(0); opacity: 1; }
+        }
+        #viewAlertsBtn:hover { background: #e68900; }
+        #dismissAlertBtn:hover { background: #5a6268; }
+        .close-modal:hover { color: #333; }
+    `;
+    document.head.appendChild(style);
+    
+    document.body.appendChild(modal);
+    return modal;
+}
+
+// Dashboard integration - check alerts when accessing admin panel
+function checkDashboardAlerts() {
+    console.log('Checking dashboard alerts...');
+    
+    // Check if we're on the dashboard page
+    const isDashboard = window.location.pathname.includes('AdminManager') || 
+                       window.location.pathname.includes('Admin/AdminManager');
+    
+    if (isDashboard) {
+        // Delay the check slightly to ensure page is fully loaded
+        setTimeout(() => {
+            checkCriticalAlerts();
+        }, 1000);
+    }
+}
+
+// Global function to be called from any admin page
+window.checkInventoryAlerts = function() {
+    if (window.AdminAlerts && window.AdminAlerts.checkCriticalAlerts) {
+        window.AdminAlerts.checkCriticalAlerts();
+    } else {
+        console.log('AdminAlerts not loaded yet');
+    }
+};
+
+// Auto-check alerts on page load for dashboard
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if this is a dashboard or admin page
+    const isAdminPage = window.location.pathname.includes('/Employee/Admin') || 
+                       window.location.pathname.includes('/Employee/AdminManager');
+    
+    if (isAdminPage) {
+        // Check alerts after a short delay to ensure everything is loaded
+        setTimeout(() => {
+            checkDashboardAlerts();
+        }, 2000);
+    }
+});
+
 // Export functions for use in other modules
 window.AdminAlerts = {
     loadAlertsData,
-    loadSystemAlerts,
-    loadSecurityAlerts,
-    loadPerformanceAlerts,
-    loadUserActivityAlerts,
-    dismissAlert,
-    acknowledgeAlert,
-    blockIP,
-    investigateAlert,
-    optimizeSystem,
-    monitorPerformance,
-    viewUser,
-    suspendUser,
-    initializeAdminAlerts
+    loadProductAlerts,
+    loadRawMaterialAlerts,
+    initializeAdminAlerts,
+    getStockStatus,
+    formatTimestamp,
+    checkCriticalAlerts,
+    showCriticalAlertPopup,
+    checkDashboardAlerts
 };

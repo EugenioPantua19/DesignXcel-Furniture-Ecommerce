@@ -14,6 +14,63 @@
   cursor: pointer;
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 .product-card-redesigned:hover {
   background: #ffffff !important;
   transform: translateY(-2px);
@@ -24,19 +81,26 @@
 .product-card-image-container {
   position: relative;
   width: 100%;
-  height: 300px;
-  background: #ffffff !important;
+  height: 200px; /* Fixed height */
+  min-height: 200px; /* Ensure minimum height */
+  max-height: 250px; /* Maximum height */
+  background: #f8f9fa !important;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   border-radius: 8px 8px 0 0;
+  /* Ensure proper aspect ratio maintenance */
+  aspect-ratio: 16/9;
 }
 
 .product-card-redesigned .product-card-image-container .product-image {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100% !important;
   height: 100% !important;
-  object-fit: cover !important;
+  object-fit: contain !important;
   object-position: center center !important;
   border-radius: 8px 8px 0 0;
   /* Ensure image always fills container regardless of aspect ratio */
@@ -51,33 +115,43 @@
   image-rendering: crisp-edges;
   backface-visibility: hidden;
   transform: translateZ(0);
+  /* Add background to fill any empty space */
+  background: #f8f9fa;
+  border: 1px solid #e5e7eb;
 }
 
 /* Fallback for images that might not load properly */
 .product-card-redesigned .product-card-image-container .product-image[src=""],
 .product-card-redesigned .product-card-image-container .product-image:not([src]),
 .product-card-redesigned .product-card-image-container .product-image[src*="placeholder"] {
+  position: absolute;
+  top: 0;
+  left: 0;
   background: #f8f9fa;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23f8f9fa'/%3E%3Ctext x='50' y='50' text-anchor='middle' dy='0.3em' font-family='Arial, sans-serif' font-size='12' fill='%23666'%3EImage%3C/text%3E%3C/svg%3E");
-  background-size: cover;
+  background-size: 100% 100%;
   background-position: center;
   background-repeat: no-repeat;
+  object-fit: contain;
 }
 
-/* Handle different aspect ratios */
-.product-card-redesigned .product-card-image-container .product-image {
-  /* For very wide images */
-  object-fit: cover !important;
-}
+/* Handle different aspect ratios - moved to main rule below */
 
 /* Alternative fit options for specific cases */
 .product-card-redesigned .product-card-image-container .product-image.fit-contain {
   object-fit: contain !important;
   background: #f8f9fa;
+  border: 1px solid #e5e7eb;
+}
+
+.product-card-redesigned .product-card-image-container .product-image.fit-cover {
+  object-fit: cover !important;
+  border: none;
 }
 
 .product-card-redesigned .product-card-image-container .product-image.fit-fill {
   object-fit: fill !important;
+  border: 1px solid #e5e7eb;
 }
 
 /* Ensure images load and display properly */
@@ -88,9 +162,14 @@
   /* Ensure proper scaling */
   width: 100% !important;
   height: 100% !important;
-  /* Force cover behavior */
-  object-fit: cover !important;
+  /* Force contain behavior to show full image */
+  object-fit: contain !important;
   object-position: center center !important;
+  /* Maintain aspect ratio */
+  aspect-ratio: 16/9;
+  /* Add background and border for better display */
+  background: #f8f9fa;
+  border: 1px solid #e5e7eb;
 }
 
 /* Handle loading states */
@@ -117,11 +196,28 @@
   display: block;
   width: 100%;
   height: 0;
-  padding-bottom: 100%; /* 1:1 aspect ratio fallback */
+  padding-bottom: 56.25%; /* 16:9 aspect ratio fallback */
   position: absolute;
   top: 0;
   left: 0;
   z-index: -1;
+}
+
+/* Utility classes for different image fitting modes */
+.product-card-image-container.fit-cover .product-image {
+  object-fit: cover !important;
+  border: none !important;
+}
+
+.product-card-image-container.fit-contain .product-image {
+  object-fit: contain !important;
+  border: 1px solid #e5e7eb !important;
+  background: #f8f9fa !important;
+}
+
+.product-card-image-container.fit-fill .product-image {
+  object-fit: fill !important;
+  border: 1px solid #e5e7eb !important;
 }
 
 /* Discount Badge - Top Left */
@@ -129,16 +225,59 @@
   position: absolute;
   top: 12px;
   left: 12px;
-  background: #22c55e !important;
+  background: #F0B21B !important;
   color: #ffffff !important;
   padding: 4px 8px;
   border-radius: 6px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700 !important;
+  letter-spacing: 0.3px;
+  z-index: 3;
+  box-shadow: 0 2px 4px rgba(240, 178, 27, 0.3);
+  border: 1px solid #F0B21B !important;
+}
+
+/* 3D Model Badge - Top Left (Mustard Yellow) */
+.model3d-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: #FFC107 !important;
+  color: #333333 !important;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 900;
   letter-spacing: 0.3px;
   z-index: 3;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  border: 1px solid #16a34a !important;
+  border: 1px solid #e0ac06 !important;
+}
+
+/* 3D Model Badge - Top Right (Mustard Yellow) */
+.model3d-badge-top-right {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: #FFC107 !important;
+  color: #333333 !important;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.3px;
+  z-index: 3;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  border: 1px solid #e0ac06 !important;
+}
+
+/* When both discount and 3D badges are present, stack them */
+.model3d-badge + .discount-badge {
+  top: 40px;
+}
+
+.discount-badge + .model3d-badge {
+  top: 40px;
 }
 
 
@@ -160,7 +299,7 @@
 
 .stock-text {
   color: #6b7280;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 /* Sold Quantity Indicator */
@@ -179,7 +318,7 @@
 
 .sold-text {
   color: #6b7280;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 
@@ -315,7 +454,41 @@
   color: #4D5157;
 }
 
+/* Wishlist Button Specific Styles */
+.wishlist-btn svg {
+  transition: all 0.3s ease;
+}
+
+.wishlist-btn.in-wishlist svg {
+  color: #F0B21B;
+  fill: #F0B21B;
+}
+
+.wishlist-btn:hover svg {
+  color: #F0B21B;
+  transform: scale(1.1);
+}
+
+.wishlist-btn.in-wishlist:hover svg {
+  color: #e0ac06;
+  fill: #e0ac06;
+  transform: scale(1.1);
+}
+
+/* Wishlist button animation */
+.wishlist-btn:active svg {
+  transform: scale(0.95);
+}
+
 /* Responsive Design */
+@media (max-width: 1024px) and (min-width: 769px) {
+  .product-card-image-container {
+    height: 180px; /* Fixed height for tablet */
+    min-height: 180px;
+    max-height: 220px;
+  }
+}
+
 @media (max-width: 768px) {
   .product-card-redesigned {
     max-width: 100%;
@@ -323,13 +496,21 @@
   }
   
   .product-card-image-container {
-    height: 200px;
+    height: 160px; /* Fixed height for mobile */
+    min-height: 160px;
+    max-height: 200px;
   }
   
   .product-card-redesigned .product-card-image-container .product-image {
     /* Maintain perfect fit on tablet */
-    object-fit: cover !important;
+    object-fit: contain !important;
     object-position: center center !important;
+    border: 1px solid #e5e7eb;
+  }
+
+  /* Responsive image placeholders for tablet */
+  .product-card-redesigned .product-card-image-container .product-image[src*="placeholder"] {
+    background-size: clamp(60px, 15vw, 80px) clamp(60px, 15vw, 80px);
   }
   
   .discount-badge {
@@ -408,15 +589,23 @@
   }
   
   .product-card-image-container {
-    height: 180px;
+    height: 140px; /* Fixed height for small mobile */
+    min-height: 140px;
+    max-height: 180px;
   }
   
   .product-card-redesigned .product-card-image-container .product-image {
     /* Maintain perfect fit on mobile */
-    object-fit: cover !important;
+    object-fit: contain !important;
     object-position: center center !important;
     min-width: 100%;
     min-height: 100%;
+    border: 1px solid #e5e7eb;
+  }
+
+  /* Responsive image placeholders for mobile */
+  .product-card-redesigned .product-card-image-container .product-image[src*="placeholder"] {
+    background-size: clamp(40px, 20vw, 60px) clamp(40px, 20vw, 60px);
   }
   
   .product-name {

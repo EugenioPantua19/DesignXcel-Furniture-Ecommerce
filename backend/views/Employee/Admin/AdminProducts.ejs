@@ -4,13 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Products - Design Excellence</title>
-    <link rel="stylesheet" href="/css/Employee/Admin/AdminIndexStyles.css"> <!-- Link to the general admin styles -->
+    <link rel="stylesheet" href="/css/Employee/Admin/AdminIndexStyles.css">
+    <link rel="stylesheet" href="/css/dark-mode.css">
+    <!-- Link to the general admin styles -->
     <style>
         /* Basic table styling */
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 20px;
+            margin-top: 10px;
         }
         th,
         td {
@@ -327,6 +329,64 @@
             color: #333;
         }
 
+        /* Form Section Dropdown Styles */
+        .form-section {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            background: white;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .form-section-header {
+            background: #F0B21B;
+            color: white;
+            padding: 15px 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+            transition: background 0.3s ease;
+        }
+
+        .form-section-header:hover {
+            background: #e1a017;
+        }
+
+        .form-section-header h4 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .form-section-toggle {
+            font-size: 18px;
+            transition: transform 0.3s ease;
+        }
+
+        .form-section-toggle.expanded {
+            transform: rotate(180deg);
+        }
+
+        .form-section-content {
+            padding: 20px;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease, padding 0.3s ease;
+        }
+
+        .form-section-content.expanded {
+            max-height: 2000px;
+            padding: 20px;
+        }
+
+        .form-section-content.collapsed {
+            max-height: 0;
+            padding: 0 20px;
+        }
+
         .material-row {
             display: flex;
             gap: 10px;
@@ -450,9 +510,17 @@
             top: 0;
             z-index: 10;
             background: #fff;
-            padding-top: 18px;
-            padding-bottom: 10px;
+            padding-top: 8px;
+            padding-bottom: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+        }
+        
+        .content-area {
+            padding: 8px 20px 15px 20px;
+        }
+        
+        .main-content {
+            padding: 5px 0;
         }
 
         /* Modal Overlay Styles (for Add/Edit Product) */
@@ -474,9 +542,11 @@
         .modal-content {
             background: #fff;
             border-radius: 8px;
-            padding: 30px 30px 20px 30px;
-            max-width: 500px;
+            padding: 15px 15px 10px 15px;
+            max-width: 550px;
             width: 95vw;
+            max-height: 80vh;
+            overflow-y: auto;
             box-shadow: 0 8px 32px rgba(0,0,0,0.25);
             position: relative;
         }
@@ -490,13 +560,221 @@
         }
         @media (max-width: 600px) {
             .modal-content {
-                padding: 18px 6px 10px 6px;
+                padding: 12px 8px 8px 8px;
                 max-width: 98vw;
             }
+            .thumbnail-grid {
+                flex-direction: column !important;
+                gap: 4px !important;
+            }
+            .thumbnail-grid > div {
+                min-width: 100% !important;
+            }
+        }
+        
+        @media (max-width: 400px) {
+            .modal-content {
+                padding: 8px 4px 4px 4px;
+            }
+            .thumbnail-grid {
+                flex-direction: column !important;
+                gap: 3px !important;
+            }
+        }
+
+
+        /* Custom Confirmation Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent black background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            visibility: hidden; /* Hidden by default */
+            opacity: 0;
+            transition: visibility 0s, opacity 0.3s ease;
+        }
+
+        .modal-overlay.show {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .modal-content {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-overlay.show .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-content h3 {
+            margin-top: 0;
+            color: #333;
+            font-size: 1.5em;
+            margin-bottom: 20px;
+        }
+
+        .modal-content p {
+            color: #555;
+            font-size: 1.1em;
+            margin-bottom: 30px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .modal-button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .modal-button.confirm {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .modal-button.confirm:hover {
+            background-color: #c82333;
+        }
+
+        .modal-button.cancel {
+            background-color: #f0f0f0;
+            color: #555;
+            border: 1px solid #ccc;
+        }
+
+        .modal-button.cancel:hover {
+            background-color: #e0e0e0;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        .sidebar-menu {
+            flex-grow: 1;
+        }
+        .logout-section {
+            padding: 40px;
+            border-top: 1px solid #ddd;
+            margin-top: auto;
+            text-align: center;
+        }
+        .logout-button {
+            display: inline-block;
+            width: auto;
+            padding: 12px 25px;
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            font-weight: bold;
+            transition: background-color 0.3s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        .logout-button:hover {
+            background-color: #c82333;
         }
     </style>
 </head>
 <body>
+    <div class="dashboard-container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h3>Admin Panel</h3>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="/Employee/AdminManager">Dashboard</a></li>
+                
+                <!-- Inventory Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">Inventory</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/Admin/Products">Products</a></li>
+                    <li><a href="/Employee/Admin/Variations">Variations</a></li>
+                    <li><a href="/Employee/Admin/RawMaterials">Raw Materials</a></li>
+                    <li><a href="/Employee/Admin/Alerts">Alerts</a></li>
+                    <li><a href="/Employee/Admin/Archived">Archived Items</a></li>
+                </ul>
+                
+                <!-- Transactions Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">Transactions</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/Admin/DeliveryRates">Delivery Rates</a></li>
+                    <li><a href="/Employee/Admin/WalkIn">Walk In</a></li>
+                </ul>
+                
+                <!-- Orders Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">Orders Section</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/Admin/OrdersPending">Orders Pending</a></li>
+                    <li><a href="/Employee/Admin/OrdersProcessing">Orders Processing</a></li>
+                    <li><a href="/Employee/Admin/OrdersShipping">Orders Shipping</a></li>
+                    <li><a href="/Employee/Admin/OrdersDelivery">Orders Delivery</a></li>
+                    <li><a href="/Employee/Admin/OrdersReceive">Orders Receive</a></li>
+                    <li><a href="/Employee/Admin/CancelledOrders">Cancelled Orders</a></li>
+                    <li><a href="/Employee/Admin/CompletedOrders">Completed Orders</a></li>
+                </ul>
+                
+                <!-- User Management Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">User Management</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/Admin/ManageUsers">Manage Users</a></li>
+                </ul>
+                
+                <!-- Customer Reviews Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">Customer Reviews</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/Admin/Reviews">Reviews</a></li>
+                </ul>
+                
+                <!-- Support & Communication Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">Support & Communication</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/Admin/ChatSupport">Chat Support</a></li>
+                </ul>
+                
+                <!-- Content & System Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">Content & System</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/Admin/CMS">Content Management</a></li>
+                    <li><a href="/Employee/Admin/Logs">Activity Logs</a></li>
+                </ul>
+            </ul>
+            <div class="logout-section">
+                <a href="/logout" class="logout-button" onclick="handleLogout(event)">Logout</a>
+            </div>
+        </div>
+        <div class="main-content">
+            <div class="header">
+                <h2>Products Management</h2>
+            </div>
+            <div class="content-area">
     <!-- Custom Success/Error Popup -->
     <div id="customPopup" class="custom-popup">
         <div class="custom-popup-content">
@@ -529,42 +807,7 @@
         </div>
     </div>
 
-    <div class="dashboard-container">
-        <!-- Sidebar content - Consider using EJS partials for reusability -->
-        <div class="sidebar">
-            <div class="sidebar-header">
-                <h3>Admin Panel</h3>
-            </div>
-            <ul class="sidebar-menu">
-                <li><a href="/Employee/AdminIndex">Dashboard</a></li>
-                <li class="sidebar-section-label" style="font-weight:normal;">Inventory</li>
-                <ul class="sidebar-submenu" style="display:block;">
-                    <li><a href="/Employee/Admin/Products">Products</a></li>
-                    <li><a href="/Employee/Admin/Variations">Variations</a></li>
-                    <li><a href="/Employee/Admin/RawMaterials">Raw Materials</a></li>
-                    <li><a href="/Employee/Admin/Alerts">Alerts</a></li>
-                    <li><a href="/Employee/Admin/Archived">Archived items</a></li>
-                </ul>
-                <li class="sidebar-section-label" style="font-weight:normal;">Transactions</li>
-                <ul class="sidebar-submenu" style="display:block;">
-                    <li><a href="/Employee/Admin/DeliveryRates">Delivery Rates</a></li>
-                    <li><a href="/Employee/Admin/WalkIn">Walk In</a></li>
-                    <li><a href="/Employee/Admin/OrdersPending">Orders Pending</a></li>
-                    <li><a href="/Employee/Admin/OrdersProcessing">Orders Processing</a></li>
-                    <li><a href="/Employee/Admin/OrdersShipping">Orders Shipping</a></li>
-                    <li><a href="/Employee/Admin/OrdersDelivery">Orders Delivery</a></li>
-                    <li><a href="/Employee/Admin/OrdersReceive">Orders Receive</a></li>
-                    <li><a href="/Employee/Admin/CancelledOrders">Cancelled Orders</a></li>
-                    <li><a href="/Employee/Admin/CompletedOrders">Completed Orders</a></li>
-                </ul>
-                <li><a href="/Employee/Admin/ManageUsers">Manage Users</a></li>
-                <li><a href="/Employee/Admin/ChatSupport">Chat Support</a></li>
-                <li><a href="/Employee/Admin/CMS">Content Management</a></li>
-                <li><a href="/Employee/Admin/Logs">Activity Logs</a></li>
-            </ul>
-        </div>
-
-        <div class="main-content">
+    <div class="main-content">
             <div class="header">
                 <h2>Product List</h2>
                 <!-- Category Filter and Add Product Button -->
@@ -577,8 +820,15 @@
                         <option value="Partitions">Partitions</option>
                         <option value="Others">Others</option>
                     </select>
-                    <button id="sortCategoryBtn" style="background: #2196F3; color: #fff; border: none; border-radius: 4px; padding: 7px 18px; font-weight: 600; cursor: pointer;">Sort</button>
-                    <button id="resetCategoryBtn" style="background: #888; color: #fff; border: none; border-radius: 4px; padding: 7px 18px; font-weight: 600; cursor: pointer;">Reset</button>
+                    <select id="sortOptions" style="padding: 7px 12px; border-radius: 4px; border: 1px solid #ccc;">
+                        <option value="category">Sort by Category</option>
+                        <option value="name">Sort by Name</option>
+                        <option value="price">Sort by Price</option>
+                        <option value="stock">Sort by Stock</option>
+                        <option value="date">Sort by Date Added</option>
+                    </select>
+                    <button id="sortCategoryBtn" style="background: #2196F3; color: #fff; border: none; border-radius: 4px; padding: 7px 18px; font-weight: 600; cursor: pointer;">Apply Sort</button>
+                    <button id="resetCategoryBtn" style="background: #888; color: #fff; border: none; border-radius: 4px; padding: 7px 18px; font-weight: 600; cursor: pointer;">Reset Order</button>
                     <button id="addProductBtn" class="add-product-btn">Add New Product</button>
                 </div>
                 <!-- Legend for row highlights (moved below controls) -->
@@ -610,81 +860,147 @@
                         <span class="close-button">&times;</span>
                         <h3>Add New Product</h3>
                         <form id="addProductForm" action="/Employee/Admin/Products/Add" method="POST" enctype="multipart/form-data">
-                            <label for="name">Name:</label>
-                            <input type="text" id="name" name="name" required><br><br>
+                            
+                            <!-- Basic Information Section -->
+                            <div class="form-section">
+                                <div class="form-section-header" onclick="toggleFormSection('add', 'basic')">
+                                    <h4>Basic Information</h4>
+                                    <span class="form-section-toggle" id="addBasicToggle">▼</span>
+                                </div>
+                                <div class="form-section-content expanded" id="addBasicContent">
+                                    <label for="name">Name:</label>
+                                    <input type="text" id="name" name="name" required><br><br>
 
-                            <label for="description">Description:</label>
-                            <textarea id="description" name="description"></textarea><br><br>
+                                    <label for="description">Description:</label>
+                                    <textarea id="description" name="description"></textarea><br><br>
 
-                            <label for="price">Price:</label>
-                            <input type="number" id="price" name="price" step="0.01" required><br><br>
+                                    <label for="price">Price:</label>
+                                    <input type="number" id="price" name="price" step="0.01" required><br><br>
 
-                            <label for="stockquantity">Stock Quantity:</label>
-                            <input type="number" id="stockquantity" name="stockquantity" required><br><br>
+                                    <label for="stockquantity">Stock Quantity:</label>
+                                    <input type="number" id="stockquantity" name="stockquantity" required><br><br>
 
-                            <label for="category">Category:</label><br>
-                            <select id="category" name="category"></select>
-                            <button type="button" id="addCategoryBtn" style="margin-left:8px;">Add New Category</button>
-                            <div id="addCategoryModal" class="modal">
-                                <div class="modal-content">
-                                    <span class="close-button" id="closeAddCategoryModal">&times;</span>
-                                    <h3>Add New Category</h3>
-                                    <input type="text" id="newCategoryName" placeholder="Category name" />
-                                    <button id="saveCategoryBtn">Save</button>
-                                    <button id="cancelAddCategoryBtn">Cancel</button>
+                                    <label for="category">Category:</label><br>
+                                    <select id="category" name="category"></select>
+                                    <button type="button" id="addCategoryBtn" style="margin-left:8px;">Add New Category</button>
+                                    
+                                    <!-- Inline Category Form (hidden by default) -->
+                                    <div id="addCategoryForm" style="display: none; margin-top: 10px; padding: 15px; background: #f8f9fa; border-radius: 6px; border: 1px solid #dee2e6;">
+                                        <h4 style="margin: 0 0 10px 0; font-size: 14px; color: #495057;">Add New Category</h4>
+                                        <input type="text" id="newCategoryName" placeholder="Enter category name" style="width: 200px; padding: 6px 10px; margin-right: 8px; border: 1px solid #ced4da; border-radius: 4px; font-size: 14px;" />
+                                        <button id="saveCategoryBtn" style="padding: 6px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; margin-right: 5px;">Save</button>
+                                        <button id="cancelAddCategoryBtn" style="padding: 6px 12px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">Cancel</button>
+                                    </div>
                                 </div>
                             </div>
-                            <br><br>
 
+                            <!-- Images Section -->
+                            <div class="form-section">
+                                <div class="form-section-header" onclick="toggleFormSection('add', 'images')">
+                                    <h4>Product Images</h4>
+                                    <span class="form-section-toggle" id="addImagesToggle">▼</span>
+                                </div>
+                                <div class="form-section-content collapsed" id="addImagesContent">
+                                    <label for="image">Product Image:</label><br>
+                                    <input type="file" id="image" name="image" accept="image/*"><br><br>
 
-                            <label for="image">Product Image:</label><br>
-                            <input type="file" id="image" name="image" accept="image/*"><br><br>
-
-                            <label>Product Thumbnails (up to 4 images):</label><br>
-                            
-                            <!-- Bulk upload option -->
-                            <div style="margin-bottom: 15px;">
-                                <label for="thumbnails" style="font-weight: 500;">Bulk Upload:</label><br>
-                                <input type="file" id="thumbnails" name="thumbnails" accept="image/*" multiple><br>
-                                <small style="color: #666;">Select multiple images to upload all thumbnails at once</small>
-                            </div>
-                            
-                            <!-- Individual upload options -->
-                            <div style="margin-bottom: 15px;">
-                                <label style="font-weight: 500;">Individual Upload:</label><br>
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
-                                    <div>
-                                        <label for="thumbnail1" style="font-size: 12px;">Thumbnail 1:</label><br>
-                                        <input type="file" id="thumbnail1" name="thumbnail1" accept="image/*">
+                                    <label>Product Thumbnails (up to 4 images):</label><br>
+                                    
+                                    <!-- Bulk upload option -->
+                                    <div style="margin-bottom: 15px;">
+                                        <label for="thumbnails" style="font-weight: 500;">Bulk Upload:</label><br>
+                                        <input type="file" id="thumbnails" name="thumbnails" accept="image/*" multiple><br>
+                                        <small style="color: #666;">Select multiple images to upload all thumbnails at once</small>
                                     </div>
-                                    <div>
-                                        <label for="thumbnail2" style="font-size: 12px;">Thumbnail 2:</label><br>
-                                        <input type="file" id="thumbnail2" name="thumbnail2" accept="image/*">
-                                    </div>
-                                    <div>
-                                        <label for="thumbnail3" style="font-size: 12px;">Thumbnail 3:</label><br>
-                                        <input type="file" id="thumbnail3" name="thumbnail3" accept="image/*">
-                                    </div>
-                                    <div>
-                                        <label for="thumbnail4" style="font-size: 12px;">Thumbnail 4:</label><br>
-                                        <input type="file" id="thumbnail4" name="thumbnail4" accept="image/*">
+                                    
+                                    <!-- Individual upload options -->
+                                    <div style="margin-bottom: 10px;">
+                                        <label style="font-weight: 500;">Individual Upload:</label><br>
+                                        <div class="thumbnail-grid" style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; justify-content: space-between;">
+                                            <div style="flex: 1; min-width: 120px; text-align: center;">
+                                                <label for="thumbnail1" style="font-size: 11px; font-weight: 500; display: block; margin-bottom: 2px;">Thumb 1:</label>
+                                                <input type="file" id="thumbnail1" name="thumbnail1" accept="image/*" style="width: 100%; font-size: 10px;">
+                                            </div>
+                                            <div style="flex: 1; min-width: 120px; text-align: center;">
+                                                <label for="thumbnail2" style="font-size: 11px; font-weight: 500; display: block; margin-bottom: 2px;">Thumb 2:</label>
+                                                <input type="file" id="thumbnail2" name="thumbnail2" accept="image/*" style="width: 100%; font-size: 10px;">
+                                            </div>
+                                            <div style="flex: 1; min-width: 120px; text-align: center;">
+                                                <label for="thumbnail3" style="font-size: 11px; font-weight: 500; display: block; margin-bottom: 2px;">Thumb 3:</label>
+                                                <input type="file" id="thumbnail3" name="thumbnail3" accept="image/*" style="width: 100%; font-size: 10px;">
+                                            </div>
+                                            <div style="flex: 1; min-width: 120px; text-align: center;">
+                                                <label for="thumbnail4" style="font-size: 11px; font-weight: 500; display: block; margin-bottom: 2px;">Thumb 4:</label>
+                                                <input type="file" id="thumbnail4" name="thumbnail4" accept="image/*" style="width: 100%; font-size: 10px;">
+                                            </div>
+                                        </div>
+                                        <small style="color: #666;">Upload individual images for each thumbnail slot</small>
                                     </div>
                                 </div>
-                                <small style="color: #666;">Upload individual images for each thumbnail slot</small>
                             </div>
-                            <br>
 
-                            <label for="model3d">3D Model File (GLB/GLTF):</label><br>
-                            <input type="file" id="model3d" name="model3d" accept=".glb,.gltf"><br>
-                            <small style="color: #666;">Upload a 3D model file for 3D customization feature (GLB or GLTF format)</small><br><br>
-
-
-                            <div class="materials-section">
-                                <h4>Required Materials for Production</h4>
-                                <div id="addMaterialsContainer"></div>
-                                <button type="button" id="addMaterialRowBtn" class="add-material-btn">Add Material</button>
+                            <!-- Dimensions Section -->
+                            <div class="form-section">
+                                <div class="form-section-header" onclick="toggleFormSection('add', 'dimensions')">
+                                    <h4>Product Dimensions</h4>
+                                    <span class="form-section-toggle" id="addDimensionsToggle">▼</span>
+                                </div>
+                                <div class="form-section-content collapsed" id="addDimensionsContent">
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                                        <div>
+                                            <label for="length">Length (cm):</label>
+                                            <input type="number" id="length" name="length" step="0.1" min="0" placeholder="0.0">
+                                        </div>
+                                        <div>
+                                            <label for="width">Width (cm):</label>
+                                            <input type="number" id="width" name="width" step="0.1" min="0" placeholder="0.0">
+                                        </div>
+                                    </div>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                                        <div>
+                                            <label for="height">Height (cm):</label>
+                                            <input type="number" id="height" name="height" step="0.1" min="0" placeholder="0.0">
+                                        </div>
+                                        <div>
+                                            <label for="weight">Weight (kg):</label>
+                                            <input type="number" id="weight" name="weight" step="0.1" min="0" placeholder="0.0">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label for="dimensions_notes">Additional Dimensions Notes:</label>
+                                        <textarea id="dimensions_notes" name="dimensions_notes" rows="3" placeholder="Any additional dimension information, special measurements, or notes..."></textarea>
+                                    </div>
+                                    <small style="color: #666;">Enter the physical dimensions of the product. These will be displayed to customers.</small>
+                                </div>
                             </div>
-                            <br>
+
+                            <!-- 3D Model Section -->
+                            <div class="form-section">
+                                <div class="form-section-header" onclick="toggleFormSection('add', 'model3d')">
+                                    <h4>3D Model</h4>
+                                    <span class="form-section-toggle" id="addModel3dToggle">▼</span>
+                                </div>
+                                <div class="form-section-content collapsed" id="addModel3dContent">
+                                    <label for="model3d">3D Model File (GLB/GLTF):</label><br>
+                                    <input type="file" id="model3d" name="model3d" accept=".glb,.gltf"><br>
+                                    <small style="color: #666;">Upload a 3D model file for 3D customization feature (GLB or GLTF format, max 30MB)</small>
+                                </div>
+                            </div>
+
+                            <!-- Materials Section -->
+                            <div class="form-section">
+                                <div class="form-section-header" onclick="toggleFormSection('add', 'materials')">
+                                    <h4>Required Materials</h4>
+                                    <span class="form-section-toggle" id="addMaterialsToggle">▼</span>
+                                </div>
+                                <div class="form-section-content collapsed" id="addMaterialsContent">
+                                    <div class="materials-section">
+                                        <h4>Required Materials for Production</h4>
+                                        <div id="addMaterialsContainer"></div>
+                                        <button type="button" id="addMaterialRowBtn" class="add-material-btn">Add Material</button>
+                                    </div>
+                                </div>
+                            </div>
 
                             <button type="submit">Save Product</button>
                             <button type="button" id="cancelAddProduct">Cancel</button>
@@ -806,7 +1122,7 @@
                                         >
                                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                                         </button>
-                                        <button class="edit-btn" data-id="<%= product.ProductID %>" data-name="<%= product.Name %>" data-description="<%= product.Description %>" data-price="<%= product.Price %>" data-stock="<%= product.StockQuantity %>" data-category="<%= product.Category %>" data-imageurl="<%= product.ImageURL %>" data-model3durl="<%= product.Model3D %>" data-has3dmodel="<%= product.Has3DModel %>" data-thumbnails="<%= product.ThumbnailURLs || '[]' %>" title="Edit">
+                                        <button class="edit-btn" data-id="<%= product.ProductID %>" data-name="<%= product.Name %>" data-description="<%= product.Description %>" data-price="<%= product.Price %>" data-stock="<%= product.StockQuantity %>" data-category="<%= product.Category %>" data-imageurl="<%= product.ImageURL %>" data-model3durl="<%= product.Model3D %>" data-has3dmodel="<%= product.Model3D ? 'true' : 'false' %>" data-thumbnails="<%= product.ThumbnailURLs || '[]' %>" data-dimensions="<%= product.Dimensions || '{}' %>" title="Edit">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 20h9"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16.5 3.5a2.121 2.121 0 113 3L7 19.5 3 21l1.5-4L16.5 3.5z"/></svg>
                                         </button>
                                         <button class="variations-btn" data-id="<%= product.ProductID %>" data-name="<%= product.Name %>" title="Manage Variations">
@@ -881,91 +1197,156 @@
                 <input type="hidden" id="editProductID" name="productid">
                 <input type="hidden" id="editCurrentImageURL" name="currentImageURL">
                 <input type="hidden" id="editCurrentModel3dURL" name="currentModel3dURL">
-                <label for="editName">Name:</label>
-                <input type="text" id="editName" name="name" required><br><br>
+                
+                <!-- Basic Information Section -->
+                <div class="form-section">
+                    <div class="form-section-header" onclick="toggleFormSection('edit', 'basic')">
+                        <h4>Basic Information</h4>
+                        <span class="form-section-toggle" id="editBasicToggle">▼</span>
+                    </div>
+                    <div class="form-section-content expanded" id="editBasicContent">
+                        <label for="editName">Name:</label>
+                        <input type="text" id="editName" name="name" required><br><br>
 
-                <label for="editDescription">Description:</label>
-                <textarea id="editDescription" name="description"></textarea><br><br>
+                        <label for="editDescription">Description:</label>
+                        <textarea id="editDescription" name="description"></textarea><br><br>
 
-                <label for="editPrice">Price:</label>
-                <input type="number" id="editPrice" name="price" step="0.01" required><br><br>
+                        <label for="editPrice">Price:</label>
+                        <input type="number" id="editPrice" name="price" step="0.01" required><br><br>
 
-                <label for="editStockQuantity">Stock Quantity:</label>
-                <input type="number" id="editStockQuantity" name="stockquantity" required><br><br>
+                        <label for="editStockQuantity">Stock Quantity:</label>
+                        <input type="number" id="editStockQuantity" name="stockquantity" required><br><br>
 
-                <label for="editCategory">Category:</label><br>
-                <select id="editCategory" name="category"></select>
-                <button type="button" id="addCategoryBtnEdit" style="margin-left:8px;">Add New Category</button>
-                <div id="addCategoryModalEdit" class="modal">
-                    <div class="modal-content">
-                        <span class="close-button" id="closeAddCategoryModalEdit">&times;</span>
-                        <h3>Add New Category</h3>
-                        <input type="text" id="newCategoryNameEdit" placeholder="Category name" />
-                        <button id="saveCategoryBtnEdit">Save</button>
-                        <button id="cancelAddCategoryBtnEdit">Cancel</button>
+                        <label for="editCategory">Category:</label><br>
+                        <select id="editCategory" name="category"></select>
+                        <button type="button" id="addCategoryBtnEdit" style="margin-left:8px;">Add New Category</button>
+                        
+                        <!-- Inline Category Form for Edit (hidden by default) -->
+                        <div id="addCategoryFormEdit" style="display: none; margin-top: 10px; padding: 15px; background: #f8f9fa; border-radius: 6px; border: 1px solid #dee2e6;">
+                            <h4 style="margin: 0 0 10px 0; font-size: 14px; color: #495057;">Add New Category</h4>
+                            <input type="text" id="newCategoryNameEdit" placeholder="Enter category name" style="width: 200px; padding: 6px 10px; margin-right: 8px; border: 1px solid #ced4da; border-radius: 4px; font-size: 14px;" />
+                            <button id="saveCategoryBtnEdit" style="padding: 6px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; margin-right: 5px;">Save</button>
+                            <button id="cancelAddCategoryBtnEdit" style="padding: 6px 12px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">Cancel</button>
+                        </div>
                     </div>
                 </div>
-                <br><br>
 
+                <!-- Images Section -->
+                <div class="form-section">
+                    <div class="form-section-header" onclick="toggleFormSection('edit', 'images')">
+                        <h4>Product Images</h4>
+                        <span class="form-section-toggle" id="editImagesToggle">▼</span>
+                    </div>
+                    <div class="form-section-content collapsed" id="editImagesContent">
+                        <label for="editImage">Product Image:</label><br>
+                        <input type="file" id="editImage" name="image" accept="image/*"><br>
+                        <img id="currentImagePreview" src="" alt="Current Image" style="max-width: 60px; max-height: 60px; margin-top: 5px; display: none; border-radius: 3px; border: 1px solid #ddd; box-shadow: 0 1px 2px rgba(0,0,0,0.1);" />
+                        <br><br>
 
-                <label for="editImage">Product Image:</label><br>
-                <input type="file" id="editImage" name="image" accept="image/*"><br>
-                <img id="currentImagePreview" src="" alt="Current Image" style="max-width: 50px; max-height: 50px; margin-top: 5px; display: none;" />
-                <br><br>
-
-                <label>Product Thumbnails (up to 4 images):</label><br>
-                
-                <!-- Bulk upload option -->
-                <div style="margin-bottom: 15px;">
-                    <label for="editThumbnails" style="font-weight: 500;">Bulk Upload (replace all):</label><br>
-                    <input type="file" id="editThumbnails" name="thumbnails" accept="image/*" multiple><br>
-                    <small style="color: #666;">Select multiple images to replace all thumbnails</small>
+                        <label>Product Thumbnails (up to 4 images):</label><br>
+                        
+                        <!-- Bulk upload option -->
+                        <div style="margin-bottom: 15px;">
+                            <label for="editThumbnails" style="font-weight: 500;">Bulk Upload (replace all):</label><br>
+                            <input type="file" id="editThumbnails" name="thumbnails" accept="image/*" multiple><br>
+                            <small style="color: #666;">Select multiple images to replace all thumbnails</small>
+                        </div>
+                        
+                        <!-- Individual upload options -->
+                        <div style="margin-bottom: 10px;">
+                            <label style="font-weight: 500;">Individual Upload (replace specific thumbnails):</label><br>
+                            <div class="thumbnail-grid" style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; justify-content: space-between;">
+                                <div style="flex: 1; min-width: 120px; text-align: center;">
+                                    <label for="editThumbnail1" style="font-size: 11px; font-weight: 500; display: block; margin-bottom: 2px;">Thumb 1:</label>
+                                    <input type="file" id="editThumbnail1" name="thumbnail1" accept="image/*" style="width: 100%; font-size: 10px;">
+                                    <div id="currentThumbnail1Preview" style="margin-top: 3px;"></div>
+                                </div>
+                                <div style="flex: 1; min-width: 120px; text-align: center;">
+                                    <label for="editThumbnail2" style="font-size: 11px; font-weight: 500; display: block; margin-bottom: 2px;">Thumb 2:</label>
+                                    <input type="file" id="editThumbnail2" name="thumbnail2" accept="image/*" style="width: 100%; font-size: 10px;">
+                                    <div id="currentThumbnail2Preview" style="margin-top: 3px;"></div>
+                                </div>
+                                <div style="flex: 1; min-width: 120px; text-align: center;">
+                                    <label for="editThumbnail3" style="font-size: 11px; font-weight: 500; display: block; margin-bottom: 2px;">Thumb 3:</label>
+                                    <input type="file" id="editThumbnail3" name="thumbnail3" accept="image/*" style="width: 100%; font-size: 10px;">
+                                    <div id="currentThumbnail3Preview" style="margin-top: 3px;"></div>
+                                </div>
+                                <div style="flex: 1; min-width: 120px; text-align: center;">
+                                    <label for="editThumbnail4" style="font-size: 11px; font-weight: 500; display: block; margin-bottom: 2px;">Thumb 4:</label>
+                                    <input type="file" id="editThumbnail4" name="thumbnail4" accept="image/*" style="width: 100%; font-size: 10px;">
+                                    <div id="currentThumbnail4Preview" style="margin-top: 3px;"></div>
+                                </div>
+                            </div>
+                            <small style="color: #666;">Upload individual images to replace specific thumbnails without affecting others</small>
+                        </div>
+                        
+                        <div id="currentThumbnailsPreview" style="margin-top: 8px; padding: 8px; background: #f8f9fa; border-radius: 3px; border: 1px solid #e9ecef;"></div>
+                    </div>
                 </div>
-                
-                <!-- Individual upload options -->
-                <div style="margin-bottom: 15px;">
-                    <label style="font-weight: 500;">Individual Upload (replace specific thumbnails):</label><br>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
-                        <div>
-                            <label for="editThumbnail1" style="font-size: 12px;">Thumbnail 1:</label><br>
-                            <input type="file" id="editThumbnail1" name="thumbnail1" accept="image/*">
-                            <div id="currentThumbnail1Preview" style="margin-top: 5px;"></div>
+
+                <!-- Dimensions Section -->
+                <div class="form-section">
+                    <div class="form-section-header" onclick="toggleFormSection('edit', 'dimensions')">
+                        <h4>Product Dimensions</h4>
+                        <span class="form-section-toggle" id="editDimensionsToggle">▼</span>
+                    </div>
+                    <div class="form-section-content collapsed" id="editDimensionsContent">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                            <div>
+                                <label for="editLength">Length (cm):</label>
+                                <input type="number" id="editLength" name="length" step="0.1" min="0" placeholder="0.0">
+                            </div>
+                            <div>
+                                <label for="editWidth">Width (cm):</label>
+                                <input type="number" id="editWidth" name="width" step="0.1" min="0" placeholder="0.0">
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                            <div>
+                                <label for="editHeight">Height (cm):</label>
+                                <input type="number" id="editHeight" name="height" step="0.1" min="0" placeholder="0.0">
+                            </div>
+                            <div>
+                                <label for="editWeight">Weight (kg):</label>
+                                <input type="number" id="editWeight" name="weight" step="0.1" min="0" placeholder="0.0">
+                            </div>
                         </div>
                         <div>
-                            <label for="editThumbnail2" style="font-size: 12px;">Thumbnail 2:</label><br>
-                            <input type="file" id="editThumbnail2" name="thumbnail2" accept="image/*">
-                            <div id="currentThumbnail2Preview" style="margin-top: 5px;"></div>
+                            <label for="editDimensionsNotes">Additional Dimensions Notes:</label>
+                            <textarea id="editDimensionsNotes" name="dimensions_notes" rows="3" placeholder="Any additional dimension information, special measurements, or notes..."></textarea>
                         </div>
-                        <div>
-                            <label for="editThumbnail3" style="font-size: 12px;">Thumbnail 3:</label><br>
-                            <input type="file" id="editThumbnail3" name="thumbnail3" accept="image/*">
-                            <div id="currentThumbnail3Preview" style="margin-top: 5px;"></div>
-                        </div>
-                        <div>
-                            <label for="editThumbnail4" style="font-size: 12px;">Thumbnail 4:</label><br>
-                            <input type="file" id="editThumbnail4" name="thumbnail4" accept="image/*">
-                            <div id="currentThumbnail4Preview" style="margin-top: 5px;"></div>
+                        <small style="color: #666;">Enter the physical dimensions of the product. These will be displayed to customers.</small>
+                    </div>
+                </div>
+
+                <!-- 3D Model Section -->
+                <div class="form-section">
+                    <div class="form-section-header" onclick="toggleFormSection('edit', 'model3d')">
+                        <h4>3D Model</h4>
+                        <span class="form-section-toggle" id="editModel3dToggle">▼</span>
+                    </div>
+                    <div class="form-section-content collapsed" id="editModel3dContent">
+                        <label for="editModel3d">3D Model File (GLB/GLTF):</label><br>
+                        <input type="file" id="editModel3d" name="model3d" accept=".glb,.gltf"><br>
+                        <small style="color: #666;">Upload a 3D model file for 3D customization feature (GLB or GLTF format, max 30MB)</small><br>
+                        <div id="currentModel3dPreview" style="margin-top: 10px;"></div>
+                    </div>
+                </div>
+
+                <!-- Materials Section -->
+                <div class="form-section">
+                    <div class="form-section-header" onclick="toggleFormSection('edit', 'materials')">
+                        <h4>Required Materials</h4>
+                        <span class="form-section-toggle" id="editMaterialsToggle">▼</span>
+                    </div>
+                    <div class="form-section-content collapsed" id="editMaterialsContent">
+                        <div class="materials-section">
+                            <h4>Required Materials for Production</h4>
+                            <div id="editMaterialsContainer"></div>
+                            <button type="button" id="editMaterialRowBtn" class="add-material-btn">Add Material</button>
                         </div>
                     </div>
-                    <small style="color: #666;">Upload individual images to replace specific thumbnails without affecting others</small>
                 </div>
-                
-                <div id="currentThumbnailsPreview" style="margin-top: 10px;"></div>
-                <br>
-
-                <label for="editModel3d">3D Model File (GLB/GLTF):</label><br>
-                <input type="file" id="editModel3d" name="model3d" accept=".glb,.gltf"><br>
-                <small style="color: #666;">Upload a 3D model file for 3D customization feature (GLB or GLTF format)</small><br>
-                <div id="currentModel3dPreview" style="margin-top: 10px;"></div>
-                <br>
-
-
-                <div class="materials-section">
-                    <h4>Required Materials for Production</h4>
-                    <div id="editMaterialsContainer"></div>
-                    <button type="button" id="editMaterialRowBtn" class="add-material-btn">Add Material</button>
-                </div>
-                <br>
 
                 <button type="submit">Save Changes</button>
                 <button type="button" id="cancelEditProduct">Cancel</button>
@@ -1182,8 +1563,28 @@
                 const imageUrl = btn.getAttribute('data-imageurl');
                 const model3dUrl = btn.getAttribute('data-model3durl');
                 const has3dModel = btn.getAttribute('data-has3dmodel');
+                const dimensionsData = btn.getAttribute('data-dimensions');
                 document.getElementById('editCurrentImageURL').value = imageUrl || '';
                 document.getElementById('editCurrentModel3dURL').value = model3dUrl || '';
+                
+                // Parse and populate dimensions data
+                try {
+                    const dimensions = JSON.parse(dimensionsData || '{}');
+                    document.getElementById('editLength').value = dimensions.length || '';
+                    document.getElementById('editWidth').value = dimensions.width || '';
+                    document.getElementById('editHeight').value = dimensions.height || '';
+                    document.getElementById('editWeight').value = dimensions.weight || '';
+                    document.getElementById('editDimensionsNotes').value = dimensions.notes || '';
+                } catch (e) {
+                    console.log('Error parsing dimensions data:', e);
+                    // Clear dimensions fields if parsing fails
+                    document.getElementById('editLength').value = '';
+                    document.getElementById('editWidth').value = '';
+                    document.getElementById('editHeight').value = '';
+                    document.getElementById('editWeight').value = '';
+                    document.getElementById('editDimensionsNotes').value = '';
+                }
+                
                 if (imageUrl) {
                     currentImagePreview.src = imageUrl;
                     currentImagePreview.style.display = 'inline-block';
@@ -1195,6 +1596,8 @@
                 const currentModel3dPreview = document.getElementById('currentModel3dPreview');
                 if (model3dUrl) {
                     currentModel3dPreview.innerHTML = `<small style="color: #666;">Current 3D model: ${model3dUrl.split('/').pop()}</small>`;
+                    // Auto-expand 3D model section if there's an existing model
+                    expandFormSection('edit', 'model3d');
                 } else {
                     currentModel3dPreview.innerHTML = '';
                 }
@@ -1211,9 +1614,9 @@
                         // Display existing thumbnails
                         thumbnails.forEach((thumb, index) => {
                             previewHTML += `
-                                <div style="text-align: center;">
-                                    <img src="${thumb}" alt="Thumbnail ${index + 1}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd;">
-                                    <div style="font-size: 10px; color: #666; margin-top: 2px;">Thumb ${index + 1}</div>
+                                <div style="text-align: center; margin: 3px;">
+                                    <img src="${thumb}" alt="Thumbnail ${index + 1}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 3px; border: 1px solid #ddd; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                                    <div style="font-size: 10px; color: #666; margin-top: 2px; font-weight: 500;">Thumbnail ${index + 1}</div>
                                 </div>
                             `;
                         });
@@ -1226,10 +1629,10 @@
                             const previewDiv = document.getElementById(`currentThumbnail${i}Preview`);
                             if (thumbnails[i - 1]) {
                                 previewDiv.innerHTML = `
-                                    <img src="${thumbnails[i - 1]}" alt="Current Thumbnail ${i}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd;">
+                                    <img src="${thumbnails[i - 1]}" alt="Current Thumbnail ${i}" style="width: 30px; height: 30px; object-fit: cover; border-radius: 2px; border: 1px solid #ddd; box-shadow: 0 1px 2px rgba(0,0,0,0.1); margin-top: 2px;">
                                 `;
                             } else {
-                                previewDiv.innerHTML = '<div style="width: 40px; height: 40px; border: 1px dashed #ccc; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #999;">Empty</div>';
+                                previewDiv.innerHTML = '<div style="width: 30px; height: 30px; border: 1px dashed #ccc; border-radius: 2px; display: flex; align-items: center; justify-content: center; font-size: 7px; color: #999; margin-top: 2px; background: #f9f9f9;">Empty</div>';
                             }
                         }
                     } catch (error) {
@@ -1239,7 +1642,7 @@
                         // Clear individual previews
                         for (let i = 1; i <= 4; i++) {
                             const previewDiv = document.getElementById(`currentThumbnail${i}Preview`);
-                            previewDiv.innerHTML = '<div style="width: 40px; height: 40px; border: 1px dashed #ccc; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #999;">Empty</div>';
+                            previewDiv.innerHTML = '<div style="width: 30px; height: 30px; border: 1px dashed #ccc; border-radius: 2px; display: flex; align-items: center; justify-content: center; font-size: 7px; color: #999; margin-top: 2px; background: #f9f9f9;">Empty</div>';
                         }
                     }
                 } else {
@@ -1248,7 +1651,7 @@
                     // Clear individual previews
                     for (let i = 1; i <= 4; i++) {
                         const previewDiv = document.getElementById(`currentThumbnail${i}Preview`);
-                        previewDiv.innerHTML = '<div style="width: 40px; height: 40px; border: 1px dashed #ccc; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #999;">Empty</div>';
+                        previewDiv.innerHTML = '<div style="width: 30px; height: 30px; border: 1px dashed #ccc; border-radius: 2px; display: flex; align-items: center; justify-content: center; font-size: 7px; color: #999; margin-top: 2px; background: #f9f9f9;">Empty</div>';
                     }
                 }
 
@@ -1261,6 +1664,8 @@
                     .then(response => response.json())
                     .then(data => {
                         if (data.success && data.materials.length > 0) {
+                            // Auto-expand materials section if there are existing materials
+                            expandFormSection('edit', 'materials');
                             data.materials.forEach(pm => {
                                 addMaterialRow('edit', pm.MaterialID, pm.QuantityRequired);
                             });
@@ -1422,7 +1827,12 @@
 
         async function fetchRawMaterials() {
             try {
-                const response = await fetch('/api/rawmaterials'); // Backend endpoint to fetch raw materials
+                const response = await fetch('/api/rawmaterials', {
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                }); // Backend endpoint to fetch raw materials
                 const data = await response.json();
                 if (data.success) {
                     allRawMaterials = data.materials;
@@ -1445,7 +1855,7 @@
 
             let optionsHtml = '<option value="">Select Material</option>';
             allRawMaterials.forEach(material => {
-                optionsHtml += `<option value="${material.MaterialID}" ${selectedMaterialId === material.MaterialID ? 'selected' : ''}>${material.Name}</option>`;
+                optionsHtml += `<option value="${material.id}" ${selectedMaterialId === material.id ? 'selected' : ''}>${material.name}</option>`;
             });
             select.innerHTML = optionsHtml;
             select.required = true;
@@ -1478,8 +1888,14 @@
             container.appendChild(createMaterialRow(type, selectedMaterialId, quantityRequired));
         }
 
-        document.getElementById('addMaterialRowBtn').addEventListener('click', () => addMaterialRow('add'));
-        document.getElementById('editMaterialRowBtn').addEventListener('click', () => addMaterialRow('edit'));
+        document.getElementById('addMaterialRowBtn').addEventListener('click', () => {
+            expandFormSection('add', 'materials');
+            addMaterialRow('add');
+        });
+        document.getElementById('editMaterialRowBtn').addEventListener('click', () => {
+            expandFormSection('edit', 'materials');
+            addMaterialRow('edit');
+        });
 
         // Modify form submissions to include raw materials data
         document.getElementById('addProductForm').addEventListener('submit', function(event) {
@@ -1487,6 +1903,16 @@
             const formData = new FormData(this);
             const requiredMaterials = getRequiredMaterials('add');
             formData.append('requiredMaterials', JSON.stringify(requiredMaterials));
+            
+            // Add dimensions data
+            const dimensions = {
+                length: document.getElementById('length').value,
+                width: document.getElementById('width').value,
+                height: document.getElementById('height').value,
+                weight: document.getElementById('weight').value,
+                notes: document.getElementById('dimensions_notes').value
+            };
+            formData.append('dimensions', JSON.stringify(dimensions));
 
             // You might need to send this as a JSON request if your backend expects it
             // For now, assuming multipart/form-data with stringified JSON
@@ -1498,6 +1924,16 @@
             const formData = new FormData(this);
             const requiredMaterials = getRequiredMaterials('edit');
             formData.append('requiredMaterials', JSON.stringify(requiredMaterials));
+            
+            // Add dimensions data
+            const dimensions = {
+                length: document.getElementById('editLength').value,
+                width: document.getElementById('editWidth').value,
+                height: document.getElementById('editHeight').value,
+                weight: document.getElementById('editWeight').value,
+                notes: document.getElementById('editDimensionsNotes').value
+            };
+            formData.append('dimensions', JSON.stringify(dimensions));
 
             submitProductForm(this, formData);
         });
@@ -1538,6 +1974,39 @@
             } catch (error) {
                 console.error('Error submitting product form:', error);
                 showCustomPopup('Error saving product. Check console.', true);
+            }
+        }
+
+        // Form Section Toggle Function
+        function toggleFormSection(type, section) {
+            const toggle = document.getElementById(`${type}${section.charAt(0).toUpperCase() + section.slice(1)}Toggle`);
+            const content = document.getElementById(`${type}${section.charAt(0).toUpperCase() + section.slice(1)}Content`);
+            
+            if (content.classList.contains('collapsed')) {
+                // Expand
+                content.classList.remove('collapsed');
+                content.classList.add('expanded');
+                toggle.classList.add('expanded');
+                toggle.textContent = '▲';
+            } else {
+                // Collapse
+                content.classList.remove('expanded');
+                content.classList.add('collapsed');
+                toggle.classList.remove('expanded');
+                toggle.textContent = '▼';
+            }
+        }
+
+        // Auto-expand materials section when adding materials
+        function expandFormSection(type, section) {
+            const toggle = document.getElementById(`${type}${section.charAt(0).toUpperCase() + section.slice(1)}Toggle`);
+            const content = document.getElementById(`${type}${section.charAt(0).toUpperCase() + section.slice(1)}Content`);
+            
+            if (content.classList.contains('collapsed')) {
+                content.classList.remove('collapsed');
+                content.classList.add('expanded');
+                toggle.classList.add('expanded');
+                toggle.textContent = '▲';
             }
         }
 
@@ -1598,34 +2067,141 @@
             }
         });
 
-        // Add JS for category sorting/filtering
+        // Enhanced sorting/filtering functionality
         const categoryFilter = document.getElementById('categoryFilter');
+        const sortOptions = document.getElementById('sortOptions');
         const sortCategoryBtn = document.getElementById('sortCategoryBtn');
         const resetCategoryBtn = document.getElementById('resetCategoryBtn');
-        sortCategoryBtn.addEventListener('click', function() {
-            const selected = categoryFilter.value;
+        
+        // Store original order of rows for reset functionality
+        let originalRows = [];
+        
+        // Initialize original rows order
+        function initializeOriginalRows() {
             const table = document.querySelector('table');
             if (!table) return;
             const tbody = table.querySelector('tbody');
             if (!tbody) return;
-            Array.from(tbody.querySelectorAll('tr')).forEach(row => {
-                const catCell = row.querySelectorAll('td')[5]; // 6th column is Category
-                if (!selected || (catCell && catCell.textContent === selected)) {
+            originalRows = Array.from(tbody.querySelectorAll('tr'));
+        }
+        
+        // Sort products based on selected criteria
+        function sortProducts() {
+            const table = document.querySelector('table');
+            if (!table) return;
+            const tbody = table.querySelector('tbody');
+            if (!tbody) return;
+            
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            const selectedCategory = categoryFilter.value;
+            const sortBy = sortOptions.value;
+            
+            // First filter by category if selected
+            let filteredRows = rows;
+            if (selectedCategory) {
+                filteredRows = rows.filter(row => {
+                    const categoryCell = row.querySelectorAll('td')[6];
+                    const category = categoryCell?.textContent?.trim() || '';
+                    return category === selectedCategory;
+                });
+            }
+            
+            // Then sort the filtered rows
+            filteredRows.sort((a, b) => {
+                switch (sortBy) {
+                    case 'category':
+                        const categoryA = a.querySelectorAll('td')[6]?.textContent?.trim() || '';
+                        const categoryB = b.querySelectorAll('td')[6]?.textContent?.trim() || '';
+                        return categoryA.localeCompare(categoryB);
+                        
+                    case 'name':
+                        const nameA = a.querySelectorAll('td')[1]?.textContent?.trim() || '';
+                        const nameB = b.querySelectorAll('td')[1]?.textContent?.trim() || '';
+                        return nameA.localeCompare(nameB);
+                        
+                    case 'price':
+                        const priceA = parseFloat(a.querySelectorAll('td')[3]?.textContent?.replace(/[₱,]/g, '') || '0');
+                        const priceB = parseFloat(b.querySelectorAll('td')[3]?.textContent?.replace(/[₱,]/g, '') || '0');
+                        return priceA - priceB;
+                        
+                    case 'stock':
+                        const stockA = parseInt(a.querySelectorAll('td')[5]?.textContent?.trim() || '0');
+                        const stockB = parseInt(b.querySelectorAll('td')[5]?.textContent?.trim() || '0');
+                        return stockA - stockB;
+                        
+                    case 'date':
+                        const dateA = a.querySelectorAll('td')[8]?.textContent?.trim() || '';
+                        const dateB = b.querySelectorAll('td')[8]?.textContent?.trim() || '';
+                        return dateB.localeCompare(dateA); // Newest first
+                        
+                    default:
+                        return 0;
+                }
+            });
+            
+            // Reorder rows in the table
+            filteredRows.forEach(row => tbody.appendChild(row));
+            
+            // Show/hide rows based on category filter
+            rows.forEach(row => {
+                const categoryCell = row.querySelectorAll('td')[6];
+                const category = categoryCell?.textContent?.trim() || '';
+                
+                if (!selectedCategory || category === selectedCategory) {
                     row.style.display = '';
                 } else {
                     row.style.display = 'none';
                 }
             });
-        });
-        resetCategoryBtn.addEventListener('click', function() {
+        }
+        
+        // Filter products by category (show/hide)
+        function filterByCategory() {
+            const table = document.querySelector('table');
+            if (!table) return;
+            const tbody = table.querySelector('tbody');
+            if (!tbody) return;
+            
+            const selectedCategory = categoryFilter.value;
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            
+            rows.forEach(row => {
+                const categoryCell = row.querySelectorAll('td')[6];
+                const category = categoryCell?.textContent?.trim() || '';
+                
+                if (!selectedCategory || category === selectedCategory) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+        
+        // Reset to original order
+        function resetToOriginal() {
             categoryFilter.value = '';
             const table = document.querySelector('table');
             if (!table) return;
             const tbody = table.querySelector('tbody');
             if (!tbody) return;
-            Array.from(tbody.querySelectorAll('tr')).forEach(row => {
+            
+            // Restore original order
+            originalRows.forEach(row => {
+                tbody.appendChild(row);
                 row.style.display = '';
             });
+        }
+        
+        // Event listeners
+        sortCategoryBtn.addEventListener('click', sortProducts);
+        resetCategoryBtn.addEventListener('click', resetToOriginal);
+        
+        // Also filter when category selection changes
+        categoryFilter.addEventListener('change', filterByCategory);
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeOriginalRows();
         });
 
         // Add JS to fetch and populate categories
@@ -1635,7 +2211,12 @@
             if (window.location.pathname.includes('/Inventory/')) {
                 endpoint = '/api/inventory/categories';
             }
-            const res = await fetch(endpoint);
+            const res = await fetch(endpoint, {
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
             const data = await res.json();
             if (data.success) {
                 // For add/edit forms
@@ -1664,25 +2245,31 @@
         }
         document.addEventListener('DOMContentLoaded', fetchAndPopulateCategories);
 
-        // Add Category Modal logic for Add Product
+        // Add Category Inline Form logic for Add Product
         const addCategoryBtn = document.getElementById('addCategoryBtn');
-        const addCategoryModal = document.getElementById('addCategoryModal');
-        const closeAddCategoryModal = document.getElementById('closeAddCategoryModal');
+        const addCategoryForm = document.getElementById('addCategoryForm');
         const cancelAddCategoryBtn = document.getElementById('cancelAddCategoryBtn');
         const saveCategoryBtn = document.getElementById('saveCategoryBtn');
+        
         addCategoryBtn.onclick = function() {
-            addCategoryModal.classList.add('show');
+            addCategoryForm.style.display = 'block';
+            document.getElementById('newCategoryName').value = '';
+            document.getElementById('newCategoryName').focus();
+        };
+        
+        cancelAddCategoryBtn.onclick = function() {
+            addCategoryForm.style.display = 'none';
             document.getElementById('newCategoryName').value = '';
         };
-        closeAddCategoryModal.onclick = cancelAddCategoryBtn.onclick = function() {
-            addCategoryModal.classList.remove('show');
-        };
+        
         saveCategoryBtn.onclick = function() {
             const newCat = document.getElementById('newCategoryName').value.trim();
             if (!newCat) {
                 alert('Please enter a category name.');
                 return;
             }
+            
+            // Add to frontend dropdowns (categories are managed in Products table)
             [document.getElementById('category'), document.getElementById('editCategory')].forEach(dropdown => {
                 if (dropdown && !Array.from(dropdown.options).some(opt => opt.value === newCat)) {
                     const option = document.createElement('option');
@@ -1692,28 +2279,46 @@
                     dropdown.value = newCat;
                 }
             });
-            addCategoryModal.classList.remove('show');
+            
+            // Also update filter dropdown if it exists
+            const filterDropdown = document.getElementById('categoryFilter');
+            if (filterDropdown && !Array.from(filterDropdown.options).some(opt => opt.value === newCat)) {
+                const option = document.createElement('option');
+                option.value = newCat;
+                option.textContent = newCat;
+                filterDropdown.appendChild(option);
+            }
+            
+            addCategoryForm.style.display = 'none';
+            document.getElementById('newCategoryName').value = '';
+            alert('Category added to dropdown! It will be saved when you create a product with this category.');
         };
 
-        // Add Category Modal logic for Edit Product
+        // Add Category Inline Form logic for Edit Product
         const addCategoryBtnEdit = document.getElementById('addCategoryBtnEdit');
-        const addCategoryModalEdit = document.getElementById('addCategoryModalEdit');
-        const closeAddCategoryModalEdit = document.getElementById('closeAddCategoryModalEdit');
+        const addCategoryFormEdit = document.getElementById('addCategoryFormEdit');
         const cancelAddCategoryBtnEdit = document.getElementById('cancelAddCategoryBtnEdit');
         const saveCategoryBtnEdit = document.getElementById('saveCategoryBtnEdit');
+        
         addCategoryBtnEdit.onclick = function() {
-            addCategoryModalEdit.classList.add('show');
+            addCategoryFormEdit.style.display = 'block';
+            document.getElementById('newCategoryNameEdit').value = '';
+            document.getElementById('newCategoryNameEdit').focus();
+        };
+        
+        cancelAddCategoryBtnEdit.onclick = function() {
+            addCategoryFormEdit.style.display = 'none';
             document.getElementById('newCategoryNameEdit').value = '';
         };
-        closeAddCategoryModalEdit.onclick = cancelAddCategoryBtnEdit.onclick = function() {
-            addCategoryModalEdit.classList.remove('show');
-        };
+        
         saveCategoryBtnEdit.onclick = function() {
             const newCat = document.getElementById('newCategoryNameEdit').value.trim();
             if (!newCat) {
                 alert('Please enter a category name.');
                 return;
             }
+            
+            // Add to frontend dropdowns (categories are managed in Products table)
             [document.getElementById('category'), document.getElementById('editCategory')].forEach(dropdown => {
                 if (dropdown && !Array.from(dropdown.options).some(opt => opt.value === newCat)) {
                     const option = document.createElement('option');
@@ -1723,7 +2328,19 @@
                     dropdown.value = newCat;
                 }
             });
-            addCategoryModalEdit.classList.remove('show');
+            
+            // Also update filter dropdown if it exists
+            const filterDropdown = document.getElementById('categoryFilter');
+            if (filterDropdown && !Array.from(filterDropdown.options).some(opt => opt.value === newCat)) {
+                const option = document.createElement('option');
+                option.value = newCat;
+                option.textContent = newCat;
+                filterDropdown.appendChild(option);
+            }
+            
+            addCategoryFormEdit.style.display = 'none';
+            document.getElementById('newCategoryNameEdit').value = '';
+            alert('Category added to dropdown! It will be saved when you update the product with this category.');
         };
 
         // --- Discount Management Functions ---
@@ -2055,5 +2672,66 @@
         });
     </script>
     <% } %>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Confirmation Modal -->
+    <div id="logoutConfirmModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Confirm Logout</h3>
+            <p>Are you sure you want to log out?</p>
+            <div class="modal-buttons">
+                <button class="modal-button confirm" id="confirmLogoutBtn">Logout</button>
+                <button class="modal-button cancel" id="cancelLogoutBtn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Custom Logout Modal Logic
+        const logoutConfirmModal = document.getElementById('logoutConfirmModal');
+        const confirmLogoutBtn = document.getElementById('confirmLogoutBtn');
+        const cancelLogoutBtn = document.getElementById('cancelLogoutBtn');
+
+        async function handleLogout(event) {
+            event.preventDefault();
+            logoutConfirmModal.classList.add('show');
+        }
+
+        confirmLogoutBtn.addEventListener('click', async () => {
+            logoutConfirmModal.classList.remove('show');
+            try {
+                const response = await fetch('/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    window.location.href = '/login';
+                } else {
+                    console.error('Logout failed');
+                    alert('Failed to logout. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error during logout:', error);
+                alert('An error occurred during logout. Please try again.');
+            }
+        });
+
+        cancelLogoutBtn.addEventListener('click', () => {
+            logoutConfirmModal.classList.remove('show');
+        });
+
+        // Close modal if clicked outside content
+        logoutConfirmModal.addEventListener('click', (event) => {
+            if (event.target === logoutConfirmModal) {
+                logoutConfirmModal.classList.remove('show');
+            }
+        });
+    </script>
+        <script src="/js/dark-mode.js"></script>
 </body>
 </html>

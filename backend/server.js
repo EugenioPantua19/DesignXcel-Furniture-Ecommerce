@@ -14,12 +14,37 @@ const sql = require('mssql');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 const cors = require('cors');
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const jwt = require('jsonwebtoken');
+// All encryption removed - using plain text storage
+// Initialize Stripe with error handling
+let stripe;
+try {
+  if (!process.env.STRIPE_SECRET_KEY) {
+    console.warn('⚠️ STRIPE_SECRET_KEY not found in environment variables');
+    stripe = null;
+  } else {
+    stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+    console.log('✅ Stripe initialized successfully');
+  }
+} catch (error) {
+  console.error('❌ Error initializing Stripe:', error.message);
+  stripe = null;
+}
 const bodyParser = require('body-parser');
 const multer = require('multer');
 const fs = require('fs');
 
 const app = express();
+
+// Health check endpoint for Railway
+app.get('/api/health', (req, res) => {
+    res.status(200).json({ 
+        status: 'healthy', 
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        environment: process.env.NODE_ENV || 'development'
+    });
+});
 
 // Multer configuration for file uploads
 const storage = multer.diskStorage({
@@ -209,6 +234,12 @@ app.post('/api/stripe/webhook', bodyParser.raw({ type: 'application/json' }), as
             // Insert order items
             for (const item of cart) {
                 console.log('[STRIPE WEBHOOK] Processing order item:', item);
+                console.log('[STRIPE WEBHOOK] Item variation data:', {
+                    variationId: item.variationId,
+                    variationName: item.variationName,
+                    useOriginalProduct: item.useOriginalProduct,
+                    hasVariation: !!item.variationId
+                });
                 // Find product by name (more reliable than ID for webhook data)
                 let productResult;
                 if (item.id && item.id !== 'shipping') {
@@ -255,9 +286,42 @@ app.post('/api/stripe/webhook', bodyParser.raw({ type: 'application/json' }), as
                     .input('productId', sql.Int, product.ProductID)
                     .input('quantity', sql.Int, item.quantity)
                     .input('priceAtPurchase', sql.Decimal(10,2), item.price)
-                    .query(`INSERT INTO OrderItems (OrderID, ProductID, Quantity, PriceAtPurchase)
-                            VALUES (@orderId, @productId, @quantity, @priceAtPurchase)`);
+                    .input('variationId', sql.Int, item.variationId || null)
+                    .query(`INSERT INTO OrderItems (OrderID, ProductID, Quantity, PriceAtPurchase, VariationID)
+                            VALUES (@orderId, @productId, @quantity, @priceAtPurchase, @variationId)`);
                 console.log('[STRIPE WEBHOOK] Order item inserted successfully for:', product.Name);
+
+                // Decrement stock quantities
+                console.log('[STRIPE WEBHOOK] Decrementing stock for product:', product.Name, 'Quantity:', item.quantity);
+                console.log('[STRIPE WEBHOOK] Checking variation data for stock decrement:', {
+                    variationId: item.variationId,
+                    variationIdType: typeof item.variationId,
+                    variationIdNull: item.variationId === null,
+                    variationIdUndefined: item.variationId === undefined,
+                    hasVariation: !!item.variationId
+                });
+                
+                // Always decrement main product stock first
+                console.log('[STRIPE WEBHOOK] Decrementing main product stock for product ID:', product.ProductID);
+                const productUpdateResult = await pool.request()
+                    .input('productId', sql.Int, product.ProductID)
+                    .input('quantity', sql.Int, item.quantity)
+                    .query(`UPDATE Products 
+                            SET StockQuantity = CASE WHEN StockQuantity >= @quantity THEN StockQuantity - @quantity ELSE 0 END 
+                            WHERE ProductID = @productId`);
+                console.log('[STRIPE WEBHOOK] Main product stock decremented successfully. Rows affected:', productUpdateResult.rowsAffected);
+                
+                // Additionally decrement variation stock if this is a variation purchase
+                if (item.variationId && item.variationId !== null && item.variationId !== undefined) {
+                    console.log('[STRIPE WEBHOOK] Additionally decrementing variation stock for variation ID:', item.variationId);
+                    const variationUpdateResult = await pool.request()
+                        .input('variationId', sql.Int, item.variationId)
+                        .input('quantity', sql.Int, item.quantity)
+                        .query(`UPDATE ProductVariations 
+                                SET Quantity = CASE WHEN Quantity >= @quantity THEN Quantity - @quantity ELSE 0 END 
+                                WHERE VariationID = @variationId`);
+                    console.log('[STRIPE WEBHOOK] Variation stock decremented successfully. Rows affected:', variationUpdateResult.rowsAffected);
+                }
             }
             console.log('[STRIPE WEBHOOK] Order saved successfully for customer:', email, 'OrderID:', orderId);
         } catch (err) {
@@ -269,7 +333,7 @@ app.post('/api/stripe/webhook', bodyParser.raw({ type: 'application/json' }), as
 });
 
 // --- All other middleware/routes ---
-// CORS configuration for Railway deployment
+// CORS configuration for local development
 const allowedOrigins = [
     'http://localhost:3000', 
     'http://localhost:3001', 
@@ -278,11 +342,7 @@ const allowedOrigins = [
     'https://localhost:3000',
     'https://localhost:3001',
     'https://localhost:3002',
-    'https://designxcel-frontend.railway.app',
-    'https://designxcel-frontend.up.railway.app',
-    'https://designxcel-frontend.vercel.app',
-    'https://designxcel-frontend.netlify.app',
-    process.env.FRONTEND_URL || 'https://designxcel-frontend.railway.app'
+    process.env.FRONTEND_URL || 'http://localhost:3000'
 ];
 
 // CORS configuration - permissive for all environments
@@ -295,8 +355,30 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, 'public')));
-app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
+// Serve static files with proper headers for GLTF files
+app.use(express.static(path.join(__dirname, 'public'), {
+  setHeaders: (res, path) => {
+    if (path.endsWith('.glb') || path.endsWith('.gltf')) {
+      res.setHeader('Content-Type', 'application/octet-stream');
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    }
+  }
+}));
+
+app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads'), {
+  setHeaders: (res, path) => {
+    if (path.endsWith('.glb') || path.endsWith('.gltf')) {
+      res.setHeader('Content-Type', 'application/octet-stream');
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    }
+  }
+}));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
@@ -308,78 +390,40 @@ const sessionConfig = {
     rolling: false, // Disable rolling expiration to prevent session regeneration
     cookie: {
         httpOnly: true,
-        secure: false, // Set to false for local development
+        secure: false, // Use false for local development
         sameSite: 'lax', // Use 'lax' for local development
         maxAge: 24 * 60 * 60 * 1000 // 24 hours session timeout
     }
 };
 
-// Configure MSSQL session store with fallback to memory store
+// Configure session store with fallback to memory store for local development
 let sessionStore;
+
 try {
-    // Use the same database configuration as the main app
-    // Check if we have a connection string (production) or individual settings (local)
-    let dbConfig;
+    // For local development, use memory store to avoid database table requirements
+    console.log('🔧 DEVELOPMENT: Using memory session store for local development');
+    sessionStore = undefined; // undefined means use memory store
     
-    if (process.env.DB_CONNECTION_STRING) {
-        // Use Azure SQL connection string (production)
-        const parsedConfig = parseConnectionString(process.env.DB_CONNECTION_STRING);
-        dbConfig = {
-            ...parsedConfig,
-            options: {
-                encrypt: true,
-                trustServerCertificate: false, // Use false for Azure SQL
-                enableArithAbort: true,
-                requestTimeout: 30000,
-                connectionTimeout: 30000
-            }
-        };
-        console.log('Using Azure SQL connection for session store');
-        console.log('Azure SQL server:', parsedConfig.server);
-        console.log('Azure SQL database:', parsedConfig.database);
-    } else if (process.env.NODE_ENV === 'production') {
-        // In production, we must have DB_CONNECTION_STRING
-        console.error('❌ DB_CONNECTION_STRING is required in production!');
-        throw new Error('DB_CONNECTION_STRING is required in production environment');
-    } else {
-        // Use local database settings (development only)
-        dbConfig = {
-            user: process.env.DB_USERNAME || process.env.DB_USER || 'DesignXcel',
-            password: process.env.DB_PASSWORD || 'Azwrathfrozen22@',
-            server: process.env.DB_SERVER || 'DESKTOP-F4OI6BT\\SQLEXPRESS',
-            database: process.env.DB_DATABASE || process.env.DB_NAME || 'DesignXcellDB',
-            options: {
-                encrypt: true,
-                trustServerCertificate: true,
-                enableArithAbort: true,
-                requestTimeout: 30000,
-                connectionTimeout: 30000
-            }
-        };
-        console.log('Using local database connection for session store (development)');
-    }
-    
-    sessionStore = new MSSqlStore({
-        ...dbConfig,
-        table: 'sessions' // Table name for storing sessions
-    });
-    
-    console.log('✅ MSSQL session store configured successfully');
-    console.log('Session store config:', {
-        server: dbConfig.server,
-        database: dbConfig.database,
-        user: dbConfig.user,
-        table: 'sessions'
-    });
-    sessionConfig.store = sessionStore;
+    console.log('✅ Memory session store configured successfully');
+    console.log('💡 Sessions will not persist across server restarts (normal for local development)');
 } catch (error) {
-    console.error('❌ Failed to configure MSSQL session store:', error.message);
-    console.log('⚠️  Falling back to memory store (sessions will not persist across restarts)');
-    console.log('💡 This is normal for local development');
-    // Continue without store - will use memory store
+    console.warn('⚠️ Failed to configure session store, falling back to memory store:', error.message);
+    sessionStore = undefined; // Fallback to memory store
 }
 
+// Add store to session configuration if available
+if (sessionStore) {
+    sessionConfig.store = sessionStore;
+}
+
+// Trust proxy for local development
+app.set('trust proxy', 1);
 app.use(session(sessionConfig));
+
+// Initialize Passport for Google OAuth
+const passport = require('passport');
+app.use(passport.initialize());
+app.use(passport.session());
 
 app.use(flash());
 
@@ -411,9 +455,12 @@ function parseConnectionString(connectionString) {
                     if (serverValue.includes(',')) {
                         serverValue = serverValue.split(',')[0];
                     }
+                    // Fix double backslashes in server name
+                    serverValue = serverValue.replace(/\\\\/g, '\\');
                     config.server = serverValue;
                     break;
                 case 'initial catalog':
+                case 'database':
                     config.database = cleanValue;
                     break;
                 case 'user id':
@@ -440,43 +487,62 @@ function parseConnectionString(connectionString) {
     return config;
 }
 
-// Database configuration for Azure SQL Server
+// Database configuration for local SQL Server development
 const connectionString = process.env.DB_CONNECTION_STRING;
 
 console.log('Environment check:');
 console.log('DB_CONNECTION_STRING exists:', !!process.env.DB_CONNECTION_STRING);
 console.log('DB_CONNECTION_STRING value:', process.env.DB_CONNECTION_STRING ? 'Set (hidden for security)' : 'Not set');
 
-if (!connectionString) {
-    console.error('DB_CONNECTION_STRING environment variable is not set!');
-    console.error('Please check your .env file and ensure DB_CONNECTION_STRING is properly configured.');
-    console.error('Available environment variables:', Object.keys(process.env).filter(key => key.includes('DB')));
-    process.exit(1);
+let dbConfig;
+
+if (connectionString) {
+    // Use connection string if available
+    const parsedConfig = parseConnectionString(connectionString);
+    console.log('Parsed database config:', {
+        server: parsedConfig.server,
+        database: parsedConfig.database,
+        user: parsedConfig.user,
+        hasPassword: !!parsedConfig.password
+    });
+
+    dbConfig = {
+        ...parsedConfig,
+        options: {
+            encrypt: false, // Disable encryption for local development
+            trustServerCertificate: true, // Trust server certificate for local development
+            enableArithAbort: true
+        },
+        pool: {
+            max: 10,
+            min: 0,
+            idleTimeoutMillis: 30000
+        },
+        requestTimeout: 30000,
+        connectionTimeout: 30000
+    };
+} else {
+    // Use individual database variables for local development
+    console.log('Using individual database variables for local development');
+    dbConfig = {
+        server: process.env.DB_SERVER || 'DESKTOP-F4OI6BT\\SQLEXPRESS',
+        user: process.env.DB_USERNAME || 'DesignXcel',
+        password: process.env.DB_PASSWORD || 'Azwrathfrozen22@',
+        database: process.env.DB_DATABASE || 'DesignXcellDB',
+        options: {
+            encrypt: false, // Disable encryption for local development
+            trustServerCertificate: true, // Trust server certificate for local development
+            enableArithAbort: true
+        },
+        pool: {
+            max: 10,
+            min: 0,
+            idleTimeoutMillis: 30000
+        },
+        requestTimeout: 30000,
+        connectionTimeout: 30000
+    };
 }
-
-const parsedConfig = parseConnectionString(connectionString);
-console.log('Parsed database config:', {
-    server: parsedConfig.server,
-    database: parsedConfig.database,
-    user: parsedConfig.user,
-    hasPassword: !!parsedConfig.password
-});
-
-const dbConfig = {
-    ...parsedConfig,
-    options: {
-        encrypt: true, // Required for Azure SQL Server
-        trustServerCertificate: false, // Azure SQL Server uses proper certificates
-        enableArithAbort: true
-    },
-    pool: {
-        max: 10,
-        min: 0,
-        idleTimeoutMillis: 30000
-    },
-    requestTimeout: 30000,
-    connectionTimeout: 30000
-};
 
 // Helper function to get Manila timezone date
 function getManilaTime() {
@@ -489,10 +555,43 @@ function getManilaTime() {
 const pool = new sql.ConnectionPool(dbConfig);
 const poolConnect = pool.connect()
     .then(() => {
-        console.log('Connected to MSSQL database successfully');
+        console.log('✅ Connected to MSSQL database successfully');
+        console.log('Database connection details:', {
+            server: dbConfig.server,
+            database: dbConfig.database,
+            user: dbConfig.user,
+            hasPassword: !!dbConfig.password
+        });
     })
     .catch(err => {
-        console.error('Database Connection Failed! Bad Config: ', err);
+        console.error('❌ Database Connection Failed! Bad Config: ', err);
+        console.error('Connection details:', {
+            server: dbConfig.server,
+            database: dbConfig.database,
+            user: dbConfig.user,
+            hasPassword: !!dbConfig.password,
+            encrypt: dbConfig.options?.encrypt,
+            trustServerCertificate: dbConfig.options?.trustServerCertificate
+        });
+        
+        // Enhanced error handling with specific guidance
+        if (err.code === 'ELOGIN') {
+            console.log('\n🔧 LOGIN ERROR TROUBLESHOOTING:');
+            console.log('1. Check Azure SQL Server firewall - add your IP address');
+            console.log('2. Verify user "designxcel" exists and has proper permissions');
+            console.log('3. Confirm password is correct (case-sensitive)');
+            console.log('4. Ensure Azure SQL Server allows SQL authentication');
+            console.log('5. Try connecting with SQL Server Management Studio first');
+        } else if (err.code === 'ETIMEOUT') {
+            console.log('\n🔧 TIMEOUT ERROR TROUBLESHOOTING:');
+            console.log('1. Check network connectivity to Azure SQL Server');
+            console.log('2. Verify firewall rules allow connections');
+            console.log('3. Check if Azure SQL Server is running');
+        }
+        
+        // Don't exit the process, let the app continue without database
+        console.log('⚠️ App will continue without database connection');
+        console.log('💡 Run "node test-fallback-connection.js" for detailed diagnostics');
     });
 
 // Middleware to make user available to all views
@@ -526,7 +625,7 @@ app.get('/Employee/Admin/UserManagement', async (req, res) => {
     } catch (error) {
         console.error('Error rendering user management page:', error);
         req.flash('error', 'Error loading user management page.');
-        res.redirect('/Employee/AdminIndex');
+        res.redirect('/Employee/AdminManager');
     }
 });
 
@@ -534,60 +633,7 @@ app.get('/Employee/Admin/UserManagement', async (req, res) => {
 
 
 // --- OTP EMAIL ENDPOINTS ---
-const nodemailer = require('nodemailer');
-const otpStore = {};
-
-// Helper to generate 6-digit OTP
-function generateOTP() {
-    return Math.floor(100000 + Math.random() * 900000).toString();
-}
-
-// Send OTP endpoint
-app.post('/api/auth/send-otp', async (req, res) => {
-    const { email } = req.body;
-    if (!email || !email.includes('@')) {
-        return res.status(400).json({ success: false, message: 'Invalid email.' });
-    }
-    const otp = generateOTP();
-    otpStore[email] = { otp, expires: Date.now() + 10 * 60 * 1000 }; // 10 min expiry
-    try {
-        const transporter = nodemailer.createTransporter({
-            service: 'gmail',
-            auth: {
-                user: process.env.OTP_EMAIL_USER,
-                pass: process.env.OTP_EMAIL_PASS
-            }
-        });
-        await transporter.sendMail({
-            from: process.env.OTP_EMAIL_USER,
-            to: email,
-            subject: 'Your DesignXcel OTP Code',
-            text: `Your OTP code is: ${otp}. It is valid for 10 minutes.`
-        });
-        res.json({ success: true, message: 'OTP sent to email.' });
-    } catch (err) {
-        console.error('Error sending OTP email:', err);
-        res.status(500).json({ success: false, message: 'Failed to send OTP.' });
-    }
-});
-
-// Verify OTP endpoint
-app.post('/api/auth/verify-otp', (req, res) => {
-    const { email, otp } = req.body;
-    if (!email || !otp) {
-        return res.status(400).json({ success: false, message: 'Email and OTP required.' });
-    }
-    const record = otpStore[email];
-    if (!record || record.otp !== otp) {
-        return res.status(400).json({ success: false, message: 'Invalid OTP.' });
-    }
-    if (Date.now() > record.expires) {
-        delete otpStore[email];
-        return res.status(400).json({ success: false, message: 'OTP expired.' });
-    }
-    delete otpStore[email];
-    res.json({ success: true, message: 'OTP verified.' });
-});
+// Note: OTP endpoints are handled in routes.js for better organization
 
 // Customer profile API endpoints
 app.get('/api/customer/profile', async (req, res) => {
@@ -595,14 +641,32 @@ app.get('/api/customer/profile', async (req, res) => {
         if (!req.session.user || req.session.user.role !== 'Customer') {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
         }
-        await poolConnect;
+        
         const customerId = req.session.user.id;
+        
+        // Database has old column names but encrypted data
         const result = await pool.request()
             .input('customerId', sql.Int, customerId)
-            .query('SELECT CustomerID, FullName, Email, PhoneNumber, Gender, ProfileImage FROM Customers WHERE CustomerID = @customerId');
-        const customer = result.recordset[0];
+            .query('SELECT CustomerID, Email, FullName, PhoneNumber, Gender, ProfileImage FROM Customers WHERE CustomerID = @customerId');
+        const customerRecord = result.recordset[0];
+        
+        if (!customerRecord) {
+            return res.status(404).json({ success: false, message: 'Customer not found' });
+        }
+        
+        // Customer data is already plain text
+        const customer = {
+            CustomerID: customerRecord.CustomerID,
+            Email: customerRecord.Email,
+            FullName: customerRecord.FullName,
+            PhoneNumber: customerRecord.PhoneNumber,
+            Gender: customerRecord.Gender,
+            ProfileImage: customerRecord.ProfileImage
+        };
+        
         res.json({ success: true, customer });
     } catch (err) {
+        console.error('Error fetching customer profile:', err);
         res.status(500).json({ success: false, message: 'Failed to fetch profile', error: err.message });
     }
 });
@@ -672,10 +736,45 @@ app.put('/api/customer/orders/:orderId/cancel', async (req, res) => {
         if (order.Status === 'Cancelled') {
             return res.json({ success: true, message: 'Order already cancelled.' });
         }
+        // Get order items before cancelling to restore stock
+        const orderItemsResult = await pool.request()
+            .input('orderId', sql.Int, orderId)
+            .query(`
+                SELECT oi.ProductID, oi.Quantity, oi.VariationID
+                FROM OrderItems oi
+                WHERE oi.OrderID = @orderId
+            `);
+        
+        // Restore stock for each item
+        for (const item of orderItemsResult.recordset) {
+            // Always restore main product stock first
+            await pool.request()
+                .input('productId', sql.Int, item.ProductID)
+                .input('quantity', sql.Int, item.Quantity)
+                .query(`UPDATE Products 
+                        SET StockQuantity = StockQuantity + @quantity 
+                        WHERE ProductID = @productId`);
+            console.log(`[ORDER CANCELLATION] Restored ${item.Quantity} units to main product ${item.ProductID}`);
+            
+            // Additionally restore variation stock if there was a variation
+            if (item.VariationID) {
+                await pool.request()
+                    .input('variationId', sql.Int, item.VariationID)
+                    .input('quantity', sql.Int, item.Quantity)
+                    .query(`UPDATE ProductVariations 
+                            SET Quantity = Quantity + @quantity 
+                            WHERE VariationID = @variationId`);
+                console.log(`[ORDER CANCELLATION] Additionally restored ${item.Quantity} units to variation ${item.VariationID}`);
+            }
+        }
+        
+        // Update order status to cancelled
         await pool.request()
             .input('orderId', sql.Int, orderId)
             .query(`UPDATE Orders SET Status = 'Cancelled' WHERE OrderID = @orderId`);
-        res.json({ success: true, message: 'Order cancelled successfully.' });
+        
+        console.log(`[ORDER CANCELLATION] Order ${orderId} cancelled and stock restored`);
+        res.json({ success: true, message: 'Order cancelled successfully and stock restored.' });
     } catch (err) {
         res.status(500).json({ success: false, message: 'Failed to cancel order', error: err.message });
     }
@@ -718,6 +817,7 @@ app.get('/api/customer/orders-with-items', async (req, res) => {
         for (const item of orderItemsResult.recordset) {
             if (!itemsByOrder[item.OrderID]) itemsByOrder[item.OrderID] = [];
             itemsByOrder[item.OrderID].push({
+                ProductID: item.ProductID,
                 name: item.Name,
                 quantity: item.Quantity,
                 price: item.PriceAtPurchase,
@@ -762,8 +862,12 @@ app.put('/api/customer/profile', async (req, res) => {
         if (!req.session.user || req.session.user.role !== 'Customer') {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
         }
+        
         const { fullName, email, phoneNumber, gender } = req.body;
         const customerId = req.session.user.id;
+        
+        // Store data as plain text
+        
         await poolConnect;
         await pool.request()
             .input('customerId', sql.Int, customerId)
@@ -772,8 +876,10 @@ app.put('/api/customer/profile', async (req, res) => {
             .input('phoneNumber', sql.NVarChar, phoneNumber)
             .input('gender', sql.NVarChar, gender)
             .query('UPDATE Customers SET FullName = @fullName, Email = @email, PhoneNumber = @phoneNumber, Gender = @gender WHERE CustomerID = @customerId');
-        res.json({ success: true });
+        
+        res.json({ success: true, message: 'Profile updated successfully' });
     } catch (err) {
+        console.error('Error updating customer profile:', err);
         res.status(500).json({ success: false, message: 'Failed to update profile', error: err.message });
     }
 });
@@ -958,7 +1064,11 @@ app.get('/api/customer/addresses', async (req, res) => {
             .query('SELECT * FROM CustomerAddresses WHERE CustomerID = @customerId');
         
         console.log('[ADDRESS GET] Query result:', result.recordset);
-        res.json({ success: true, addresses: result.recordset });
+        
+        // Address data is already plain text
+        const addresses = result.recordset;
+        
+        res.json({ success: true, addresses: addresses });
     } catch (err) {
         console.error('[ADDRESS GET] Error fetching addresses:', err);
         console.error('[ADDRESS GET] Error stack:', err.stack);
@@ -1268,10 +1378,110 @@ app.use((err, req, res, next) => {
     });
 });
 
+// Public API endpoint for delivery rates
+app.get('/api/public/delivery-rates', async (req, res) => {
+    try {
+        await poolConnect;
+        
+        // First, ensure the DeliveryRates table exists with consistent schema
+        await pool.request().query(`
+            IF OBJECT_ID('dbo.DeliveryRates','U') IS NULL
+            BEGIN
+                CREATE TABLE dbo.DeliveryRates (
+                    RateID INT IDENTITY(1,1) PRIMARY KEY,
+                    ServiceType NVARCHAR(150) NOT NULL,
+                    Price DECIMAL(18,2) NOT NULL,
+                    CreatedAt DATETIME2(0) NOT NULL CONSTRAINT DF_DeliveryRates_CreatedAt DEFAULT (SYSUTCDATETIME()),
+                    CreatedByUserID INT NULL,
+                    CreatedByUsername NVARCHAR(150) NULL,
+                    IsActive BIT NOT NULL CONSTRAINT DF_DeliveryRates_IsActive DEFAULT (1)
+                );
+                
+                CREATE UNIQUE INDEX UX_DeliveryRates_ServiceType_Active
+                    ON dbo.DeliveryRates (ServiceType)
+                    WHERE IsActive = 1;
+                    
+                -- Insert default delivery rates if table is empty
+                IF NOT EXISTS (SELECT 1 FROM dbo.DeliveryRates)
+                BEGIN
+                    INSERT INTO dbo.DeliveryRates (ServiceType, Price, CreatedByUsername)
+                    VALUES 
+                        ('Standard Delivery', 50.00, 'System'),
+                        ('Express Delivery', 100.00, 'System'),
+                        ('Same Day Delivery', 150.00, 'System'),
+                        ('Pickup', 0.00, 'System');
+                END
+            END
+        `);
+        
+        // Now fetch the delivery rates (handle existing schema)
+        const result = await pool.request().query(`
+            SELECT 
+                RateID, 
+                ServiceType, 
+                Price,
+                CreatedAt, 
+                IsActive
+            FROM DeliveryRates 
+            WHERE IsActive = 1
+            ORDER BY Price ASC
+        `);
+        
+        res.json({
+            success: true,
+            deliveryRates: result.recordset
+        });
+    } catch (error) {
+        console.error('Error fetching delivery rates:', error);
+        res.status(500).json({ 
+            success: false,
+            error: 'Failed to fetch delivery rates',
+            message: error.message 
+        });
+    }
+});
+
+// Health check endpoint for local development
+app.get('/api/health', async (req, res) => {
+    try {
+        // Test database connection
+        let dbStatus = 'unknown';
+        try {
+            await pool.request().query('SELECT 1 as test');
+            dbStatus = 'connected';
+        } catch (dbError) {
+            dbStatus = 'disconnected';
+            console.log('Database health check failed:', dbError.message);
+        }
+
+        res.status(200).json({ 
+            status: 'ok',
+            timestamp: new Date().toISOString(),
+            environment: process.env.NODE_ENV || 'development',
+            port: process.env.PORT || 5000,
+            database: {
+                status: dbStatus,
+                server: dbConfig.server,
+                database: dbConfig.database,
+                user: dbConfig.user
+            },
+            stripe: stripe ? 'initialized' : 'not_initialized'
+        });
+    } catch (error) {
+        res.status(500).json({
+            status: 'error',
+            timestamp: new Date().toISOString(),
+            error: error.message
+        });
+    }
+});
+
 // Start server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Server is running on port ${PORT}`);
+    console.log(`🏥 Health check: http://localhost:${PORT}/api/health`);
+    console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
 
 // --- Products API for Frontend ---
@@ -1323,6 +1533,35 @@ app.get('/api/products', async (req, res) => {
             details: err.message 
         });
     }
+});
+
+// GLTF file serving endpoint with proper headers
+app.get('/uploads/products/models/:filename', (req, res) => {
+  const filename = req.params.filename;
+  const filePath = path.join(__dirname, 'public', 'uploads', 'products', 'models', filename);
+  
+  // Check if file exists
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: '3D model file not found' });
+  }
+  
+  // Set proper headers for GLTF files
+  res.setHeader('Content-Type', 'application/octet-stream');
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  
+  // Stream the file
+  const fileStream = fs.createReadStream(filePath);
+  fileStream.pipe(res);
+  
+  fileStream.on('error', (error) => {
+    console.error('Error streaming GLTF file:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Error loading 3D model file' });
+    }
+  });
 });
 
 // Get product by ID
@@ -1407,6 +1646,20 @@ app.post('/api/create-checkout-session', async (req, res) => {
             },
             quantity: item.quantity,
         }));
+
+        // Add shipping cost as a separate line item if it's greater than 0
+        if (shippingCost && shippingCost > 0) {
+            line_items.push({
+                price_data: {
+                    currency: 'php',
+                    product_data: {
+                        name: 'Delivery Fee',
+                    },
+                    unit_amount: Math.round(shippingCost * 100),
+                },
+                quantity: 1,
+            });
+        }
         
         console.log('Created line items for Stripe:', line_items);
         
@@ -1620,6 +1873,12 @@ app.post('/api/test-webhook', async (req, res) => {
             // Insert order items
             for (const item of cart) {
                 console.log('[TEST WEBHOOK] Processing order item:', item);
+                console.log('[TEST WEBHOOK] Item variation data:', {
+                    variationId: item.variationId,
+                    variationName: item.variationName,
+                    useOriginalProduct: item.useOriginalProduct,
+                    hasVariation: !!item.variationId
+                });
                 
                 // Find product by name (or use item.id if available)
                 let productResult;
@@ -1649,10 +1908,43 @@ app.post('/api/test-webhook', async (req, res) => {
                     .input('productId', sql.Int, product.ProductID)
                     .input('quantity', sql.Int, item.quantity)
                     .input('priceAtPurchase', sql.Decimal(10,2), item.price)
-                    .query(`INSERT INTO OrderItems (OrderID, ProductID, Quantity, PriceAtPurchase)
-                            VALUES (@orderId, @productId, @quantity, @priceAtPurchase)`);
+                    .input('variationId', sql.Int, item.variationId || null)
+                    .query(`INSERT INTO OrderItems (OrderID, ProductID, Quantity, PriceAtPurchase, VariationID)
+                            VALUES (@orderId, @productId, @quantity, @priceAtPurchase, @variationId)`);
                 
                 console.log('[TEST WEBHOOK] Order item inserted successfully');
+
+                // Decrement stock quantities
+                console.log('[TEST WEBHOOK] Decrementing stock for product:', product.Name, 'Quantity:', item.quantity);
+                console.log('[TEST WEBHOOK] Checking variation data for stock decrement:', {
+                    variationId: item.variationId,
+                    variationIdType: typeof item.variationId,
+                    variationIdNull: item.variationId === null,
+                    variationIdUndefined: item.variationId === undefined,
+                    hasVariation: !!item.variationId
+                });
+                
+                // Always decrement main product stock first
+                console.log('[TEST WEBHOOK] Decrementing main product stock for product ID:', product.ProductID);
+                const productUpdateResult = await pool.request()
+                    .input('productId', sql.Int, product.ProductID)
+                    .input('quantity', sql.Int, item.quantity)
+                    .query(`UPDATE Products 
+                            SET StockQuantity = CASE WHEN StockQuantity >= @quantity THEN StockQuantity - @quantity ELSE 0 END 
+                            WHERE ProductID = @productId`);
+                console.log('[TEST WEBHOOK] Main product stock decremented successfully. Rows affected:', productUpdateResult.rowsAffected);
+                
+                // Additionally decrement variation stock if this is a variation purchase
+                if (item.variationId && item.variationId !== null && item.variationId !== undefined) {
+                    console.log('[TEST WEBHOOK] Additionally decrementing variation stock for variation ID:', item.variationId);
+                    const variationUpdateResult = await pool.request()
+                        .input('variationId', sql.Int, item.variationId)
+                        .input('quantity', sql.Int, item.quantity)
+                        .query(`UPDATE ProductVariations 
+                                SET Quantity = CASE WHEN Quantity >= @quantity THEN Quantity - @quantity ELSE 0 END 
+                                WHERE VariationID = @variationId`);
+                    console.log('[TEST WEBHOOK] Variation stock decremented successfully. Rows affected:', variationUpdateResult.rowsAffected);
+                }
             }
             
             console.log('[TEST WEBHOOK] Order saved successfully for customer:', email, 'OrderID:', orderId);
@@ -1698,7 +1990,7 @@ app.get('/api/order/stripe-session/:sessionId', async (req, res) => {
             .input('sessionId', sql.NVarChar, sessionId)
             .query(`
                 SELECT o.*, c.FullName, c.Email,
-                       a.HouseNumber, a.Street, a.Barangay, a.City, a.Province, a.PostalCode, a.Country, a.PhoneNumber
+                       a.HouseNumber, a.Street, a.Barangay, a.City, a.Province, a.PostalCode, a.Country
                 FROM Orders o
                 INNER JOIN Customers c ON o.CustomerID = c.CustomerID
                 LEFT JOIN CustomerAddresses a ON o.ShippingAddressID = a.AddressID
@@ -1740,38 +2032,23 @@ app.get('/api/order/stripe-session/:sessionId', async (req, res) => {
     }
 });
 
-// Public API endpoint for delivery rates
-app.get('/api/public/delivery-rates', async (req, res) => {
-    try {
-        await poolConnect;
-        const result = await pool.request().query(`
-            SELECT RateID, ServiceType, Price, CreatedAt, IsActive
-            FROM DeliveryRates 
-            WHERE IsActive = 1
-            ORDER BY Price ASC
-        `);
-        
-        res.json({
-            success: true,
-            deliveryRates: result.recordset
-        });
-    } catch (error) {
-        console.error('Error fetching delivery rates:', error);
-        res.status(500).json({ 
-            success: false,
-            error: 'Failed to fetch delivery rates',
-            message: error.message 
-        });
-    }
-});
-
 // API endpoint for admin to check payment status
 app.get('/api/admin/payment-status/:orderId', async (req, res) => {
     try {
-        if (!req.session.user || (req.session.user.role !== 'Admin' && req.session.user.role !== 'InventoryManager')) {
+        // Check if user is authenticated and has employee access
+        if (!req.session.user) {
+            return res.status(401).json({
+                success: false,
+                message: 'Authentication required'
+            });
+        }
+        
+        // Allow access to all employee roles that can view orders
+        const allowedRoles = ['Admin'];
+        if (!allowedRoles.includes(req.session.user.role)) {
             return res.status(403).json({
                 success: false,
-                message: 'Access denied'
+                message: 'Access denied - insufficient permissions'
             });
         }
         

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Activity Logs - Design Excellence</title>
     <link rel="stylesheet" href="/css/Employee/Admin/AdminIndexStyles.css">
+    <link rel="stylesheet" href="/css/dark-mode.css">
     <style>
         /* Activity Logs specific styling */
         .logs-section {
@@ -21,6 +22,186 @@
             margin-bottom: 15px;
             font-size: 1.5em;
             padding-bottom: 10px;
+        }
+
+        /* Filter controls */
+        .filter-controls {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            min-width: 150px;
+        }
+
+        .filter-group label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        .filter-group select,
+        .filter-group input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .filter-actions {
+            display: flex;
+            gap: 10px;
+            align-items: end;
+        }
+
+        .btn-filter {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn-filter:hover {
+            background-color: #0056b3;
+        }
+
+        .btn-clear {
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn-clear:hover {
+            background-color: #545b62;
+        }
+
+        /* Log details */
+        .log-details {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 5px;
+            font-size: 12px;
+            color: #6c757d;
+        }
+
+        .changes-display {
+            background-color: #e9ecef;
+            border-left: 3px solid #007bff;
+            padding: 8px;
+            margin-top: 5px;
+            font-family: monospace;
+            font-size: 11px;
+        }
+
+        .action-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .action-insert { background-color: #d4edda; color: #155724; }
+        .action-update { background-color: #fff3cd; color: #856404; }
+        .action-delete { background-color: #f8d7da; color: #721c24; }
+        .action-status-change { background-color: #d1ecf1; color: #0c5460; }
+        .action-cancel { background-color: #f8d7da; color: #721c24; }
+        .action-complete { background-color: #d4edda; color: #155724; }
+        .action-login { background-color: #cce5ff; color: #004085; }
+        .action-logout { background-color: #e2e3e5; color: #383d41; }
+        .action-login-failed { background-color: #f8d7da; color: #721c24; }
+        .action-test { background-color: #e2e3e5; color: #383d41; }
+        
+        /* Additional action badges for better coverage */
+        .action-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        /* Additional styling for enhanced display */
+        .role-badge {
+            background-color: #e9ecef;
+            color: #495057;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .description {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .timestamp {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .no-changes {
+            color: #6c757d;
+            font-style: italic;
+        }
+
+        .change-item {
+            margin-bottom: 4px;
+        }
+
+        .old-value {
+            color: #dc3545;
+            text-decoration: line-through;
+        }
+
+        .new-value {
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .filter-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .filter-group {
+                min-width: auto;
+            }
+            
+            .filter-actions {
+                justify-content: center;
+            }
+            
+            #activityLogsTable {
+                font-size: 12px;
+            }
+            
+            #activityLogsTable th,
+            #activityLogsTable td {
+                padding: 8px 4px;
+            }
         }
 
         #activityLogsTable {
@@ -112,6 +293,113 @@
         .sidebar-submenu li a:hover {
             background: #555;
         }
+
+        /* Custom Confirmation Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            visibility: hidden;
+            opacity: 0;
+            transition: visibility 0s, opacity 0.3s ease;
+        }
+        .modal-overlay.show {
+            visibility: visible;
+            opacity: 1;
+        }
+        .modal-content {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+        .modal-overlay.show .modal-content {
+            transform: scale(1);
+        }
+        .modal-content h3 {
+            margin-top: 0;
+            color: #333;
+            font-size: 1.5em;
+            margin-bottom: 20px;
+        }
+        .modal-content p {
+            color: #555;
+            font-size: 1.1em;
+            margin-bottom: 30px;
+        }
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+        .modal-button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .modal-button.confirm {
+            background-color: #dc3545;
+            color: white;
+        }
+        .modal-button.confirm:hover {
+            background-color: #c82333;
+        }
+        .modal-button.cancel {
+            background-color: #f0f0f0;
+            color: #555;
+            border: 1px solid #ccc;
+        }
+        .modal-button.cancel:hover {
+            background-color: #e0e0e0;
+        }
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        .sidebar-menu {
+            flex-grow: 1;
+        }
+        .logout-section {
+            padding: 40px;
+            border-top: 1px solid #ddd;
+            margin-top: auto;
+            text-align: center;
+        }
+        .logout-button {
+            display: inline-block;
+            width: auto;
+            padding: 12px 25px;
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            font-weight: bold;
+            transition: background-color 0.3s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        .logout-button:hover {
+            background-color: #c82333;
+        }
     </style>
 </head>
 <body>
@@ -122,10 +410,11 @@
                 <h3>Admin Panel</h3>
             </div>
             <ul class="sidebar-menu">
-                <li><a href="/Employee/AdminIndex">Dashboard</a></li>
+                <li><a href="/Employee/AdminManager">Dashboard</a></li>
                 <li class="sidebar-section-label" style="font-weight:normal;">Inventory</li>
                 <ul class="sidebar-submenu" style="display:block;">
                     <li><a href="/Employee/Admin/Products">Products</a></li>
+                    <li><a href="/Employee/Admin/Variations">Variations</a></li>
                     <li><a href="/Employee/Admin/RawMaterials">Raw Materials</a></li>
                     <li><a href="/Employee/Admin/Alerts">Alerts</a></li>
                     <li><a href="/Employee/Admin/Archived">Archived items</a></li>
@@ -134,6 +423,11 @@
                 <ul class="sidebar-submenu" style="display:block;">
                     <li><a href="/Employee/Admin/DeliveryRates">Delivery Rates</a></li>
                     <li><a href="/Employee/Admin/WalkIn">Walk In</a></li>
+                </ul>
+                
+                <!-- Orders Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">Orders Section</li>
+                <ul class="sidebar-submenu" style="display:block;">
                     <li><a href="/Employee/Admin/OrdersPending">Orders Pending</a></li>
                     <li><a href="/Employee/Admin/OrdersProcessing">Orders Processing</a></li>
                     <li><a href="/Employee/Admin/OrdersShipping">Orders Shipping</a></li>
@@ -142,11 +436,34 @@
                     <li><a href="/Employee/Admin/CancelledOrders">Cancelled Orders</a></li>
                     <li><a href="/Employee/Admin/CompletedOrders">Completed Orders</a></li>
                 </ul>
-                <li><a href="/Employee/Admin/ManageUsers">Manage Users</a></li>
-                <li><a href="/Employee/Admin/ChatSupport">Chat Support</a></li>
-                <li><a href="/Employee/Admin/CMS">Content Management</a></li>
-                <li><a href="/Employee/Admin/Logs">Activity Logs</a></li>
+                <!-- User Management Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">User Management</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/Admin/ManageUsers">Manage Users</a></li>
+                </ul>
+                
+                <!-- Customer Reviews Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">Customer Reviews</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/Admin/Reviews">Reviews</a></li>
+                </ul>
+                
+                <!-- Support & Communication Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">Support & Communication</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/Admin/ChatSupport">Chat Support</a></li>
+                </ul>
+                
+                <!-- Content & System Section -->
+                <li class="sidebar-section-label" style="font-weight:normal;">Content & System</li>
+                <ul class="sidebar-submenu" style="display:block;">
+                    <li><a href="/Employee/Admin/CMS">Content Management</a></li>
+                    <li><a href="/Employee/Admin/Logs">Activity Logs</a></li>
+                </ul>
             </ul>
+            <div class="logout-section">
+                <a href="/logout" class="logout-button" onclick="handleLogout(event)">Logout</a>
+            </div>
         </div>
 
         <div class="main-content">
@@ -156,8 +473,74 @@
             <div class="content-area">
                 <div class="logs-section">
                     <h3>System Activity Logs</h3>
-                    <input type="date" id="logDateInput" style="margin-bottom:15px;padding:8px 12px;width:100%;max-width:200px;border:1px solid #ccc;border-radius:4px;display:inline-block;margin-right:10px;">
-                    <input type="text" id="logSearchInput" placeholder="Search logs..." style="margin-bottom:15px;padding:8px 12px;width:100%;max-width:320px;border:1px solid #ccc;border-radius:4px;display:inline-block;">
+                    
+                    <!-- Enhanced Filter Controls -->
+                    <div class="filter-controls">
+                        <div class="filter-group">
+                            <label for="actionFilter">Action Type</label>
+                            <select id="actionFilter">
+                                <option value="">All Actions</option>
+                                <option value="INSERT">Create</option>
+                                <option value="UPDATE">Update</option>
+                                <option value="DELETE">Delete</option>
+                                <option value="STATUS_CHANGE">Status Change</option>
+                                <option value="CANCEL">Cancel</option>
+                                <option value="COMPLETE">Complete</option>
+                                <option value="LOGIN">Login</option>
+                                <option value="LOGOUT">Logout</option>
+                                <option value="LOGIN_FAILED">Failed Login</option>
+                                <option value="TEST">Test</option>
+                            </select>
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label for="tableFilter">Table Affected</label>
+                            <select id="tableFilter">
+                                <option value="">All Tables</option>
+                                <option value="Products">Products</option>
+                                <option value="RawMaterials">Raw Materials</option>
+                                <option value="ProductVariations">Product Variations</option>
+                                <option value="Users">Users</option>
+                                <option value="Orders">Orders</option>
+                                <option value="UserPermissions">User Permissions</option>
+                                <option value="HeroBanner">Hero Banner</option>
+                                <option value="SystemConfig">System Config</option>
+                            </select>
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label for="userFilter">User Role</label>
+                            <select id="userFilter">
+                                <option value="">All Roles</option>
+                                <option value="Admin">Admin</option>
+                                <option value="InventoryManager">Inventory Manager</option>
+                                <option value="TransactionManager">Transaction Manager</option>
+                                <option value="UserManager">User Manager</option>
+                                <option value="OrderSupport">Order Support</option>
+                            </select>
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label for="dateFromFilter">Date From</label>
+                            <input type="date" id="dateFromFilter">
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label for="dateToFilter">Date To</label>
+                            <input type="date" id="dateToFilter">
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label for="searchFilter">Search</label>
+                            <input type="text" id="searchFilter" placeholder="Search description...">
+                        </div>
+                        
+                        <div class="filter-actions">
+                            <button class="btn-filter" onclick="applyFilters()">Apply Filters</button>
+                            <button class="btn-clear" onclick="clearFilters()">Clear</button>
+                        </div>
+                    </div>
+                    
                     <div id="errorMessage" class="error-message"></div>
                     <table id="activityLogsTable">
                         <thead>
@@ -166,6 +549,9 @@
                                 <th>User</th>
                                 <th>Role</th>
                                 <th>Action</th>
+                                <th>Table</th>
+                                <th>Details</th>
+                                <th>Changes</th>
                                 <th>Timestamp</th>
                             </tr>
                         </thead>
@@ -211,50 +597,65 @@
             });
         });
 
-        // Date and keyword search for activity logs
-        const logDateInput = document.getElementById('logDateInput');
-        const logSearchInput = document.getElementById('logSearchInput');
-        const logsTable = document.getElementById('activityLogsTable');
-        function filterLogs() {
-            const dateFilter = logDateInput.value; // "YYYY-MM-DD"
-            const keywordFilter = logSearchInput.value.toLowerCase();
-            const rows = logsTable.querySelectorAll('tbody tr');
-            let visibleCount = 0;
-            let currentDateHeader = null;
-            let anyLogVisibleForDate = false;
-
-            rows.forEach(row => {
-                if (row.classList.contains('date-header')) {
-                    // Always show date headers for now, will hide if no logs below
-                    if (currentDateHeader && !anyLogVisibleForDate) {
-                        currentDateHeader.style.display = 'none';
-                    }
-                    currentDateHeader = row;
-                    anyLogVisibleForDate = false;
-                    row.style.display = '';
-                } else {
-                    const rowDate = row.getAttribute('data-date');
-                    const text = row.textContent.toLowerCase();
-                    const dateMatch = !dateFilter || (rowDate === dateFilter);
-                    const keywordMatch = text.includes(keywordFilter);
-
-                    if (dateMatch && keywordMatch) {
-                        row.style.display = '';
-                        visibleCount++;
-                        anyLogVisibleForDate = true;
-                    } else {
-                        row.style.display = 'none';
-                    }
-                }
-            });
-            // Hide the last date header if no logs are visible for it
-            if (currentDateHeader && !anyLogVisibleForDate) {
-                currentDateHeader.style.display = 'none';
-            }
-            document.getElementById('noLogsMessage').style.display = (visibleCount === 0) ? '' : 'none';
-        }
-        logDateInput.addEventListener('input', filterLogs);
-        logSearchInput.addEventListener('input', filterLogs);
+        // Note: Filtering functionality is handled by AdminLogs.js
     </script>
+
+    <!-- Custom Confirmation Modal -->
+    <div id="logoutConfirmModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Confirm Logout</h3>
+            <p>Are you sure you want to log out?</p>
+            <div class="modal-buttons">
+                <button class="modal-button confirm" id="confirmLogoutBtn">Logout</button>
+                <button class="modal-button cancel" id="cancelLogoutBtn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Custom Logout Modal Logic
+        const logoutConfirmModal = document.getElementById('logoutConfirmModal');
+        const confirmLogoutBtn = document.getElementById('confirmLogoutBtn');
+        const cancelLogoutBtn = document.getElementById('cancelLogoutBtn');
+
+        async function handleLogout(event) {
+            event.preventDefault();
+            logoutConfirmModal.classList.add('show');
+        }
+
+        confirmLogoutBtn.addEventListener('click', async () => {
+            logoutConfirmModal.classList.remove('show');
+            try {
+                const response = await fetch('/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    window.location.href = '/login';
+                } else {
+                    console.error('Logout failed');
+                    alert('Failed to logout. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error during logout:', error);
+                alert('An error occurred during logout. Please try again.');
+            }
+        });
+
+        cancelLogoutBtn.addEventListener('click', () => {
+            logoutConfirmModal.classList.remove('show');
+        });
+
+        // Close modal if clicked outside content
+        logoutConfirmModal.addEventListener('click', (event) => {
+            if (event.target === logoutConfirmModal) {
+                logoutConfirmModal.classList.remove('show');
+            }
+        });
+    </script>
+        <script src="/js/dark-mode.js"></script>
 </body>
 </html> 

@@ -71,7 +71,8 @@ const api = {
   getProjects: async () => {
     try {
       // Use absolute URL to ensure it reaches the backend
-      const response = await fetch('http://localhost:5000/api/projects');
+      const apiBase = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${apiBase}/api/projects`);
       if (!response.ok) {
         throw new Error('Failed to fetch project data');
       }
