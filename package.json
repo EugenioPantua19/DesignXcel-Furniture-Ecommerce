@@ -32,7 +32,8 @@
     "util": "^0.12.5"
   },
   "scripts": {
-    "start": "caddy run --config /Caddyfile --adapter caddyfile",
+    "start": "node server.js",
+    "serve": "node server.js",
     "build": "cross-env DISABLE_ESLINT_PLUGIN=true GENERATE_SOURCEMAP=false react-scripts build",
     "build:production": "cross-env DISABLE_ESLINT_PLUGIN=true GENERATE_SOURCEMAP=false react-scripts build",
     "test": "craco test",
@@ -48,6 +49,7 @@
   "devDependencies": {
     "@craco/craco": "^7.1.0",
     "autoprefixer": "^10.4.21",
+    "caddy": "^0.0.13",
     "chalk": "^4.1.2",
     "cross-env": "^10.1.0",
     "eslint-webpack-plugin": "^5.0.2",
