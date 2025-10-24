@@ -32,7 +32,7 @@
     "util": "^0.12.5"
   },
   "scripts": {
-    "start": "serve -s build -l 3000",
+    "start": "caddy run --config /app/Caddyfile --adapter caddyfile",
     "dev": "craco start",
     "build": "react-scripts build",
     "build:production": "react-scripts build",
