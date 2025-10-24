@@ -343,7 +343,8 @@ const allowedOrigins = [
     'https://localhost:3001',
     'https://localhost:3002',
     process.env.FRONTEND_URL || 'http://localhost:3000',
-    'https://designxcellwebsite-production.up.railway.app'
+    'https://designxcellwebsite-production.up.railway.app',
+    'https://designexcellinventory-production.up.railway.app'
 ];
 
 // CORS configuration - allow specific origins in production, all in development
@@ -357,6 +358,11 @@ app.use(cors({
         
         // In development, allow all origins
         if (process.env.NODE_ENV === 'development') {
+            return callback(null, true);
+        }
+        
+        // Allow same-origin requests (backend making requests to itself)
+        if (origin && origin.includes('designexcellinventory-production.up.railway.app')) {
             return callback(null, true);
         }
         
