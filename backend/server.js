@@ -333,7 +333,7 @@ app.post('/api/stripe/webhook', bodyParser.raw({ type: 'application/json' }), as
 });
 
 // --- All other middleware/routes ---
-// CORS configuration for local development
+// CORS configuration for all environments
 const allowedOrigins = [
     'http://localhost:3000', 
     'http://localhost:3001', 
@@ -342,13 +342,32 @@ const allowedOrigins = [
     'https://localhost:3000',
     'https://localhost:3001',
     'https://localhost:3002',
-    process.env.FRONTEND_URL || 'http://localhost:3000'
+    process.env.FRONTEND_URL || 'http://localhost:3000',
+    'https://designxcellwebsite-production.up.railway.app'
 ];
 
-// CORS configuration - permissive for all environments
-console.log('CORS: Setting up permissive CORS for all environments');
+// CORS configuration - allow specific origins in production, all in development
+console.log('CORS: Setting up CORS for environment:', process.env.NODE_ENV);
+console.log('CORS: Allowed origins:', allowedOrigins);
+
 app.use(cors({
-    origin: true, // Allow all origins
+    origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+        
+        // In development, allow all origins
+        if (process.env.NODE_ENV === 'development') {
+            return callback(null, true);
+        }
+        
+        // In production, check against allowed origins
+        if (allowedOrigins.indexOf(origin) !== -1) {
+            return callback(null, true);
+        }
+        
+        console.log('CORS: Blocked origin:', origin);
+        return callback(new Error('Not allowed by CORS'));
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
@@ -1474,6 +1493,16 @@ app.get('/api/health', async (req, res) => {
             error: error.message
         });
     }
+});
+
+// Simple API test endpoint for frontend
+app.get('/api/test', (req, res) => {
+    res.json({ 
+        message: 'API is working!',
+        timestamp: new Date().toISOString(),
+        origin: req.headers.origin || 'no-origin',
+        cors: 'configured'
+    });
 });
 
 // Start server
