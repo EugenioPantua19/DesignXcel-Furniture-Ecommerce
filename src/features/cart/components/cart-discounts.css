@@ -1,0 +1,65 @@
+/* Cart Discount Styling - Clean Design */
+
+.discounted-price-display {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.discounted-price {
+  color: #FB0218;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.original-price-crossed {
+  text-decoration: line-through;
+  color: #9ca3af;
+  font-size: 0.875rem;
+}
+
+.discount-badge {
+  background: #F0B21B !important;
+  color: #ffffff !important;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700 !important;
+  align-self: flex-start;
+  display: inline-block;
+  margin-top: 2px;
+}
+
+.regular-price {
+  color: #1f2937;
+  font-weight: 500;
+  font-size: 1rem;
+}
+
+/* Cart item price section adjustments */
+.cart-item-price {
+  min-height: auto;
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .discounted-price-display {
+    gap: 2px;
+  }
+  
+  .discounted-price {
+    font-size: 1em;
+  }
+  
+  .original-price-crossed {
+    font-size: 0.85em;
+  }
+  
+  .discount-badge {
+    font-size: 0.75em;
+    padding: 1px 4px;
+  }
+} 

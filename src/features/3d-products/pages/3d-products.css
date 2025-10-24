@@ -1,0 +1,1730 @@
+/* 3D Products Page Styles - Black and Yellow Mustard Design */
+
+.three-d-customization {
+  min-height: 100vh;
+  background-color: #ffffff;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #000000;
+}
+
+
+
+
+
+
+
+
+
+
+/* Loading and Error States */
+.loading-container,
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  text-align: center;
+  padding: 2rem;
+}
+
+.error-container h2 {
+  color: #dc3545;
+  margin-bottom: 1rem;
+}
+
+.error-container p {
+  color: #666666;
+  margin-bottom: 2rem;
+  max-width: 500px;
+}
+
+.btn {
+  display: inline-block;
+  padding: 12px 24px;
+  background-color: #F0B21B;
+  color: #000000;
+  text-decoration: none;
+  border-radius: 6px;
+  font-weight: 600;
+  transition: background-color 0.2s ease;
+}
+
+
+
+
+
+
+.btn:hover {
+  background-color: #D4AF37;
+}
+
+/* 3D Customization specific styles */
+
+/* Main Layout */
+.customization-layout {
+  display: flex;
+  height: calc(100vh - 120px); /* Reduced to account for footer */
+  gap: 0;
+  margin-bottom: 80px; /* Space for footer */
+}
+
+/* 3D Viewer Container - Left Side */
+.viewer-container {
+  flex: 1.5; /* Increased from 1 to give more space to 3D viewer */
+  display: flex;
+  flex-direction: column;
+  background-color: #ffffff;
+  position: relative;
+}
+
+.viewer-container .viewer-controls-top {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+/* Camera Angle Panel - Positioned at top of 3D preview */
+.viewer-container .camera-angle-panel {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  min-width: 200px;
+  transition: all 0.3s ease; /* Smooth transitions */
+}
+
+/* Desktop hover effects for camera panel */
+@media (min-width: 769px) {
+  .viewer-container .camera-angle-panel:hover {
+    background: rgba(255, 255, 255, 0.98);
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+.camera-angle-header {
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.camera-angle-header h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #000000;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.camera-panel-toggle {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  color: #666666;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.camera-panel-toggle:hover {
+  background: rgba(0, 0, 0, 0.1);
+  color: #000000;
+}
+
+/* Hidden state for camera panel */
+.camera-angle-panel.hidden {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  pointer-events: none;
+}
+
+/* Show camera panel button */
+.show-camera-panel-btn {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #666666;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.show-camera-panel-btn:hover {
+  background: rgba(255, 255, 255, 0.98);
+  color: #000000;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+}
+
+.camera-angle-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.camera-angle-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 12px;
+  font-weight: 500;
+  color: #666666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Desktop hover effects for camera angle buttons */
+@media (min-width: 769px) {
+  .camera-angle-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+  }
+  
+  .camera-angle-btn:hover::before {
+    left: 100%;
+  }
+}
+
+.camera-angle-btn:hover {
+  background: #f8f9fa;
+  border-color: #FCBD45;
+  color: #000000;
+}
+
+.camera-angle-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.camera-angle-btn.transitioning {
+  background: linear-gradient(45deg, #FCBD45, #FFD700);
+  border-color: #FCBD45;
+  color: white;
+  animation: cameraTransition 0.3s ease-in-out;
+}
+
+@keyframes cameraTransition {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 2px 8px rgba(252, 189, 69, 0.2);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 4px 15px rgba(252, 189, 69, 0.4);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 2px 8px rgba(252, 189, 69, 0.2);
+  }
+}
+
+.camera-angle-btn.active {
+  background: #FCBD45;
+  border-color: #FCBD45;
+  color: #ffffff;
+}
+
+.camera-angle-btn svg {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.camera-angle-btn.active svg {
+  opacity: 1;
+}
+
+.camera-angle-btn span {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* Responsive Camera Angle Panel */
+@media (max-width: 768px) {
+  .viewer-container .camera-angle-panel {
+    position: absolute !important;
+    top: 10px !important;
+    left: 10px !important;
+    right: 10px !important;
+    min-width: auto !important;
+    padding: 10px !important;
+    z-index: 10 !important;
+    max-height: 100px !important;
+    overflow-y: auto !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    background: rgba(255, 255, 255, 0.98) !important;
+    backdrop-filter: blur(15px) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.15) !important;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+    transform: translateZ(0); /* Force hardware acceleration */
+  }
+  
+  .camera-angle-header h3 {
+    font-size: 11px;
+    margin-bottom: 6px;
+    font-weight: 600;
+  }
+  
+  .camera-angle-options {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: center;
+  }
+  
+  .camera-angle-btn {
+    flex: 1;
+    min-width: 60px;
+    padding: 4px 6px;
+    font-size: 9px;
+    border-radius: 6px;
+  }
+  
+  .camera-angle-btn span {
+    font-size: 8px;
+    font-weight: 600;
+  }
+  
+  .camera-angle-btn svg {
+    width: 12px;
+    height: 12px;
+  }
+  
+  
+  
+}
+
+@media (max-width: 480px) {
+  .customization-layout {
+    margin-bottom: 140px; /* Extra space for footer */
+  }
+  
+  .viewer-container .camera-angle-panel {
+    position: absolute !important;
+    top: 5px !important;
+    left: 5px !important;
+    right: 5px !important;
+    padding: 6px !important;
+    max-height: 80px !important;
+    z-index: 10 !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    background: rgba(255, 255, 255, 0.98) !important;
+    backdrop-filter: blur(15px) !important;
+    border-radius: 6px !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+    transform: translateZ(0); /* Force hardware acceleration */
+  }
+  
+  .camera-angle-header h3 {
+    font-size: 10px;
+    margin-bottom: 4px;
+    font-weight: 600;
+  }
+  
+  .camera-angle-options {
+    gap: 3px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  .camera-angle-btn {
+    min-width: 50px;
+    padding: 3px 5px;
+    font-size: 8px;
+    border-radius: 4px;
+  }
+  
+  .camera-angle-btn svg {
+    width: 10px;
+    height: 10px;
+  }
+  
+  .camera-angle-btn span {
+    font-size: 7px;
+    font-weight: 600;
+  }
+  
+  .viewer-container {
+    height: 65vh; /* Increased for better 3D model visibility */
+    min-height: 350px;
+    position: relative; /* Ensure proper positioning context for camera panel */
+  }
+  
+  .customization-panel {
+    max-height: 25vh; /* Reduced to give more space to 3D viewer */
+  }
+  
+  .viewer-controls-top {
+    top: 5px;
+    right: 5px;
+    gap: 6px;
+  }
+  
+  .btn-360 {
+    padding: 4px 8px;
+    font-size: 10px;
+  }
+  
+  .btn-360 .icon-360 {
+    width: 12px;
+    height: 12px;
+  }
+  
+  .ar-button-container {
+    bottom: 60px;
+  }
+  
+  .product-thumbnails {
+    bottom: 15px;
+    height: 50px;
+    gap: 8px;
+  }
+  
+  .thumbnail {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+@media (max-width: 360px) {
+  .customization-layout {
+    margin-bottom: 150px; /* Extra space for footer */
+  }
+  
+  .viewer-container .camera-angle-panel {
+    position: absolute !important;
+    top: 3px !important;
+    left: 3px !important;
+    right: 3px !important;
+    padding: 6px !important;
+    max-height: 90px !important;
+    z-index: 10 !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+    backdrop-filter: blur(10px) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1) !important;
+    border: 1px solid rgba(0, 0, 0, 0.05) !important;
+  }
+  
+  .camera-angle-header h3 {
+    font-size: 10px;
+    margin-bottom: 4px;
+  }
+  
+  .camera-angle-options {
+    gap: 3px;
+  }
+  
+  .camera-angle-btn {
+    min-width: 50px;
+    padding: 3px 5px;
+    font-size: 8px;
+  }
+  
+  .camera-angle-btn svg {
+    width: 10px;
+    height: 10px;
+  }
+  
+  .camera-angle-btn span {
+    font-size: 7px;
+  }
+  
+  .viewer-container {
+    height: 35vh; /* Reduced to account for footer */
+    min-height: 200px;
+    margin-top: 100px; /* Space for camera panel */
+  }
+  
+  .customization-panel {
+    max-height: 30vh; /* Reduced to account for footer */
+  }
+  
+  .viewer-controls-top {
+    top: 3px;
+    right: 3px;
+    gap: 4px;
+  }
+  
+  .btn-360 {
+    padding: 3px 6px;
+    font-size: 9px;
+  }
+  
+  .btn-360 .icon-360 {
+    width: 10px;
+    height: 10px;
+  }
+  
+  .ar-button-container {
+    bottom: 50px;
+  }
+  
+  .product-thumbnails {
+    bottom: 10px;
+    height: 45px;
+    gap: 6px;
+  }
+  
+  .thumbnail {
+    width: 35px;
+    height: 35px;
+  }
+}
+
+/* 360 Button */
+.btn-360 {
+  background-color: #D4AF37;
+  color: #000000;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.icon-360 {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+}
+
+.btn-360:hover {
+  background-color: #B8941F;
+  transform: translateY(-1px);
+}
+
+.btn-360.active {
+  background-color: #B8941F;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.btn-360.active .icon-360 {
+  animation: spin 2s linear infinite;
+}
+
+
+/* Resizing Indicator */
+.resizing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.8);
+  color: #ffffff;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  animation: fadeInOut 0.3s ease-in-out;
+}
+
+.resizing-spinner {
+  width: 20px;
+  height: 4px;
+  background: linear-gradient(90deg, #D4AF37, #F0B21B, #D4AF37);
+  background-size: 200% 100%;
+  animation: bar-loading 1.2s ease-in-out infinite;
+  border-radius: 2px;
+}
+
+@keyframes bar-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translateY(-10px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.canvas-container {
+  flex: 1;
+  position: relative;
+  background-color: #f8f9fa;
+  min-height: 100%; /* Ensure it takes full height */
+  width: 100%;
+  height: 100%;
+}
+
+.canvas-container canvas {
+  width: 100% !important;
+  height: 100% !important;
+  touch-action: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  border-radius: 8px; /* Add subtle rounded corners */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* Add subtle shadow for depth */
+  transform: translateZ(0); /* Force hardware acceleration for better mobile performance */
+  -webkit-transform: translateZ(0);
+}
+
+/* Mobile-specific canvas optimizations */
+@media (max-width: 768px) {
+  .canvas-container canvas {
+    border-radius: 4px; /* Smaller radius for mobile */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); /* Lighter shadow for mobile */
+  }
+  
+  /* Ensure camera panel is always visible on mobile */
+  .camera-angle-panel.hidden {
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: none !important;
+    pointer-events: auto !important;
+  }
+  
+  /* Hide show button on mobile */
+  .show-camera-panel-btn {
+    display: none !important;
+  }
+  
+  /* Improve touch interactions and maximize canvas space */
+  .canvas-container {
+    -webkit-overflow-scrolling: touch;
+    overflow: hidden;
+    touch-action: none; /* Prevent default touch behaviors */
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    width: 100% !important;
+    height: 100% !important;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+  }
+  
+  /* Better touch targets for mobile */
+  .camera-angle-btn {
+    min-height: 32px; /* Ensure touch targets are at least 32px */
+    touch-action: manipulation; /* Prevent double-tap zoom */
+  }
+  
+  /* Prevent touch conflicts with 3D canvas */
+  .canvas-container canvas {
+    touch-action: none !important;
+    pointer-events: auto !important;
+  }
+}
+
+/* AR Button */
+.ar-button-container {
+  position: absolute;
+  bottom: 120px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+}
+
+.ar-button {
+  background-color: #e0e0e0;
+  color: #666666;
+  border: none;
+  border-radius: 6px;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+/* Product Thumbnails */
+.product-thumbnails {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  display: flex;
+  gap: 12px;
+  z-index: 10;
+}
+
+.thumbnail {
+  width: 80px;
+  height: 80px;
+  border-radius: 6px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: border-color 0.2s ease;
+}
+
+.thumbnail.active {
+  border-color: #FFB800;
+}
+
+.thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Customization Panel - Right Side */
+.customization-panel {
+  width: 350px; /* Reduced from 400px to give more space to 3D viewer */
+  background-color: #ffffff;
+  border-left: 1px solid #e0e0e0;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+/* Customization Sections */
+.customization-section {
+  margin-bottom: 30px;
+}
+
+.customization-section .section-header {
+  color: #D4AF37;
+  padding: 12px 16px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  font-weight: 600; 
+}
+
+.section-icon {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+}
+
+.section-title {
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Dimension Controls */
+.dimension-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.dimension-control {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dimension-control label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #000000;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.slider-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dimension-slider {
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: #e0e0e0;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+
+.dimension-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #D4AF37;
+  cursor: pointer;
+  border: 1px solid #000000;
+}
+
+.dimension-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #D4AF37;
+  cursor: pointer;
+  border: 1px solid #000000;
+}
+
+.dimension-value {
+  font-size: 11px;
+  color: #666666;
+  font-weight: 400;
+  padding: 2px 6px;
+  background: rgba(212, 175, 55, 0.05);
+  border-radius: 3px;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+/* Color Controls */
+.color-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.color-control {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.color-control label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #000000;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.color-select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  background-color: #ffffff;
+  font-size: 14px;
+  color: #000000;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.color-select:focus {
+  border-color: #D4AF37;
+}
+
+.color-select:hover {
+  border-color: #cccccc;
+}
+
+/* Integrated Add to Cart Section */
+.add-to-cart-section {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.quantity-price-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  gap: 16px;
+}
+
+.quantity-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.quantity-input label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #000000;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.quantity-field {
+  width: 50px;
+  padding: 8px 10px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  text-align: center;
+  font-size: 14px;
+  color: #000000;
+  outline: none;
+}
+
+.quantity-field:focus {
+  border-color: #D4AF37;
+}
+
+.price-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.original-price {
+  font-size: 12px;
+  color: #999999;
+  text-decoration: line-through;
+}
+
+.current-price {
+  font-size: 14px;
+  font-weight: 700;
+  color: #dc3545;
+}
+
+.add-to-cart-btn {
+  width: 100%;
+  background-color: #D4AF37;
+  color: #000000;
+  border: none;
+  border-radius: 6px;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.add-to-cart-btn:hover {
+  background-color: #B8941F;
+}
+
+.add-to-cart-btn:active {
+  transform: translateY(1px);
+}
+
+.add-to-cart-btn:disabled {
+  background-color: #e0e0e0;
+  color: #999999;
+  cursor: not-allowed;
+}
+
+/* Loading Spinner */
+.loading-spinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  color: #000000;
+}
+
+.spinner {
+  width: 60px;
+  height: 6px;
+  background: linear-gradient(90deg, #D4AF37, #F0B21B, #D4AF37);
+  background-size: 200% 100%;
+  animation: bar-loading 1.5s ease-in-out infinite;
+  border-radius: 3px;
+}
+
+@keyframes bar-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Model Placeholder */
+.model-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  color: #000000;
+  text-align: center;
+  padding: 40px 20px;
+  background: rgba(248, 249, 250, 0.8);
+  border-radius: 12px;
+  border: 2px dashed #e0e0e0;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.model-placeholder h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333333;
+  margin: 0;
+}
+
+.placeholder-icon {
+  width: clamp(48px, 12vw, 80px);
+  height: clamp(48px, 12vw, 80px);
+  stroke: #D4AF37;
+  opacity: 0.8;
+}
+
+/* Responsive placeholder icon for tablet */
+@media (max-width: 1024px) and (min-width: 769px) {
+  .placeholder-icon {
+    width: clamp(56px, 10vw, 72px);
+    height: clamp(56px, 10vw, 72px);
+  }
+}
+
+/* Responsive placeholder icon for mobile */
+@media (max-width: 768px) {
+  .placeholder-icon {
+    width: clamp(40px, 15vw, 56px);
+    height: clamp(40px, 15vw, 56px);
+  }
+}
+
+.placeholder-subtitle {
+  font-size: 14px;
+  color: #666666;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.placeholder-note {
+  font-size: 12px;
+  color: #999999;
+  margin: 0;
+  font-style: italic;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .customization-layout {
+    flex-direction: column;
+    height: auto;
+    min-height: calc(100vh - 140px); /* Account for footer */
+    margin-bottom: 100px; /* Extra space for footer */
+  }
+  
+  .customization-panel {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid #e0e0e0;
+    max-height: 35vh; /* Reduced to give more space to 3D viewer */
+    overflow-y: auto;
+    order: 2;
+  }
+  
+  .viewer-container {
+    height: 65vh; /* Increased from 60vh to give more space to 3D viewer */
+    min-height: 500px;
+    order: 1;
+  }
+  
+  .viewer-controls-top {
+    top: 15px;
+    right: 15px;
+  }
+  
+  .camera-angle-panel {
+    top: 15px;
+    left: 15px;
+    position: fixed;
+    z-index: 100;
+  }
+}
+
+@media (max-width: 768px) {
+  .customization-layout {
+    margin-bottom: 120px; /* More space for footer on mobile */
+  }
+  
+  .customization-panel {
+    padding: 16px;
+    max-height: 30vh; /* Reduced to give more space to 3D viewer */
+    border-top: 2px solid #e0e0e0;
+  }
+  
+  .viewer-container {
+    height: 70vh; /* Increased to give more space to 3D viewer */
+    min-height: 450px;
+    position: relative; /* Ensure proper positioning context for camera panel */
+  }
+  
+  .viewer-controls-top {
+    top: 10px;
+    right: 10px;
+    gap: 8px;
+  }
+  
+  .btn-360 {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+  
+  .btn-360 .icon-360 {
+    width: 14px;
+    height: 14px;
+  }
+  
+  .canvas-container {
+    height: 100%;
+  }
+  
+  .ar-button-container {
+    bottom: 80px;
+  }
+  
+  .product-thumbnails {
+    bottom: 20px;
+    height: 60px;
+  }
+  
+  .thumbnail {
+    width: 50px;
+    height: 50px;
+  }
+  
+  .product-thumbnails {
+    bottom: 10px;
+    left: 10px;
+    gap: 8px;
+  }
+  
+  .thumbnail {
+    width: 60px;
+    height: 60px;
+  }
+  
+  .quantity-price-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .quantity-input {
+    align-self: flex-start;
+  }
+  
+  .price-display {
+    align-self: flex-end;
+  }
+}
+
+/* Mobile responsive styles for add to cart section */
+@media (max-width: 480px) {
+  .add-to-cart-section {
+    margin-top: 16px;
+    padding-top: 16px;
+  }
+  
+  .quantity-price-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  
+  .quantity-input {
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .quantity-field {
+    width: 60px;
+    padding: 6px 8px;
+    font-size: 13px;
+  }
+  
+  .price-display {
+    justify-content: flex-end;
+  }
+  
+  .current-price {
+    font-size: 16px;
+  }
+  
+  .original-price {
+    font-size: 12px;
+  }
+  
+  .add-to-cart-btn {
+    padding: 10px 20px;
+    font-size: 13px;
+  }
+}
+
+/* Extra small screens - landscape phones */
+@media (max-width: 320px) {
+  .customization-layout {
+    margin-bottom: 160px; /* Extra space for footer */
+  }
+  
+  .viewer-container .camera-angle-panel {
+    position: absolute !important;
+    top: 2px !important;
+    left: 2px !important;
+    right: 2px !important;
+    padding: 4px !important;
+    max-height: 80px !important;
+    z-index: 10 !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+    backdrop-filter: blur(10px) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1) !important;
+    border: 1px solid rgba(0, 0, 0, 0.05) !important;
+  }
+  
+  .camera-angle-header h3 {
+    font-size: 9px;
+    margin-bottom: 3px;
+  }
+  
+  .camera-angle-btn {
+    min-width: 45px;
+    padding: 2px 4px;
+    font-size: 7px;
+  }
+  
+  .camera-angle-btn svg {
+    width: 8px;
+    height: 8px;
+  }
+  
+  .camera-angle-btn span {
+    font-size: 6px;
+  }
+  
+  .viewer-container {
+    height: 30vh; /* Reduced to account for footer */
+    min-height: 180px;
+    margin-top: 85px;
+  }
+  
+  .customization-panel {
+    padding: 12px;
+    max-height: 25vh; /* Reduced to account for footer */
+  }
+  
+  .add-to-cart-section {
+    margin-top: 12px;
+    padding-top: 12px;
+  }
+  
+  .quantity-field {
+    width: 50px;
+    padding: 4px 6px;
+    font-size: 12px;
+  }
+  
+  .current-price {
+    font-size: 14px;
+  }
+  
+  .original-price {
+    font-size: 11px;
+  }
+  
+  .add-to-cart-btn {
+    padding: 8px 16px;
+    font-size: 12px;
+  }
+}
+
+/* Texture Error Notification Styles */
+.texture-error-notification {
+  background: rgba(220, 53, 69, 0.95);
+  color: white;
+  padding: 12px 16px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  max-width: 300px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* Texture Success Notification Styles */
+.texture-success-notification {
+  background: rgba(40, 167, 69, 0.95);
+  color: white;
+  padding: 12px 16px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  max-width: 300px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.texture-error-header,
+.texture-success-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.texture-error-header svg,
+.texture-success-header svg {
+  flex-shrink: 0;
+}
+
+.texture-error-details {
+  font-size: 11px;
+}
+
+.texture-error-item {
+  margin-bottom: 6px;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.texture-error-item:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.texture-error-item strong {
+  color: #ffd700;
+  font-weight: 600;
+}
+
+.texture-error-source {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.8);
+  margin-top: 2px;
+  word-break: break-all;
+}
+
+.texture-success-details {
+  font-size: 11px;
+}
+
+.texture-success-item {
+  margin-bottom: 6px;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.texture-success-item:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.texture-success-item strong {
+  color: #ffd700;
+  font-weight: 600;
+}
+
+/* Mobile responsive texture error notification */
+@media (max-width: 768px) {
+  .texture-error-notification {
+    max-width: 250px;
+    padding: 10px 12px;
+    font-size: 11px;
+  }
+  
+  .texture-error-header {
+    font-size: 12px;
+  }
+  
+  .texture-error-details {
+    font-size: 10px;
+  }
+  
+  .texture-error-source {
+    font-size: 9px;
+  }
+}
+
+/* =============================================================================
+   DARK MODE STYLES FOR 3D PRODUCTS PAGE
+   ============================================================================= */
+
+/* Dark mode styles for 3D products page */
+body.theme-dark .three-d-customization {
+  background-color: #1a1a1a;
+  color: #ffffff;
+}
+
+body.theme-dark .loading-container,
+body.theme-dark .error-container {
+  background: #1a1a1a;
+  color: #ffffff;
+}
+
+body.theme-dark .error-container h2 {
+  color: #ef4444;
+}
+
+body.theme-dark .error-container p {
+  color: #d1d5db;
+}
+
+body.theme-dark .btn {
+  background-color: #F0B21B;
+  color: #000000;
+}
+
+body.theme-dark .btn:hover {
+  background-color: #e6a632;
+}
+
+/* Main Layout Dark Mode */
+body.theme-dark .customization-layout {
+  background: #1a1a1a;
+}
+
+body.theme-dark .viewer-container {
+  background-color: #2d2d2d;
+  border-color: #374151;
+}
+
+body.theme-dark .viewer-controls-top {
+  background: rgba(45, 45, 45, 0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(55, 65, 81, 0.3);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+/* Camera Angle Panel Dark Mode */
+body.theme-dark .viewer-container .camera-angle-panel {
+  background: rgba(45, 45, 45, 0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(55, 65, 81, 0.3);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+body.theme-dark .camera-angle-header h3 {
+  color: #ffffff;
+}
+
+body.theme-dark .camera-panel-toggle {
+  color: #d1d5db;
+}
+
+body.theme-dark .camera-panel-toggle:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+body.theme-dark .show-camera-panel-btn {
+  background: rgba(45, 45, 45, 0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(55, 65, 81, 0.3);
+  color: #d1d5db;
+}
+
+body.theme-dark .show-camera-panel-btn:hover {
+  background: rgba(45, 45, 45, 0.98);
+  color: #ffffff;
+}
+
+body.theme-dark .camera-angle-btn {
+  background: rgba(55, 65, 81, 0.5);
+  border: 1px solid #4b5563;
+  color: #d1d5db;
+}
+
+body.theme-dark .camera-angle-btn:hover {
+  background: #374151;
+  border-color: #F0B21B;
+  color: #ffffff;
+}
+
+body.theme-dark .camera-angle-btn.active {
+  background: #F0B21B;
+  border-color: #F0B21B;
+  color: #000000;
+}
+
+body.theme-dark .camera-angle-btn.transitioning {
+  background: linear-gradient(45deg, #F0B21B, #e6a632);
+  border-color: #F0B21B;
+  color: #000000;
+}
+
+/* 360 Button Dark Mode */
+body.theme-dark .btn-360 {
+  background-color: #F0B21B;
+  color: #000000;
+  border: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+body.theme-dark .btn-360:hover {
+  background-color: #e6a632;
+}
+
+body.theme-dark .btn-360.active {
+  background-color: #e6a632;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* Resizing Indicator Dark Mode */
+body.theme-dark .resizing-indicator {
+  background: rgba(0, 0, 0, 0.9);
+  color: #ffffff;
+}
+
+body.theme-dark .resizing-spinner {
+  background: linear-gradient(90deg, #F0B21B, #e6a632, #F0B21B);
+}
+
+/* Canvas Container Dark Mode */
+body.theme-dark .canvas-container {
+  background-color: #2d2d2d;
+}
+
+body.theme-dark .canvas-container canvas {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* AR Button Dark Mode */
+body.theme-dark .ar-button {
+  background-color: #374151;
+  color: #d1d5db;
+  border: 1px solid #4b5563;
+}
+
+body.theme-dark .ar-button:hover {
+  background-color: #4b5563;
+  color: #ffffff;
+}
+
+/* Product Thumbnails Dark Mode */
+body.theme-dark .thumbnail {
+  border: 2px solid #4b5563;
+}
+
+body.theme-dark .thumbnail.active {
+  border-color: #F0B21B;
+}
+
+/* Customization Panel Dark Mode */
+body.theme-dark .customization-panel {
+  background-color: #2d2d2d;
+  border-left: 1px solid #374151;
+}
+
+/* Customization Sections Dark Mode */
+body.theme-dark .customization-section .section-header {
+  background: rgba(240, 178, 27, 0.1);
+  border: 1px solid rgba(240, 178, 27, 0.3);
+  color: #F0B21B;
+}
+
+/* Dimension Controls Dark Mode */
+body.theme-dark .dimension-control label {
+  color: #ffffff;
+}
+
+body.theme-dark .dimension-slider {
+  background: #4b5563;
+}
+
+body.theme-dark .dimension-slider::-webkit-slider-thumb {
+  background: #F0B21B;
+  border: 1px solid #000000;
+}
+
+body.theme-dark .dimension-slider::-moz-range-thumb {
+  background: #F0B21B;
+  border: 1px solid #000000;
+}
+
+body.theme-dark .dimension-value {
+  color: #d1d5db;
+  background: rgba(240, 178, 27, 0.1);
+  border: 1px solid rgba(240, 178, 27, 0.3);
+}
+
+/* Color Controls Dark Mode */
+body.theme-dark .color-control label {
+  color: #ffffff;
+}
+
+body.theme-dark .color-select {
+  background-color: #374151;
+  border: 1px solid #4b5563;
+  color: #ffffff;
+}
+
+body.theme-dark .color-select:focus {
+  border-color: #F0B21B;
+}
+
+body.theme-dark .color-select:hover {
+  border-color: #6b7280;
+}
+
+/* Add to Cart Section Dark Mode */
+body.theme-dark .add-to-cart-section {
+  border-top: 1px solid #374151;
+}
+
+body.theme-dark .quantity-input label {
+  color: #ffffff;
+}
+
+body.theme-dark .quantity-field {
+  background-color: #374151;
+  border: 1px solid #4b5563;
+  color: #ffffff;
+}
+
+body.theme-dark .quantity-field:focus {
+  border-color: #F0B21B;
+}
+
+body.theme-dark .original-price {
+  color: #9ca3af;
+}
+
+body.theme-dark .current-price {
+  color: #ef4444;
+}
+
+body.theme-dark .add-to-cart-btn {
+  background-color: #F0B21B;
+  color: #000000;
+}
+
+body.theme-dark .add-to-cart-btn:hover {
+  background-color: #e6a632;
+}
+
+body.theme-dark .add-to-cart-btn:disabled {
+  background-color: #374151;
+  color: #9ca3af;
+}
+
+/* Loading Spinner Dark Mode */
+body.theme-dark .loading-spinner {
+  color: #ffffff;
+}
+
+body.theme-dark .spinner {
+  background: linear-gradient(90deg, #F0B21B, #e6a632, #F0B21B);
+}
+
+/* Model Placeholder Dark Mode */
+body.theme-dark .model-placeholder {
+  background: rgba(55, 65, 81, 0.8);
+  border: 2px dashed #4b5563;
+  color: #ffffff;
+}
+
+body.theme-dark .model-placeholder h3 {
+  color: #ffffff;
+}
+
+body.theme-dark .placeholder-subtitle {
+  color: #d1d5db;
+}
+
+body.theme-dark .placeholder-note {
+  color: #9ca3af;
+}
+
+/* Texture Notifications Dark Mode */
+body.theme-dark .texture-error-notification {
+  background: rgba(220, 53, 69, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+body.theme-dark .texture-success-notification {
+  background: rgba(40, 167, 69, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+body.theme-dark .texture-error-item,
+body.theme-dark .texture-success-item {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+body.theme-dark .texture-error-source {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Responsive Dark Mode Adjustments */
+@media (max-width: 768px) {
+  body.theme-dark .viewer-container .camera-angle-panel {
+    background: rgba(45, 45, 45, 0.98) !important;
+    border: 1px solid rgba(55, 65, 81, 0.3) !important;
+  }
+  
+  body.theme-dark .customization-panel {
+    border-top: 2px solid #374151;
+  }
+  
+  body.theme-dark .canvas-container canvas {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+}

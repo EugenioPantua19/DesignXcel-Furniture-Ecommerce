@@ -1,0 +1,810 @@
+/* Christmas Theme Styles - Solid Colors Only */
+
+/* Christmas Color Palette */
+:root {
+  --christmas-red: #DC143C;
+  --christmas-green: #228B22;
+  --christmas-gold: #FFD700;
+  --christmas-silver: #C0C0C0;
+  --christmas-white: #FFFFFF;
+  --christmas-brown: #8B4513;
+  --christmas-dark-green: #006400;
+  --christmas-dark-red: #B22222;
+  --christmas-orange: #FF4500;
+  --christmas-cream: #FFF8DC;
+}
+
+/* Christmas Theme Body */
+body.theme-christmas {
+  background: var(--christmas-cream) !important;
+  color: var(--christmas-dark-green) !important;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* Christmas Header */
+body.theme-christmas .header-main {
+  background: var(--christmas-white) !important;
+  border-bottom: 3px solid var(--christmas-red) !important;
+  box-shadow: 0 4px 12px rgba(220, 20, 60, 0.3) !important;
+}
+
+body.theme-christmas .header-nav-bar {
+  background: var(--christmas-green) !important;
+  border-top: 2px solid var(--christmas-red) !important;
+  border-bottom: 2px solid var(--christmas-red) !important;
+}
+
+body.theme-christmas .header-nav-link {
+  background: var(--christmas-green) !important;
+  color: var(--christmas-white) !important;
+  border: 1px solid var(--christmas-dark-green) !important;
+  transition: all 0.3s ease !important;
+}
+
+body.theme-christmas .header-nav-link:hover {
+  background: var(--christmas-red) !important;
+  color: var(--christmas-white) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 8px rgba(220, 20, 60, 0.4) !important;
+}
+
+/* Christmas Footer */
+body.theme-christmas .footer-main {
+  background: var(--christmas-green) !important;
+  color: var(--christmas-white) !important;
+  border-top: 3px solid var(--christmas-red) !important;
+}
+
+/* Christmas Cards and Containers */
+body.theme-christmas .card,
+body.theme-christmas .product-card,
+body.theme-christmas .category-card,
+body.theme-christmas .testimonial-item,
+body.theme-christmas .testimonial-card,
+body.theme-christmas .featured-products,
+body.theme-christmas .featured-categories,
+body.theme-christmas .hero,
+body.theme-christmas .section {
+  background: var(--christmas-white) !important;
+  border: 2px solid var(--christmas-green) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 12px rgba(34, 139, 34, 0.2) !important;
+}
+
+body.theme-christmas .card:hover,
+body.theme-christmas .product-card:hover,
+body.theme-christmas .category-card:hover,
+body.theme-christmas .testimonial-item:hover,
+body.theme-christmas .testimonial-card:hover {
+  border-color: var(--christmas-red) !important;
+  transform: translateY(-4px) !important;
+  box-shadow: 0 8px 20px rgba(220, 20, 60, 0.3) !important;
+}
+
+/* Christmas Buttons */
+body.theme-christmas .btn,
+body.theme-christmas .btn-primary,
+body.theme-christmas .cta-button,
+body.theme-christmas .add-to-cart-btn,
+body.theme-christmas .checkout-btn,
+body.theme-christmas .place-order-btn {
+  background: var(--christmas-red) !important;
+  color: var(--christmas-white) !important;
+  border: 2px solid var(--christmas-dark-red) !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  transition: all 0.3s ease !important;
+}
+
+body.theme-christmas .btn:hover,
+body.theme-christmas .btn-primary:hover,
+body.theme-christmas .cta-button:hover,
+body.theme-christmas .add-to-cart-btn:hover,
+body.theme-christmas .checkout-btn:hover,
+body.theme-christmas .place-order-btn:hover {
+  background: var(--christmas-dark-red) !important;
+  color: var(--christmas-white) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 16px rgba(220, 20, 60, 0.4) !important;
+}
+
+body.theme-christmas .btn-secondary {
+  background: var(--christmas-green) !important;
+  color: var(--christmas-white) !important;
+  border: 2px solid var(--christmas-dark-green) !important;
+}
+
+body.theme-christmas .btn-secondary:hover {
+  background: var(--christmas-dark-green) !important;
+  color: var(--christmas-white) !important;
+}
+
+/* Christmas Form Elements */
+body.theme-christmas .form-group input,
+body.theme-christmas .form-group select,
+body.theme-christmas .form-group textarea,
+body.theme-christmas .search-box input,
+body.theme-christmas .sort-select {
+  background: var(--christmas-white) !important;
+  color: var(--christmas-dark-green) !important;
+  border: 2px solid var(--christmas-green) !important;
+  border-radius: 8px !important;
+}
+
+body.theme-christmas .form-group input:focus,
+body.theme-christmas .form-group select:focus,
+body.theme-christmas .form-group textarea:focus,
+body.theme-christmas .search-box input:focus,
+body.theme-christmas .sort-select:focus {
+  border-color: var(--christmas-red) !important;
+  box-shadow: 0 0 0 3px rgba(220, 20, 60, 0.2) !important;
+}
+
+body.theme-christmas .form-group input::placeholder,
+body.theme-christmas .form-group textarea::placeholder,
+body.theme-christmas .search-box input::placeholder {
+  color: var(--christmas-dark-green) !important;
+  opacity: 0.7 !important;
+}
+
+/* Christmas Navigation */
+body.theme-christmas .nav-link,
+body.theme-christmas .breadcrumb-link {
+  color: var(--christmas-dark-green) !important;
+}
+
+body.theme-christmas .nav-link:hover,
+body.theme-christmas .breadcrumb-link:hover {
+  color: var(--christmas-red) !important;
+}
+
+body.theme-christmas .breadcrumb-current {
+  color: var(--christmas-red) !important;
+  font-weight: 600 !important;
+}
+
+/* Christmas Navigation Decorations */
+.christmas-nav-decoration {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px;
+  animation: christmasTwinkle 2s ease-in-out infinite;
+}
+
+@keyframes christmasTwinkle {
+  0%, 100% { opacity: 0.8; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
+body.theme-christmas .christmas-nav-decoration {
+  animation: christmasTwinkle 2s ease-in-out infinite;
+}
+
+/* Make Christmas icons white in Christmas theme */
+body.theme-christmas .christmas-nav-decoration svg,
+body.theme-christmas .christmas-header-decoration svg,
+body.theme-christmas .christmas-footer-decoration svg {
+  color: #ffffff !important;
+  fill: #ffffff !important;
+}
+
+/* Make all Christmas icons white in Christmas theme */
+body.theme-christmas .christmas-decorations svg,
+body.theme-christmas .christmas-page-decoration svg,
+body.theme-christmas .christmas-card-decoration svg {
+  color: #ffffff !important;
+  fill: #ffffff !important;
+}
+
+/* Christmas Footer Decorations */
+.christmas-footer-decoration {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  animation: christmasFloat 3s ease-in-out infinite;
+}
+
+@keyframes christmasFloat {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-2px); }
+}
+
+body.theme-christmas .christmas-footer-decoration {
+  animation: christmasFloat 3s ease-in-out infinite;
+}
+
+/* Christmas Text Elements */
+body.theme-christmas h1,
+body.theme-christmas h2,
+body.theme-christmas h3,
+body.theme-christmas h4,
+body.theme-christmas h5,
+body.theme-christmas h6 {
+  color: var(--christmas-dark-green) !important;
+}
+
+body.theme-christmas .section-header h2 {
+  color: var(--christmas-dark-green) !important;
+  border-bottom: 3px solid var(--christmas-red) !important;
+  padding-bottom: 8px !important;
+}
+
+body.theme-christmas .section-header p {
+  color: var(--christmas-dark-green) !important;
+}
+
+body.theme-christmas .view-all {
+  color: var(--christmas-red) !important;
+  font-weight: 600 !important;
+}
+
+body.theme-christmas .view-all:hover {
+  color: var(--christmas-dark-red) !important;
+}
+
+/* Christmas Product Cards */
+body.theme-christmas .product-name,
+body.theme-christmas .product-title {
+  color: var(--christmas-dark-green) !important;
+}
+
+body.theme-christmas .product-category {
+  color: var(--christmas-green) !important;
+  background: var(--christmas-cream) !important;
+  padding: 4px 8px !important;
+  border-radius: 4px !important;
+}
+
+body.theme-christmas .current-price,
+body.theme-christmas .price-current {
+  color: var(--christmas-red) !important;
+  font-weight: 700 !important;
+}
+
+body.theme-christmas .original-price,
+body.theme-christmas .price-original {
+  color: var(--christmas-dark-green) !important;
+  text-decoration: line-through !important;
+}
+
+/* Christmas Stars and Ratings */
+body.theme-christmas .star {
+  color: var(--christmas-gold) !important;
+}
+
+body.theme-christmas .rating-value {
+  color: var(--christmas-dark-green) !important;
+}
+
+/* Christmas Badges */
+body.theme-christmas .badge,
+body.theme-christmas .discount-badge {
+  background: var(--christmas-red) !important;
+  color: var(--christmas-white) !important;
+  border: 1px solid var(--christmas-dark-red) !important;
+}
+
+body.theme-christmas .status-success {
+  background: var(--christmas-green) !important;
+  color: var(--christmas-white) !important;
+}
+
+body.theme-christmas .status-pending {
+  background: var(--christmas-gold) !important;
+  color: var(--christmas-dark-green) !important;
+}
+
+body.theme-christmas .status-failed {
+  background: var(--christmas-red) !important;
+  color: var(--christmas-white) !important;
+}
+
+/* Christmas Icons and Action Buttons */
+body.theme-christmas .action-icon,
+body.theme-christmas .nav-arrow,
+body.theme-christmas .testimonials-nav-btn {
+  background: var(--christmas-green) !important;
+  color: var(--christmas-white) !important;
+  border: 1px solid var(--christmas-dark-green) !important;
+}
+
+body.theme-christmas .action-icon:hover,
+body.theme-christmas .nav-arrow:hover,
+body.theme-christmas .testimonials-nav-btn:hover {
+  background: var(--christmas-red) !important;
+  color: var(--christmas-white) !important;
+  transform: scale(1.1) !important;
+}
+
+/* Christmas Modal and Overlay */
+body.theme-christmas .modal-content,
+body.theme-christmas .quickview-content {
+  background: var(--christmas-white) !important;
+  border: 3px solid var(--christmas-green) !important;
+  border-radius: 12px !important;
+}
+
+body.theme-christmas .modal-header {
+  background: var(--christmas-green) !important;
+  color: var(--christmas-white) !important;
+  border-bottom: 2px solid var(--christmas-red) !important;
+}
+
+body.theme-christmas .modal-footer {
+  background: var(--christmas-cream) !important;
+  border-top: 2px solid var(--christmas-green) !important;
+}
+
+/* Christmas Cart and Checkout */
+body.theme-christmas .cart-page,
+body.theme-christmas .checkout-page {
+  background: var(--christmas-cream) !important;
+}
+
+body.theme-christmas .cart-item-wrapper,
+body.theme-christmas .checkout-form-area,
+body.theme-christmas .order-summary {
+  background: var(--christmas-white) !important;
+  border: 2px solid var(--christmas-green) !important;
+  border-radius: 8px !important;
+}
+
+body.theme-christmas .cart-summary-card {
+  background: var(--christmas-white) !important;
+  border: 2px solid var(--christmas-red) !important;
+  border-radius: 8px !important;
+}
+
+/* Christmas Wishlist */
+body.theme-christmas .wishlist-page {
+  background: var(--christmas-cream) !important;
+}
+
+body.theme-christmas .wishlist-item {
+  background: var(--christmas-white) !important;
+  border: 2px solid var(--christmas-green) !important;
+  border-radius: 8px !important;
+}
+
+body.theme-christmas .wishlist-item:hover {
+  border-color: var(--christmas-red) !important;
+}
+
+/* Christmas Account Page */
+body.theme-christmas .account-page {
+  background: var(--christmas-cream) !important;
+}
+
+body.theme-christmas .account-card {
+  background: var(--christmas-white) !important;
+  border: 2px solid var(--christmas-green) !important;
+  border-radius: 8px !important;
+}
+
+/* Christmas Auth Pages */
+body.theme-christmas .auth-card,
+body.theme-christmas .auth-form-container {
+  background: var(--christmas-white) !important;
+  border: 3px solid var(--christmas-green) !important;
+  border-radius: 12px !important;
+}
+
+body.theme-christmas .auth-header {
+  background: var(--christmas-green) !important;
+  color: var(--christmas-white) !important;
+}
+
+/* Christmas Contact Page */
+body.theme-christmas .contact-section {
+  background: var(--christmas-cream) !important;
+}
+
+body.theme-christmas .contact-info-column,
+body.theme-christmas .contact-form-column {
+  background: var(--christmas-white) !important;
+  border: 2px solid var(--christmas-green) !important;
+  border-radius: 8px !important;
+}
+
+body.theme-christmas .contact-form-header {
+  background: var(--christmas-green) !important;
+  color: var(--christmas-white) !important;
+}
+
+/* Christmas Filter Sidebar */
+body.theme-christmas .filter-sidebar,
+body.theme-christmas .filter-sidebar-new {
+  background: var(--christmas-white) !important;
+  border: 2px solid var(--christmas-green) !important;
+  border-radius: 8px !important;
+}
+
+body.theme-christmas .filter-title {
+  color: var(--christmas-dark-green) !important;
+  border-bottom: 2px solid var(--christmas-red) !important;
+}
+
+body.theme-christmas .filter-section-new h4 {
+  color: var(--christmas-dark-green) !important;
+}
+
+/* Christmas Category Options */
+body.theme-christmas .category-option,
+body.theme-christmas .material-option,
+body.theme-christmas .availability-option {
+  background: var(--christmas-white) !important;
+  color: var(--christmas-dark-green) !important;
+  border: 1px solid var(--christmas-green) !important;
+}
+
+body.theme-christmas .category-option:hover,
+body.theme-christmas .material-option:hover,
+body.theme-christmas .availability-option:hover {
+  background: var(--christmas-cream) !important;
+  border-color: var(--christmas-red) !important;
+}
+
+body.theme-christmas .category-checkbox,
+body.theme-christmas .material-checkbox,
+body.theme-christmas .availability-checkbox {
+  border: 2px solid var(--christmas-green) !important;
+  background: var(--christmas-white) !important;
+}
+
+body.theme-christmas .category-option input[type="checkbox"]:checked + .category-checkbox,
+body.theme-christmas .material-option input[type="checkbox"]:checked + .material-checkbox,
+body.theme-christmas .availability-option input[type="checkbox"]:checked + .availability-checkbox {
+  background: var(--christmas-red) !important;
+  border-color: var(--christmas-red) !important;
+}
+
+/* Christmas Price Range */
+body.theme-christmas .price-range-display {
+  color: var(--christmas-dark-green) !important;
+  background: var(--christmas-white) !important;
+  border: 1px solid var(--christmas-green) !important;
+}
+
+body.theme-christmas .price-slider-track {
+  background: var(--christmas-green) !important;
+}
+
+body.theme-christmas .price-slider-range {
+  background: var(--christmas-red) !important;
+}
+
+body.theme-christmas .price-slider::-webkit-slider-thumb {
+  background: var(--christmas-red) !important;
+  border: 2px solid var(--christmas-white) !important;
+}
+
+body.theme-christmas .price-slider::-moz-range-thumb {
+  background: var(--christmas-red) !important;
+  border: 2px solid var(--christmas-white) !important;
+}
+
+/* Christmas Active Filters */
+body.theme-christmas .active-filters {
+  background: var(--christmas-cream) !important;
+  border-bottom: 2px solid var(--christmas-green) !important;
+}
+
+body.theme-christmas .filter-tag {
+  background: var(--christmas-red) !important;
+  color: var(--christmas-white) !important;
+}
+
+body.theme-christmas .remove-filter {
+  color: var(--christmas-white) !important;
+}
+
+body.theme-christmas .remove-filter:hover {
+  color: var(--christmas-gold) !important;
+}
+
+body.theme-christmas .clear-filter-btn {
+  background: var(--christmas-green) !important;
+  color: var(--christmas-white) !important;
+  border: 1px solid var(--christmas-dark-green) !important;
+}
+
+body.theme-christmas .clear-filter-btn:hover {
+  background: var(--christmas-dark-green) !important;
+}
+
+/* Christmas Mobile Elements */
+body.theme-christmas .mobile-nav-content {
+  background: var(--christmas-white) !important;
+  border: 2px solid var(--christmas-green) !important;
+}
+
+body.theme-christmas .mobile-nav-link {
+  background: var(--christmas-white) !important;
+  color: var(--christmas-dark-green) !important;
+  border: 1px solid var(--christmas-green) !important;
+}
+
+body.theme-christmas .mobile-nav-link:hover {
+  background: var(--christmas-red) !important;
+  color: var(--christmas-white) !important;
+}
+
+body.theme-christmas .mobile-search-content {
+  background: var(--christmas-white) !important;
+  border: 2px solid var(--christmas-green) !important;
+}
+
+body.theme-christmas .mobile-search-container {
+  background: var(--christmas-white) !important;
+  border: 2px solid var(--christmas-red) !important;
+}
+
+body.theme-christmas .mobile-search-input {
+  color: var(--christmas-dark-green) !important;
+  background: var(--christmas-white) !important;
+}
+
+body.theme-christmas .mobile-search-input::placeholder {
+  color: var(--christmas-dark-green) !important;
+}
+
+body.theme-christmas .close-search-popup,
+body.theme-christmas .close-mobile-menu {
+  background: var(--christmas-red) !important;
+  color: var(--christmas-white) !important;
+}
+
+body.theme-christmas .close-search-popup:hover,
+body.theme-christmas .close-mobile-menu:hover {
+  background: var(--christmas-dark-red) !important;
+}
+
+/* Christmas Loading States */
+body.theme-christmas .loading-spinner {
+  color: var(--christmas-red) !important;
+}
+
+body.theme-christmas .spinner {
+  border: 4px solid var(--christmas-green) !important;
+  border-top: 4px solid var(--christmas-red) !important;
+}
+
+/* Christmas Error Messages */
+body.theme-christmas .error-message h2 {
+  color: var(--christmas-red) !important;
+}
+
+body.theme-christmas .error-message p {
+  color: var(--christmas-dark-green) !important;
+}
+
+/* Christmas Success Messages */
+body.theme-christmas .success-message {
+  background: var(--christmas-green) !important;
+  color: var(--christmas-white) !important;
+  border: 1px solid var(--christmas-dark-green) !important;
+}
+
+/* Christmas Info Messages */
+body.theme-christmas .info-message {
+  background: var(--christmas-gold) !important;
+  color: var(--christmas-dark-green) !important;
+  border: 1px solid var(--christmas-dark-green) !important;
+}
+
+/* Christmas Warning Messages */
+body.theme-christmas .warning-message {
+  background: var(--christmas-orange) !important;
+  color: var(--christmas-white) !important;
+  border: 1px solid var(--christmas-dark-red) !important;
+}
+
+/* Christmas Tables */
+body.theme-christmas table,
+body.theme-christmas th,
+body.theme-christmas td {
+  background-color: var(--christmas-white) !important;
+  color: var(--christmas-dark-green) !important;
+  border: 1px solid var(--christmas-green) !important;
+}
+
+body.theme-christmas th {
+  background-color: var(--christmas-green) !important;
+  color: var(--christmas-white) !important;
+}
+
+/* Christmas Dropdowns */
+body.theme-christmas .dropdown-menu,
+body.theme-christmas .dropdown-item {
+  background-color: var(--christmas-white) !important;
+  color: var(--christmas-dark-green) !important;
+  border: 1px solid var(--christmas-green) !important;
+}
+
+body.theme-christmas .dropdown-item:hover {
+  background-color: var(--christmas-cream) !important;
+  color: var(--christmas-dark-green) !important;
+}
+
+/* Christmas Pagination */
+body.theme-christmas .pagination {
+  background: var(--christmas-white) !important;
+}
+
+body.theme-christmas .pagination .page-link {
+  background: var(--christmas-white) !important;
+  color: var(--christmas-dark-green) !important;
+  border: 1px solid var(--christmas-green) !important;
+}
+
+body.theme-christmas .pagination .page-link:hover {
+  background: var(--christmas-red) !important;
+  color: var(--christmas-white) !important;
+}
+
+body.theme-christmas .pagination .page-item.active .page-link {
+  background: var(--christmas-red) !important;
+  color: var(--christmas-white) !important;
+  border-color: var(--christmas-red) !important;
+}
+
+/* Christmas Progress Bars */
+body.theme-christmas .progress {
+  background: var(--christmas-green) !important;
+}
+
+body.theme-christmas .progress-bar {
+  background: var(--christmas-red) !important;
+}
+
+/* Christmas Alerts */
+body.theme-christmas .alert-success {
+  background: var(--christmas-green) !important;
+  color: var(--christmas-white) !important;
+  border: 1px solid var(--christmas-dark-green) !important;
+}
+
+body.theme-christmas .alert-danger {
+  background: var(--christmas-red) !important;
+  color: var(--christmas-white) !important;
+  border: 1px solid var(--christmas-dark-red) !important;
+}
+
+body.theme-christmas .alert-warning {
+  background: var(--christmas-gold) !important;
+  color: var(--christmas-dark-green) !important;
+  border: 1px solid var(--christmas-dark-green) !important;
+}
+
+body.theme-christmas .alert-info {
+  background: var(--christmas-silver) !important;
+  color: var(--christmas-dark-green) !important;
+  border: 1px solid var(--christmas-dark-green) !important;
+}
+
+/* Christmas Tooltips */
+body.theme-christmas .tooltip {
+  background: var(--christmas-dark-green) !important;
+  color: var(--christmas-white) !important;
+}
+
+body.theme-christmas .tooltip-arrow {
+  border-color: var(--christmas-dark-green) !important;
+}
+
+/* Christmas Scrollbars */
+body.theme-christmas ::-webkit-scrollbar {
+  width: 12px;
+}
+
+body.theme-christmas ::-webkit-scrollbar-track {
+  background: var(--christmas-cream);
+}
+
+body.theme-christmas ::-webkit-scrollbar-thumb {
+  background: var(--christmas-green);
+  border-radius: 6px;
+}
+
+body.theme-christmas ::-webkit-scrollbar-thumb:hover {
+  background: var(--christmas-red);
+}
+
+/* Christmas Focus States */
+body.theme-christmas *:focus {
+  outline: 2px solid var(--christmas-red) !important;
+  outline-offset: 2px !important;
+}
+
+/* Christmas Selection */
+body.theme-christmas ::selection {
+  background: var(--christmas-red) !important;
+  color: var(--christmas-white) !important;
+}
+
+/* Christmas Links */
+body.theme-christmas a {
+  color: var(--christmas-dark-green) !important;
+}
+
+body.theme-christmas a:hover {
+  color: var(--christmas-red) !important;
+}
+
+/* Christmas Icons in Text */
+body.theme-christmas .icon {
+  color: var(--christmas-green) !important;
+}
+
+body.theme-christmas .icon:hover {
+  color: var(--christmas-red) !important;
+}
+
+/* Christmas Decorative Elements */
+body.theme-christmas .decorative-border {
+  border: 3px solid var(--christmas-green) !important;
+  border-radius: 8px !important;
+  background: var(--christmas-white) !important;
+}
+
+body.theme-christmas .decorative-border::before {
+  content: '🎄';
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--christmas-white);
+  padding: 0 8px;
+  font-size: 1.2rem;
+}
+
+/* Christmas Responsive Design */
+@media (max-width: 768px) {
+  body.theme-christmas .card,
+  body.theme-christmas .product-card,
+  body.theme-christmas .category-card {
+    border-width: 1px !important;
+  }
+  
+  body.theme-christmas .btn,
+  body.theme-christmas .btn-primary {
+    font-size: 14px !important;
+    padding: 8px 16px !important;
+  }
+}
+
+/* Christmas Print Styles */
+@media print {
+  body.theme-christmas {
+    background: white !important;
+    color: black !important;
+  }
+  
+  body.theme-christmas .card,
+  body.theme-christmas .product-card,
+  body.theme-christmas .category-card {
+    border: 1px solid black !important;
+    background: white !important;
+  }
+}
+
+/* Christmas High Contrast Mode */
+@media (prefers-contrast: high) {
+  body.theme-christmas {
+    --christmas-red: #000000;
+    --christmas-green: #000000;
+    --christmas-gold: #000000;
+    --christmas-white: #FFFFFF;
+    --christmas-cream: #FFFFFF;
+  }
+}
+
+/* Christmas Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  body.theme-christmas * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,182 @@
+/* Breadcrumb Navigation Styles */
+.breadcrumb-nav {
+    margin-bottom: 1.5rem;
+    padding: 0.5rem 0;
+    background: transparent;
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
+    position: relative;
+    z-index: 1000;
+    min-height: auto;
+    display: flex;
+    justify-content: center;
+}
+
+.breadcrumb-list {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    min-height: auto;
+    background: transparent;
+}
+
+.breadcrumb-item {
+    display: flex;
+    align-items: center;
+}
+
+.breadcrumb-link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    color: #333333;
+    text-decoration: none;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    background: transparent;
+    border: none;
+    text-shadow: none;
+    transition: none;
+}
+
+.breadcrumb-link:focus {
+    outline: 2px solid #F0B21B;
+    outline-offset: 2px;
+}
+
+.breadcrumb-icon {
+    display: flex;
+    align-items: center;
+    font-size: 0.875rem;
+}
+
+.breadcrumb-separator {
+    display: flex;
+    align-items: center;
+    color: #333333;
+    margin: 0 0.5rem;
+    opacity: 1;
+    font-weight: 500;
+}
+
+.breadcrumb-separator svg {
+    width: 12px;
+    height: 12px;
+}
+
+.breadcrumb-current {
+    color: #F0B21B;
+    font-weight: 400;
+    font-size: 0.9rem;
+    padding: 0.25rem 0.5rem;
+    background: rgba(240, 178, 27, 0.1);
+    border-radius: 4px;
+    border: none;
+    text-shadow: none;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .breadcrumb-nav {
+        margin-bottom: 1rem;
+        padding: 0.25rem 0;
+    }
+    
+    .breadcrumb-link {
+        font-size: 0.8rem;
+        padding: 0.2rem 0.4rem;
+        gap: 0.3rem;
+    }
+    
+    .breadcrumb-link svg {
+        width: 12px;
+        height: 12px;
+    }
+    
+    .breadcrumb-current {
+        font-size: 0.8rem;
+        padding: 0.2rem 0.4rem;
+    }
+    
+    .breadcrumb-separator svg {
+        width: 10px;
+        height: 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .breadcrumb-nav {
+        margin-bottom: 0.75rem;
+    }
+    
+    .breadcrumb-link {
+        font-size: 0.75rem;
+        padding: 0.15rem 0.3rem;
+    }
+    
+    .breadcrumb-current {
+        font-size: 0.75rem;
+        padding: 0.15rem 0.3rem;
+    }
+}
+
+/* Legacy breadcrumb class for backward compatibility */
+.breadcrumb {
+    margin-bottom: 1.5rem;
+    font-size: 0.875rem;
+    color: var(--text-light, #6b7280);
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+}
+
+.breadcrumb a {
+    color: #333333;
+    text-decoration: none;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-weight: 500;
+}
+
+
+.breadcrumb span {
+    color: #F0B21B;
+    font-weight: 500;
+    padding: 0.25rem 0.5rem;
+    background: rgba(240, 178, 27, 0.1);
+    border-radius: 0.25rem;
+}
+
+/* Responsive legacy breadcrumb */
+@media (max-width: 768px) {
+    .breadcrumb {
+        margin-bottom: 1rem;
+        font-size: 0.8rem;
+    }
+    
+    .breadcrumb a,
+    .breadcrumb span {
+        padding: 0.2rem 0.4rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .breadcrumb {
+        margin-bottom: 0.75rem;
+        font-size: 0.75rem;
+    }
+    
+    .breadcrumb a,
+    .breadcrumb span {
+        padding: 0.15rem 0.3rem;
+    }
+}

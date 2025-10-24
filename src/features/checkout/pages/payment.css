@@ -1,0 +1,600 @@
+/* Payment Page - Match Checkout Design */
+.payment-page {
+    background-color: #f8f9fa;
+    min-height: 100vh;
+    padding: 2rem 0;
+    font-family: 'Inter', 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+}
+
+.payment-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+    display: grid;
+    grid-template-columns: 1fr 400px;
+    gap: 2rem;
+    align-items: start;
+}
+
+/* Mobile Layout */
+@media (max-width: 1024px) {
+    .payment-container {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+    
+    .order-summary-section {
+        order: 1;
+    }
+}
+
+@media (max-width: 768px) {
+    .payment-page {
+        padding: 1rem 0;
+    }
+    
+    .payment-container {
+        padding: 0 0.75rem;
+        gap: 1rem;
+    }
+    
+    .order-summary-section {
+        order: 1;
+        margin-top: 1rem;
+    }
+}
+
+/* Error Message */
+.payment-error-message {
+    background: #fee2e2;
+    border: 1px solid #fecaca;
+    color: #dc2626;
+    padding: clamp(0.75rem, 1.5vw, 1rem);
+    border-radius: clamp(6px, 1vw, 8px);
+    margin-bottom: clamp(1rem, 2vw, 1.5rem);
+    font-size: clamp(0.875rem, 1.5vw, 1rem);
+}
+
+/* Payment Methods Section */
+.payment-methods-section {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e5e7eb;
+}
+
+.payment-methods-section .section-title {
+    margin-bottom: 1.5rem;
+}
+
+.payment-methods-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.payment-method-option {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: #ffffff;
+}
+
+.payment-method-option:hover {
+    border-color: #F0B21B;
+    background: #fefce8;
+}
+
+.payment-method-option.selected {
+    border-color: #F0B21B;
+    background: #fefce8;
+}
+
+.payment-method-radio {
+    flex-shrink: 0;
+}
+
+.radio-button {
+    width: 16px;
+    height: 16px;
+    border: 2px solid #d1d5db;
+    border-radius: 50%;
+    position: relative;
+}
+
+.radio-button.checked {
+    border-color: #F0B21B;
+    background: #F0B21B;
+}
+
+.radio-dot {
+    width: 6px;
+    height: 6px;
+    background: #ffffff;
+    border-radius: 50%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.payment-method-icon {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.payment-method-name {
+    font-weight: 600;
+    color: #111827;
+    font-size: 0.875rem;
+    flex: 1;
+}
+
+.payment-method-details {
+    font-size: 0.8rem;
+    color: #6b7280;
+    margin-left: 1.75rem;
+}
+
+
+/* Order Summary Section */
+.order-summary-section {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e5e7eb;
+    position: sticky;
+    top: 2rem;
+    height: fit-content;
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 2rem;
+    text-align: left;
+}
+
+/* Order Summary Header */
+.order-summary-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: clamp(1.5rem, 3vw, 2rem);
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+    flex-shrink: 0;
+}
+
+.order-summary-header .section-title {
+    font-size: clamp(1.25rem, 3vw, 1.5rem);
+    font-weight: 700;
+    color: #111827;
+    margin: 0;
+    letter-spacing: -0.02em;
+    text-transform: none !important;
+}
+
+.summary-icon {
+    width: 24px;
+    height: 24px;
+    background: #F0B21B;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    flex-shrink: 0;
+}
+
+.summary-icon svg {
+    width: 16px;
+    height: 16px;
+}
+
+.order-summary-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.summary-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.summary-item:last-child {
+    border-bottom: none;
+}
+
+.summary-item.discount {
+    color: #059669;
+}
+
+.summary-item.total {
+    border-top: 2px solid #e5e7eb;
+    margin-top: 0.75rem;
+    padding-top: 1rem;
+    font-weight: 700;
+    font-size: 1.125rem;
+    color: #111827;
+}
+
+.summary-label {
+    font-weight: 500;
+    color: #374151;
+    font-size: 1rem;
+}
+
+.summary-value {
+    font-weight: 600;
+    color: #111827;
+    font-size: 1rem;
+}
+
+.summary-item.total .summary-value {
+    color: #F0B21B;
+    font-size: 1.25rem;
+}
+
+/* Confirm Payment Button */
+.confirm-payment-btn {
+    width: 100%;
+    background: #F0B21B;
+    color: #ffffff;
+    border: none;
+    padding: 1rem 2rem;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    font-family: inherit;
+    box-shadow: 0 2px 4px rgba(240, 178, 27, 0.2);
+    min-height: 48px;
+}
+
+.confirm-payment-btn:hover:not(:disabled) {
+    background: #e6a017;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(240, 178, 27, 0.3);
+}
+
+.confirm-payment-btn:disabled {
+    background: #d1d5db;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Mobile Responsive */
+@media (max-width: 1024px) {
+    .order-summary-section {
+        position: static;
+    }
+}
+
+@media (max-width: 768px) {
+    .payment-methods-section,
+    .order-summary-section {
+        padding: 1rem;
+        border-radius: 8px;
+    }
+    
+    .payment-methods-section .section-title {
+        margin-bottom: 1rem;
+    }
+    
+    .payment-method-option {
+        padding: 0.75rem;
+        gap: 0.5rem;
+    }
+    
+    .payment-method-name {
+        font-size: 0.8rem;
+    }
+    
+    .payment-method-details {
+        font-size: 0.75rem;
+        margin-left: 1.5rem;
+    }
+    
+    .order-summary-header {
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        padding-bottom: 0.75rem;
+    }
+    
+    .order-summary-header .section-title {
+        font-size: 1rem;
+        text-transform: none !important;
+    }
+    
+    .summary-icon {
+        width: 20px;
+        height: 20px;
+    }
+    
+    .summary-icon svg {
+        width: 14px;
+        height: 14px;
+    }
+    
+    .summary-item {
+        padding: 0.5rem 0;
+    }
+    
+    .summary-label,
+    .summary-value {
+        font-size: 0.9rem;
+    }
+    
+    .summary-item.total .summary-value {
+        font-size: 1.125rem;
+    }
+    
+    .confirm-payment-btn {
+        padding: 0.875rem 1.5rem;
+        font-size: 0.9rem;
+        min-height: 44px;
+    }
+}
+
+@media (max-width: 480px) {
+    .payment-methods-section,
+    .order-summary-section {
+        padding: 0.75rem;
+    }
+    
+    .payment-methods-section .section-title {
+        margin-bottom: 0.75rem;
+    }
+    
+    .payment-method-option {
+        padding: 0.625rem;
+        gap: 0.375rem;
+    }
+    
+    .radio-button {
+        width: 14px;
+        height: 14px;
+    }
+    
+    .radio-dot {
+        width: 5px;
+        height: 5px;
+    }
+    
+    .payment-method-name {
+        font-size: 0.75rem;
+    }
+    
+    .payment-method-details {
+        font-size: 0.7rem;
+        margin-left: 1.25rem;
+    }
+    
+    .order-summary-header {
+        gap: 0.375rem;
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.5rem;
+    }
+    
+    .order-summary-header .section-title {
+        font-size: 0.9rem;
+        text-transform: none !important;
+    }
+    
+    .summary-icon {
+        width: 18px;
+        height: 18px;
+    }
+    
+    .summary-icon svg {
+        width: 12px;
+        height: 12px;
+    }
+    
+    .summary-item {
+        padding: 0.375rem 0;
+    }
+    
+    .summary-label,
+    .summary-value {
+        font-size: 0.8rem;
+    }
+    
+    .summary-item.total .summary-value {
+        font-size: 1rem;
+    }
+    
+    .confirm-payment-btn {
+        padding: 0.75rem 1.25rem;
+        font-size: 0.8rem;
+        min-height: 40px;
+    }
+}
+
+/* =============================================================================
+   DARK MODE STYLES FOR PAYMENT PAGE AND ALL COMPONENTS
+   ============================================================================= */
+
+/* Dark mode styles for payment page */
+body.theme-dark .payment-page {
+    background-color: #1a1a1a !important;
+    color: #ffffff !important;
+}
+
+body.theme-dark .payment-container {
+    background: transparent !important;
+}
+
+/* Dark mode styles for payment error message */
+body.theme-dark .payment-error-message {
+    background: rgba(239, 68, 68, 0.1) !important;
+    border: 1px solid #ef4444 !important;
+    color: #ef4444 !important;
+}
+
+/* Dark mode styles for payment methods section */
+body.theme-dark .payment-methods-section {
+    background: #2d2d2d !important;
+    border: 1px solid #404040 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+body.theme-dark .payment-methods-section .section-title {
+    color: #ffffff !important;
+}
+
+/* Dark mode styles for payment method options */
+body.theme-dark .payment-method-option {
+    background: #2d2d2d !important;
+    border: 2px solid #404040 !important;
+}
+
+body.theme-dark .payment-method-option:hover {
+    border-color: #F0B21B !important;
+    background: rgba(240, 178, 27, 0.1) !important;
+}
+
+body.theme-dark .payment-method-option.selected {
+    border-color: #F0B21B !important;
+    background: rgba(240, 178, 27, 0.1) !important;
+}
+
+/* Dark mode styles for radio buttons */
+body.theme-dark .radio-button {
+    border: 2px solid #aaaaaa !important;
+}
+
+body.theme-dark .radio-button.checked {
+    border-color: #F0B21B !important;
+    background: #F0B21B !important;
+}
+
+body.theme-dark .radio-dot {
+    background: #000000 !important;
+}
+
+/* Dark mode styles for payment method text */
+body.theme-dark .payment-method-name {
+    color: #ffffff !important;
+}
+
+body.theme-dark .payment-method-details {
+    color: #cccccc !important;
+}
+
+/* Dark mode styles for order summary section */
+body.theme-dark .order-summary-section {
+    background: #2d2d2d !important;
+    border: 1px solid #404040 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Dark mode styles for order summary header */
+body.theme-dark .order-summary-header {
+    border-bottom: 1px solid #404040 !important;
+}
+
+body.theme-dark .order-summary-header .section-title {
+    color: #ffffff !important;
+}
+
+body.theme-dark .summary-icon {
+    background: #F0B21B !important;
+    color: #000000 !important;
+}
+
+/* Dark mode styles for order summary content */
+body.theme-dark .summary-item {
+    border-bottom: 1px solid #404040 !important;
+}
+
+body.theme-dark .summary-item.discount {
+    color: #10b981 !important;
+}
+
+body.theme-dark .summary-item.total {
+    border-top: 2px solid #404040 !important;
+    color: #ffffff !important;
+}
+
+body.theme-dark .summary-label {
+    color: #cccccc !important;
+}
+
+body.theme-dark .summary-value {
+    color: #ffffff !important;
+}
+
+body.theme-dark .summary-item.total .summary-value {
+    color: #F0B21B !important;
+}
+
+/* Dark mode styles for confirm payment button */
+body.theme-dark .confirm-payment-btn {
+    background: #F0B21B !important;
+    color: #000000 !important;
+    box-shadow: 0 2px 4px rgba(240, 178, 27, 0.2) !important;
+}
+
+body.theme-dark .confirm-payment-btn:hover:not(:disabled) {
+    background: #e6a017 !important;
+    color: #000000 !important;
+    box-shadow: 0 4px 12px rgba(240, 178, 27, 0.3) !important;
+}
+
+body.theme-dark .confirm-payment-btn:disabled {
+    background: #6c757d !important;
+    color: #ffffff !important;
+    box-shadow: none !important;
+}
+
+/* Dark mode responsive adjustments */
+@media (max-width: 768px) {
+    body.theme-dark .payment-page {
+        background: #1a1a1a !important;
+    }
+    
+    body.theme-dark .payment-methods-section {
+        background: #2d2d2d !important;
+        border: 1px solid #404040 !important;
+    }
+    
+    body.theme-dark .order-summary-section {
+        background: #2d2d2d !important;
+        border: 1px solid #404040 !important;
+    }
+}
+
+@media (max-width: 480px) {
+    body.theme-dark .payment-page {
+        background: #1a1a1a !important;
+    }
+    
+    body.theme-dark .payment-methods-section {
+        background: #2d2d2d !important;
+        border: 1px solid #404040 !important;
+    }
+    
+    body.theme-dark .order-summary-section {
+        background: #2d2d2d !important;
+        border: 1px solid #404040 !important;
+    }
+}

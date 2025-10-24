@@ -1,0 +1,697 @@
+/* Header Mobile Responsive Styles */
+
+/* Desktop User Icon - Show on desktop, hide on mobile */
+.desktop-user-btn {
+  display: flex;
+}
+
+/* Mobile Menu Toggle Button */
+.header-mobile-menu-btn {
+  display: none;
+}
+
+.mobile-menu-toggle {
+  background: none;
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.3s ease;
+}
+
+.mobile-menu-toggle:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Mobile Search Button */
+.mobile-search-btn {
+  display: none;
+}
+
+/* Mobile Search Popup */
+.mobile-search-popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  z-index: 2000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 100px;
+}
+
+.mobile-search-content {
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  width: 90%;
+  max-width: 500px;
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  padding: 24px;
+  border: 1px solid rgba(240, 178, 27, 0.1);
+}
+
+.mobile-search-container {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.9);
+  border: 2px solid #F0B21B;
+  border-radius: 25px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(240, 178, 27, 0.1);
+  transition: all 0.3s ease;
+}
+
+.mobile-search-container:focus-within {
+  border-color: #e6a632;
+  box-shadow: 0 4px 12px rgba(240, 178, 27, 0.2);
+  transform: translateY(-2px);
+}
+
+.mobile-search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 16px;
+  padding: 4px 8px;
+  color: #333;
+  font-weight: 500;
+}
+
+.mobile-search-input::placeholder {
+  color: #999;
+  font-weight: 400;
+}
+
+.close-search-popup {
+  background: #F0B21B;
+  border: none;
+  font-size: 18px;
+  color: white;
+  cursor: pointer;
+  padding: 8px;
+  margin-left: 12px;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 6px rgba(240, 178, 27, 0.3);
+}
+
+.close-search-popup:hover {
+  background: #e6a632;
+  transform: scale(1.1);
+  box-shadow: 0 4px 10px rgba(240, 178, 27, 0.4);
+}
+
+.mobile-search-results {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.mobile-search-result-item {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  border-radius: 8px;
+  margin-bottom: 4px;
+}
+
+.mobile-search-result-item:hover {
+  background-color: rgba(240, 178, 27, 0.1);
+}
+
+.mobile-search-result-image {
+  width: 50px;
+  height: 50px;
+  margin-right: 12px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.mobile-search-result-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mobile-search-result-info {
+  flex: 1;
+}
+
+.mobile-search-result-name {
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 4px;
+  font-size: 14px;
+}
+
+.mobile-search-result-price {
+  font-size: 12px;
+}
+
+.mobile-search-result-price .original-price {
+  text-decoration: line-through;
+  color: #999;
+  margin-right: 8px;
+}
+
+.mobile-search-result-price .discount-price {
+  color: #e74c3c;
+  font-weight: 600;
+}
+
+.mobile-search-result-price .price {
+  color: #333;
+  font-weight: 600;
+}
+
+/* Mobile Navigation Menu */
+.mobile-nav-menu {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  z-index: 2000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding-top: 0;
+}
+
+.mobile-nav-content {
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  width: 320px;
+  height: 100vh;
+  box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  border-radius: 0 20px 20px 0;
+  overflow: hidden;
+}
+
+.close-mobile-menu {
+  background: #F0B21B;
+  border: none;
+  font-size: 20px;
+  color: white;
+  cursor: pointer;
+  padding: 12px;
+  margin: 20px 20px 0 auto;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(240, 178, 27, 0.3);
+}
+
+.close-mobile-menu:hover {
+  background: #e6a632;
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(240, 178, 27, 0.4);
+}
+
+.mobile-nav-links {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px;
+  flex-grow: 1;
+  margin-top: 20px;
+}
+
+.mobile-nav-link {
+  display: flex;
+  align-items: center;
+  padding: 16px 20px;
+  color: #333;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 16px;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(240, 178, 27, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.mobile-nav-link::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(240, 178, 27, 0.1), transparent);
+  transition: left 0.5s ease;
+}
+
+.mobile-nav-link:hover::before {
+  left: 100%;
+}
+
+.mobile-nav-link:hover {
+  background: linear-gradient(135deg, #F0B21B 0%, #e6a632 100%);
+  color: white;
+  transform: translateX(8px);
+  box-shadow: 0 4px 12px rgba(240, 178, 27, 0.3);
+  border-color: #F0B21B;
+}
+
+.mobile-nav-link:active {
+  transform: translateX(4px) scale(0.98);
+}
+
+/* Mobile Login Button Styling */
+.mobile-login-btn {
+  background: linear-gradient(135deg, #F0B21B 0%, #e6a632 100%) !important;
+  color: white !important;
+  font-weight: 700 !important;
+  border: 2px solid #F0B21B !important;
+  margin-top: 20px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: 0 4px 12px rgba(240, 178, 27, 0.3) !important;
+  font-size: 16px !important;
+  padding: 18px 20px !important;
+}
+
+.mobile-login-btn:hover {
+  background: linear-gradient(135deg, #e6a632 0%, #d69e16 100%) !important;
+  border-color: #e6a632 !important;
+  color: white !important;
+  transform: translateX(8px) scale(1.02) !important;
+  box-shadow: 0 6px 16px rgba(240, 178, 27, 0.4) !important;
+}
+
+.mobile-login-btn:active {
+  transform: translateX(4px) scale(0.98) !important;
+}
+
+/* Offer Bar Mobile Styles */
+.header-offer-bar {
+  font-size: 0.75rem;
+  padding: 8px 16px;
+  text-align: center;
+  line-height: 1.4;
+}
+
+/* Fix viewport gap across all breakpoints - ensure offer bar extends to top */
+.header-main {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+.header-offer-bar {
+  margin-top: 0 !important;
+  position: relative;
+  top: 0;
+}
+
+/* Ensure no gap at top of viewport across all breakpoints */
+html, body {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+#root {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+/* Responsive padding for offer bar */
+@media (max-width: 480px) {
+  .header-offer-bar {
+    padding-top: 4px !important;
+  }
+}
+
+@media (min-width: 481px) and (max-width: 768px) {
+  .header-offer-bar {
+    padding-top: 8px !important;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  .header-offer-bar {
+    padding-top: 0.5rem !important;
+  }
+}
+
+@media (min-width: 1025px) {
+  .header-offer-bar {
+    padding-top: 0.5rem !important;
+  }
+}
+
+.header-offer-bar .offer-text {
+  font-size: 0.7rem;
+  word-wrap: break-word;
+  hyphens: auto;
+}
+
+/* Header Layout Mobile Responsive */
+@media (max-width: 768px) {
+  /* Show mobile menu button */
+  .header-mobile-menu-btn {
+    display: block;
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+  }
+
+  /* Show mobile search button */
+  .mobile-search-btn {
+    display: block;
+  }
+
+  /* Hide desktop user icon on mobile */
+  .desktop-user-btn {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Hide desktop wishlist icon on mobile */
+  .desktop-wishlist-btn {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Additional specificity to override any conflicting rules */
+  .header-main-right .desktop-wishlist-btn {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Hide desktop search form on mobile */
+  .header-search-form {
+    display: none;
+  }
+
+  /* Hide contact info on mobile */
+  .header-main-left {
+    display: none;
+  }
+
+  /* Adjust main row layout */
+  .header-main-row {
+    position: relative;
+    padding: 12px 16px;
+    min-height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Center logo and make it smaller */
+  .header-main-center {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    margin: 0 40px;
+  }
+
+  .header-logo img {
+    height: 30px !important;
+    width: auto !important;
+    max-width: 130px !important;
+  }
+
+  .header-logo div {
+    font-size: 1.1rem !important;
+  }
+
+  /* Adjust right side icons */
+  .header-main-right {
+    position: absolute;
+    right: 2px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0px;
+    width: 90px;
+    height: 50px;
+    min-width: 90px;
+  }
+
+  .header-icon-btn:not(.desktop-user-btn):not(.desktop-wishlist-btn) {
+    padding: 0px;
+    margin: 0px;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  .icon-circle {
+    width: 28px !important;
+    height: 28px !important;
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  .icon-circle svg {
+    font-size: 0.9rem !important;
+  }
+
+  /* Hide desktop navigation on mobile */
+  .header-nav-bar {
+    display: none;
+  }
+
+  /* Adjust offer bar for mobile */
+  .header-offer-bar {
+    font-size: 0.65rem;
+    padding: 6px 12px;
+    min-height: 32px;
+  }
+
+  .header-offer-bar .offer-text {
+    font-size: 0.6rem;
+    line-height: 1.3;
+  }
+
+  .offer-shop-btn {
+    font-size: 0.7rem !important;
+    padding: 0.2rem 0.6rem !important;
+    margin-left: 0.5rem !important;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Extra small screens */
+  .header-main-row {
+    padding: 8px 12px;
+    min-height: 50px;
+  }
+
+  /* Ensure desktop user button is hidden on extra small screens */
+  .desktop-user-btn {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .header-mobile-menu-btn {
+    left: 12px;
+  }
+
+  .header-main-right {
+    right: 1px;
+    gap: 0px;
+    min-width: 80px;
+    justify-content: flex-end;
+    width: 80px;
+    height: 50px;
+  }
+
+  .header-icon-btn:not(.desktop-user-btn):not(.desktop-wishlist-btn) {
+    padding: 0px;
+    margin: 0px;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  .icon-circle {
+    width: 24px !important;
+    height: 24px !important;
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  .icon-circle svg {
+    font-size: 0.8rem !important;
+  }
+
+  .header-logo img {
+    height: 20px !important;
+    max-width: 70px !important;
+  }
+
+  .header-logo div {
+    font-size: 0.8rem !important;
+  }
+
+  .header-main-center {
+    margin: 0 30px;
+  }
+
+  .mobile-nav-content {
+    width: 100%;
+    max-width: 280px;
+  }
+
+  .mobile-search-content {
+    width: 95%;
+    padding: 16px;
+  }
+
+  .header-offer-bar {
+    font-size: 0.6rem;
+    padding: 4px 8px;
+    min-height: 28px;
+  }
+
+  .header-offer-bar .offer-text {
+    font-size: 0.55rem;
+  }
+
+  .offer-shop-btn {
+    font-size: 0.65rem !important;
+    padding: 0.15rem 0.5rem !important;
+  }
+}
+
+/* Animation for mobile menu and search popup */
+.mobile-search-popup {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.mobile-nav-menu {
+  animation: slideInLeft 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+/* Ensure proper z-index stacking */
+.header-main {
+  position: relative;
+  z-index: 1000;
+}
+
+.mobile-search-popup,
+.mobile-nav-menu {
+  z-index: 2000;
+}
+
+/* Touch-friendly button sizes */
+@media (max-width: 768px) {
+  .mobile-menu-toggle,
+  .mobile-search-btn,
+  .header-icon-btn:not(.desktop-user-btn):not(.desktop-wishlist-btn) {
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Ensure proper flexbox alignment for icons */
+  .header-main-right .header-icon-btn:not(.desktop-user-btn):not(.desktop-wishlist-btn) {
+    margin: 0 !important;
+    border: none !important;
+    flex-shrink: 0;
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  .header-main-right .header-icon-btn:not(.desktop-user-btn):not(.desktop-wishlist-btn) + .header-icon-btn:not(.desktop-user-btn):not(.desktop-wishlist-btn) {
+    margin-left: 0 !important;
+  }
+
+  /* Force zero gap between all icons */
+  .header-main-right {
+    gap: 0px !important;
+  }
+
+  .header-main-right .header-icon-btn:not(.desktop-user-btn):not(.desktop-wishlist-btn) {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Ensure all icons are visible */
+  .header-main-right {
+    justify-content: flex-end;
+    width: 90px;
+    min-width: 90px;
+    height: 50px;
+  }
+}

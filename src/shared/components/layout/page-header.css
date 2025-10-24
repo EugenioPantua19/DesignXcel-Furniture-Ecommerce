@@ -1,0 +1,220 @@
+/* Page Header - Transparent and Compact Design */
+
+.page-header {
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.page-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: radial-gradient(circle at 1px 1px, rgba(252, 189, 69, 0.05) 1px, transparent 0);
+  background-size: 15px 15px;
+  pointer-events: none;
+}
+
+.header-content {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+}
+
+.page-header-content {
+  padding: 0.5rem 2rem 0.5rem;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Breadcrumb Navigation */
+.page-breadcrumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.breadcrumb-link {
+  color: #6b7280;
+  text-decoration: none;
+  transition: none;
+  font-weight: 500;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  background: transparent;
+  border: none;
+  text-shadow: none;
+}
+
+.breadcrumb-current {
+  color: #F0B21B;
+  font-weight: 500;
+  font-size: 0.8rem;
+  padding: 0;
+  background: transparent;
+  border: none;
+  text-shadow: none;
+}
+
+.breadcrumb-separator {
+  color: #6b7280;
+  margin: 0 0.5rem;
+  opacity: 1;
+  font-weight: 500;
+}
+
+/* Main Title */
+.page-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #333333;
+  margin: 0 0 0.75rem;
+  line-height: 1.2;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Subtitle */
+.page-subtitle {
+  font-size: 1rem;
+  color: #666666;
+  margin: 0 0 1.5rem;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.5;
+  font-weight: 400;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Decorative Accent Line */
+.header-accent-line {
+  width: 50px;
+  height: 2px;
+  background: #F0B21B;
+  margin: 0 auto 0.75rem;
+  border-radius: 2px;
+}
+
+/* Decorative Accent Dots */
+.header-accent-dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+.header-accent-dot {
+  width: 6px;
+  height: 6px;
+  background: #F0B21B;
+  border-radius: 50%;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .page-header-content {
+    padding: 1.25rem 1rem 0.75rem;
+  }
+  
+  .page-title {
+    font-size: 1.75rem;
+  }
+  
+  .page-subtitle {
+    font-size: 0.9rem;
+  }
+  
+  .page-breadcrumb {
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-header-content {
+    padding: 1rem 1rem 0.5rem;
+  }
+  
+  .page-title {
+    font-size: 1.5rem;
+  }
+  
+  .page-subtitle {
+    font-size: 0.85rem;
+  }
+  
+  .page-breadcrumb {
+    font-size: 0.7rem;
+  }
+}
+
+/* Dark Mode - Page Header */
+body.theme-dark .page-header {
+  background: transparent !important;
+}
+
+body.theme-dark .page-header::before {
+  background-image: radial-gradient(circle at 1px 1px, rgba(240, 178, 27, 0.1) 1px, transparent 0) !important;
+}
+
+body.theme-dark .page-header-content {
+  background: transparent !important;
+  color: #ffffff !important;
+}
+
+body.theme-dark .page-title {
+  color: #ffffff !important;
+}
+
+body.theme-dark .page-subtitle {
+  color: #cccccc !important;
+}
+
+body.theme-dark .page-breadcrumb {
+  color: #aaaaaa !important;
+}
+
+body.theme-dark .breadcrumb-link {
+  color: #aaaaaa !important;
+  background: transparent !important;
+}
+
+body.theme-dark .breadcrumb-link:hover {
+  color: #F0B21B !important;
+  background: rgba(240, 178, 27, 0.1) !important;
+}
+
+body.theme-dark .breadcrumb-current {
+  color: #F0B21B !important;
+  background: transparent !important;
+}
+
+body.theme-dark .breadcrumb-separator {
+  color: #aaaaaa !important;
+}
+
+body.theme-dark .header-accent-line {
+  background: #F0B21B !important;
+}
+
+body.theme-dark .header-accent-dot {
+  background: #F0B21B !important;
+}

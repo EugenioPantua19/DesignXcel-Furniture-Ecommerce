@@ -1,0 +1,107 @@
+/* Scroll Up Button Styles */
+.scroll-up-button {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 50px;
+    height: 50px;
+    background: #F0B21B; /* Yellow mustard - matches frontend design */
+    color: #FFFFFF;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(240, 178, 27, 0.3);
+    transition: all 0.3s ease;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(20px);
+    z-index: 2200;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+}
+
+.scroll-up-button.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.scroll-up-button:hover {
+    background: #d69e16; /* Darker yellow on hover */
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(240, 178, 27, 0.4);
+}
+
+.scroll-up-button:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(240, 178, 27, 0.3);
+}
+
+.scroll-up-button:focus {
+    outline: none;
+    box-shadow: 0 4px 12px rgba(240, 178, 27, 0.3), 0 0 0 3px rgba(240, 178, 27, 0.2);
+}
+
+
+
+
+
+
+
+
+/* Christmas Theme Support */
+body.theme-christmas .scroll-up-button {
+    background: #F0B21B; /* Keep yellow mustard for Christmas theme */
+    color: #FFFFFF;
+    box-shadow: 0 4px 12px rgba(240, 178, 27, 0.3);
+}
+
+body.theme-christmas .scroll-up-button:hover {
+    background: #d69e16;
+    box-shadow: 0 6px 16px rgba(240, 178, 27, 0.4);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .scroll-up-button {
+        bottom: 20px;
+        right: 20px;
+        width: 45px;
+        height: 45px;
+    }
+}
+
+@media (max-width: 480px) {
+    .scroll-up-button {
+        bottom: 15px;
+        right: 15px;
+        width: 40px;
+        height: 40px;
+    }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+    .scroll-up-button {
+        transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+    
+    .scroll-up-button:hover {
+        transform: none;
+    }
+    
+    .scroll-up-button:active {
+        transform: none;
+    }
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+    .scroll-up-button {
+        border: 2px solid currentColor;
+    }
+    
+    
+}
