@@ -704,13 +704,7 @@
     font-weight: 500;
 }
 
-/* Loading States */
-.loading-spinner {
-    width: 20px;
-    height: 20px;
-    border: 2px solid #f3f3f3;
-  /* Circle spinner removed - using text-based loading states */
-}
+/* Loading States - spinners removed */
 
 /* Empty States */
 .empty-cart {

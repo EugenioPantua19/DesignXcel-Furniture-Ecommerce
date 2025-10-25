@@ -903,14 +903,7 @@ body.theme-dark .quantity-value.out-of-stock {
   color: #ef4444 !important;
 }
 
-body.theme-dark .loading-spinner {
-  color: #ffffff !important;
-}
-
-body.theme-dark .spinner {
-  border: 4px solid #404040 !important;
-  border-top: 4px solid #F0B21B !important;
-}
+/* Dark mode loading spinners removed */
 
 body.theme-dark .error-message h2 {
   color: #ef4444 !important;

@@ -237,12 +237,7 @@ body.theme-christmas .filter-group label:hover {
     min-height: 200px;
 }
 
-.categories-loading .loading-spinner {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1rem;
-}
+/* Categories loading spinner removed */
 
 /* Loading Spinner - Removed old CSS spinner, now using react-loader-spinner */
 
@@ -1952,14 +1947,7 @@ body.theme-christmas .filter-group label:hover {
     gap: 0.75rem;
 }
 
-.loading-spinner {
-    width: 20px;
-    height: 20px;
-    background: linear-gradient(90deg, rgba(255, 255, 255, 0.3), white, rgba(255, 255, 255, 0.3));
-    background-size: 200% 100%;
-    animation: bar-loading 1.2s ease-in-out infinite;
-    border-radius: 2px;
-}
+/* Loading spinner removed */
 
 @keyframes bar-loading {
     0% { background-position: 200% 0; }

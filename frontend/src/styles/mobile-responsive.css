@@ -386,7 +386,5 @@ html, body {
     animation: none;
   }
   
-  .mobile-loading-spinner {
-    animation: none;
-  }
+  /* Mobile loading spinner removed */
 }

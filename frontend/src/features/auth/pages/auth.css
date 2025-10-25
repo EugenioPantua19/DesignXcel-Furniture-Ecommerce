@@ -438,20 +438,7 @@
     box-shadow: 0 0 8px rgba(240, 178, 27, 0.4);
 }
 
-/* Loading Spinner - Removed old CSS spinner, now using react-loader-spinner */
-.loading-spinner {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    color: white;
-}
-
-.loading-spinner p {
-    margin: 0;
-    font-size: 14px;
-    color: rgba(255, 255, 255, 0.8);
-}
+/* Loading spinner removed - using text-based loading states */
 
 /* Testimonial Rating */
 .testimonial-rating {

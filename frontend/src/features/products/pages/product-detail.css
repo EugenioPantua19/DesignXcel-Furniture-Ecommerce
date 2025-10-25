@@ -718,15 +718,7 @@
   border-bottom: none;
 }
 
-/* Loading and Error States */
-.loading-spinner {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 400px;
-  gap: 20px;
-}
+/* Loading and Error States - spinners removed */
 
 /* Circle spinner removed - using text-based loading states */
 
@@ -894,10 +886,7 @@ body.theme-dark .info-table tbody td {
   color: #ffffff;
 }
 
-/* Loading and Error States Dark Mode */
-body.theme-dark .loading-spinner {
-  color: #d1d5db;
-}
+/* Dark mode loading spinners removed */
 
 /* Dark mode circle spinner removed */
 

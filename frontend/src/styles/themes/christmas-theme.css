@@ -560,15 +560,7 @@ body.theme-christmas .close-mobile-menu:hover {
   background: var(--christmas-dark-red) !important;
 }
 
-/* Christmas Loading States */
-body.theme-christmas .loading-spinner {
-  color: var(--christmas-red) !important;
-}
-
-body.theme-christmas .spinner {
-  border: 4px solid var(--christmas-green) !important;
-  border-top: 4px solid var(--christmas-red) !important;
-}
+/* Christmas loading spinners removed */
 
 /* Christmas Error Messages */
 body.theme-christmas .error-message h2 {

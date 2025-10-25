@@ -427,7 +427,5 @@
     animation: none;
   }
   
-  .slider-loading-spinner {
-    animation: none;
-  }
+  /* Slider loading spinner removed */
 }

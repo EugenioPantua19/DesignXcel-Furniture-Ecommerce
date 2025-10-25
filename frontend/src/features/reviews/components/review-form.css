@@ -984,10 +984,7 @@ body.theme-dark .submit-btn:hover:not(:disabled) {
   background: #e6a632;
 }
 
-body.theme-dark .spinner {
-  border-color: rgba(0, 0, 0, 0.3);
-  border-top-color: #000000;
-}
+/* Dark mode spinner removed */
 
 /* Purchase Requirement Message Dark Mode */
 body.theme-dark .purchase-requirement-message.loading {

@@ -4599,9 +4599,7 @@ body.theme-dark .confirmation-btn-success:hover {
         padding: 2rem 1rem;
     }
 
-    .loading-spinner {
-        margin-bottom: 1rem;
-    }
+    /* Loading spinner removed */
 
     /* Mobile Error States */
     .error-message {
