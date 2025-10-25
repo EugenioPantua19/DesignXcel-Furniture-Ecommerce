@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import apiClient from '../../../shared/services/api/apiClient';
-import { Bars } from 'react-loader-spinner';
 import { EyeIcon, EyeOffIcon, LockIcon, CheckCircleIcon } from '../../../shared/components/ui/SvgIcons';
 
 const SecuritySettings = () => {
@@ -393,7 +392,6 @@ const SecuritySettings = () => {
               minHeight: window.innerWidth < 768 ? '48px' : '44px'
             }}
           >
-            {loading && <Bars color="#ffffff" height={window.innerWidth < 768 ? 14 : 16} width={window.innerWidth < 768 ? 14 : 16} />}
             {loading ? 'Updating password...' : 'Update Password'}
           </button>
         </div>

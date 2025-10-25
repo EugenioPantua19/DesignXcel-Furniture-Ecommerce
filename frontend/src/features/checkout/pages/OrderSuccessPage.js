@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useLocation, Link, useSearchParams } from 'react-router-dom';
-import { Bars } from 'react-loader-spinner';
 import { useAuth } from '../../../shared/hooks/useAuth';
 import paymentService from '../services/paymentService';
 import stripeService from '../services/stripeService';
@@ -265,7 +264,6 @@ const OrderSuccessPage = () => {
             <div className="order-success-page">
                 <div className="success-container">
                     <div className="loading-state">
-                        <Bars color="#F0B21B" height={40} width={40} />
                         <p>Loading payment details...</p>
                     </div>
                 </div>

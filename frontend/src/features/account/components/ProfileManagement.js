@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../../../shared/services/api/apiClient';
 import { useAuth } from '../../../shared/hooks/useAuth';
-import { Bars } from 'react-loader-spinner';
 import { EditIcon, TrashIcon, CameraIcon, UploadIcon } from '../../../shared/components/ui/SvgIcons';
 // LoadingSpinner and InlineLoader removed as requested
 import { getImageUrl } from '../../../shared/utils/imageUtils';
@@ -304,11 +303,6 @@ const ProfileManagement = () => {
         minHeight: '400px',
         textAlign: 'center'
       }}>
-        <Bars 
-          color="#F0B21B" 
-          height={window.innerWidth < 768 ? 32 : 40} 
-          width={window.innerWidth < 768 ? 32 : 40} 
-        />
         <div style={{ 
           fontSize: window.innerWidth < 768 ? '14px' : '16px', 
           color: '#6b7280', 

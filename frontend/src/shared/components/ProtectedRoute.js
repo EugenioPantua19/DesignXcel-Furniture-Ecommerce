@@ -7,7 +7,6 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { Bars } from 'react-loader-spinner';
 import UnauthorizedPage from './UnauthorizedPage';
 
 /**
@@ -57,11 +56,6 @@ const ProtectedRoute = ({
                 gap: window.innerWidth < 768 ? '12px' : '16px',
                 textAlign: 'center'
             }}>
-                <Bars 
-                    color="#F0B21B" 
-                    height={window.innerWidth < 768 ? 32 : 40} 
-                    width={window.innerWidth < 768 ? 32 : 40} 
-                />
                 <div style={{
                     fontWeight: '500',
                     maxWidth: '280px',

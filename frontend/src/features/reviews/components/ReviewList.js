@@ -1,6 +1,5 @@
 import React from 'react';
 import { getImageUrl } from '../../../shared/utils/imageUtils';
-import { Bars } from 'react-loader-spinner';
 
 const ReviewList = ({ reviews, loading, currentPage, totalPages, onPageChange }) => {
   const formatDate = (dateString) => {
@@ -61,7 +60,6 @@ const ReviewList = ({ reviews, loading, currentPage, totalPages, onPageChange })
           padding: '2rem',
           gap: '1rem'
         }}>
-          <Bars color="#F0B21B" height={60} width={60} />
           <p>Loading reviews...</p>
         </div>
       </div>

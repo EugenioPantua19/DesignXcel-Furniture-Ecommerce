@@ -4,7 +4,6 @@ import ThreeDProductsFurnitureCard from '../components/3dProductsFurnitureCard';
 import ProductFilter from '../../products/components/ProductFilter';
 import PageHeader from '../../../shared/components/layout/PageHeader';
 import { getAllProducts, getCategories } from '../../products/services/productService';
-import { Bars } from 'react-loader-spinner';
 import '../../../app/pages.css';
 
 const ThreeDProductsFurniture = () => {
@@ -243,7 +242,6 @@ const ThreeDProductsFurniture = () => {
             <div className="catalog-page">
                 <div className="container">
                     <div className="loading">
-                        <Bars color="#F0B21B" height={80} width={80} />
                         <p>Loading products...</p>
                     </div>
                 </div>

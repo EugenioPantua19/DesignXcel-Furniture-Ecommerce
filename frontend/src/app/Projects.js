@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import PageHeader from '../shared/components/layout/PageHeader';
 import { getImageUrl } from '../shared/utils/imageUtils';
-import { Bars } from 'react-loader-spinner';
 import './projects.css';
 import api from '../shared/services/api/api';
 
@@ -140,7 +139,6 @@ const Projects = () => {
               alignItems: 'center', 
               gap: '1rem' 
             }}>
-              <Bars color="#F0B21B" height={80} width={80} />
               <p>Loading our amazing projects...</p>
             </div>
           </div>

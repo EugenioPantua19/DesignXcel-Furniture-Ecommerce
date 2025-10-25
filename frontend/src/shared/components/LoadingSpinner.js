@@ -4,7 +4,6 @@
  */
 
 import React from 'react';
-import { Bars } from 'react-loader-spinner';
 
 const LoadingSpinner = ({ 
     message = 'Loading...', 
@@ -25,7 +24,6 @@ const LoadingSpinner = ({
 
     return (
         <div className={`flex flex-col items-center justify-center p-8 ${className}`}>
-            <Bars color="#F0B21B" height={spinnerSize.height} width={spinnerSize.width} />
             {showMessage && (
                 <p className="mt-4 text-gray-600 text-sm font-inter">{message}</p>
             )}

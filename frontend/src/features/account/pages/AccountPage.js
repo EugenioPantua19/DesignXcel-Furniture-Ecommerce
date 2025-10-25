@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../shared/hooks/useAuth';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useCurrency } from '../../../shared/contexts/CurrencyContext';
-import { Bars } from 'react-loader-spinner';
 import ProfileManagement from '../components/ProfileManagement';
 import AddressManagement from '../components/AddressManagement';
 import OrderHistory from '../components/OrderHistory';
@@ -261,11 +260,6 @@ const DashboardTab = ({ stats, recentOrders, loading, formatPrice, onLogout }) =
                 minHeight: '300px',
                 textAlign: 'center'
             }}>
-                <Bars 
-                    color="#F0B21B" 
-                    height={window.innerWidth < 768 ? 32 : 40} 
-                    width={window.innerWidth < 768 ? 32 : 40} 
-                />
                 <div style={{ 
                     fontSize: window.innerWidth < 768 ? '14px' : '16px', 
                     color: '#6b7280', 

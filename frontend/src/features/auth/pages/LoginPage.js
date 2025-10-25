@@ -6,7 +6,6 @@ import Captcha from '../components/Captcha';
 import TermsModal from '../components/TermsModal';
 import SignupSuccessModal from '../components/SignupSuccessModal';
 import { validatePassword } from '../../../shared/utils/validation/passwordValidation';
-import { Bars } from 'react-loader-spinner';
 import './auth.css';
 import apiClient from '../../../shared/services/api/apiClient';
 
@@ -719,7 +718,7 @@ const Login = () => {
                             {/* Submit Button */}
                             <button type="submit" className="auth-submit-btn-new" disabled={loading || (!isLogin && registerStep !== 3) || (!isLogin && !acceptedTerms)}>
                                 {loading ? (
-                                    <Bars color="#ffffff" height={20} width={20} />
+                                    isLogin ? 'Signing In...' : 'Signing Up...'
                                 ) : (
                                     isLogin ? 'Sign In' : 'Sign Up'
                                 )}
@@ -809,7 +808,6 @@ const Login = () => {
                             {testimonialsLoading ? (
                                 <div className="testimonial-overlay">
                                     <div className="loading-spinner">
-                                        <Bars color="#F0B21B" height={80} width={80} />
                                         <p>Loading testimonials...</p>
                                     </div>
                                 </div>

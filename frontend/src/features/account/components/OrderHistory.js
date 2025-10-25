@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../../../shared/services/api/apiClient';
-import { Bars } from 'react-loader-spinner';
 import { 
   PackageIcon, 
   ClockIcon, 
@@ -391,11 +390,6 @@ const OrderHistory = () => {
       minHeight: '400px',
       textAlign: 'center'
     }}>
-      <Bars 
-        color="#F0B21B" 
-        height={window.innerWidth < 768 ? 32 : 40} 
-        width={window.innerWidth < 768 ? 32 : 40} 
-      />
       <div style={{ 
         fontSize: window.innerWidth < 768 ? '14px' : '16px', 
         color: '#6b7280', 

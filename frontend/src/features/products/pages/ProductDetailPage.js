@@ -3,7 +3,6 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useCart } from '../../../shared/contexts/CartContext';
 import { useWishlist } from '../../../shared/contexts/WishlistContext';
 import { useCurrency } from '../../../shared/contexts/CurrencyContext';
-import { Bars } from 'react-loader-spinner';
 import { getProductById, getProductVariations } from '../services/productService';
 import apiConfig from '../../../shared/services/api/apiConfig.js';
 import Breadcrumb from '../../../shared/components/layout/Breadcrumb';
@@ -433,7 +432,6 @@ const ProductDetail = () => {
                   transition: 'all 0.2s ease'
                 }}
               >
-                {addingToCart && <Bars color="#ffffff" height={window.innerWidth < 768 ? 14 : 16} width={window.innerWidth < 768 ? 14 : 16} />}
                 {addingToCart ? 'Adding...' : 'Add To Cart'}
               </button>
 

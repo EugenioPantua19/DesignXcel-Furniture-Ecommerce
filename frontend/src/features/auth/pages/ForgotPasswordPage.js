@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Bars } from 'react-loader-spinner';
 import './auth.css';
 
 const ForgotPasswordPage = () => {
@@ -179,7 +178,7 @@ const ForgotPasswordPage = () => {
                                     disabled={loading || !email}
                                 >
                                     {loading ? (
-                                        <Bars color="#ffffff" height={20} width={20} />
+                                        'Sending...'
                                     ) : (
                                         'Send Reset Link'
                                     )}
@@ -238,7 +237,6 @@ const ForgotPasswordPage = () => {
                             {testimonialsLoading ? (
                                 <div className="testimonial-overlay">
                                     <div className="loading-spinner">
-                                        <Bars color="#F0B21B" height={80} width={80} />
                                         <p>Loading testimonials...</p>
                                     </div>
                                 </div>

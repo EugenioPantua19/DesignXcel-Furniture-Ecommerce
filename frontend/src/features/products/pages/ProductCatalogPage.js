@@ -6,7 +6,6 @@ import PageHeader from '../../../shared/components/layout/PageHeader';
 import Modal from '../../../shared/components/ui/Modal';
 import { ChristmasHeaderDecoration, ChristmasFooterDecoration } from '../../../shared/components/christmas';
 import { getAllProducts, getCategories } from '../services/productService';
-import { Bars } from 'react-loader-spinner';
 import '../../../app/pages.css';
 import '../../../shared/components/ui/modal.css';
 
@@ -247,7 +246,6 @@ const ProductCatalog = () => {
             <div className="catalog-page">
                 <div className="container">
                     <div className="loading">
-                        <Bars color="#F0B21B" height={80} width={80} />
                         <p>Loading products...</p>
                     </div>
                 </div>

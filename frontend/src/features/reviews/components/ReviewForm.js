@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { getImageUrl } from '../../../shared/utils/imageUtils';
-import { Bars } from 'react-loader-spinner';
 import { canUserReviewProduct } from '../services/reviewService';
 import { useAuth } from '../../../shared/hooks/useAuth';
 import { 
@@ -274,7 +273,6 @@ const ReviewForm = ({ productId, productName, onSubmit, onCancel }) => {
         {/* Purchase Requirement Message */}
         {reviewEligibility.loading ? (
           <div className="purchase-requirement-message loading">
-            <Bars color="#F0B21B" height={20} width={20} />
             <span>Checking purchase status...</span>
           </div>
         ) : !canReview ? (
@@ -524,7 +522,6 @@ const ReviewForm = ({ productId, productName, onSubmit, onCancel }) => {
             >
               {submitting ? (
                 <>
-                  <Bars color="#ffffff" height={20} width={20} />
                   Publishing Review...
                 </>
               ) : (

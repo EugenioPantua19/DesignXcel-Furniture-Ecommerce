@@ -6,7 +6,6 @@ import apiClient from '../../../shared/services/api/apiClient';
 import ConfirmationModal from '../../../shared/components/ui/ConfirmationModal';
 import PageHeader from '../../../shared/components/layout/PageHeader';
 import { getImageUrl } from '../../../shared/utils/imageUtils';
-import { Bars } from 'react-loader-spinner';
 import './orders.css';
 
 const Orders = () => {
@@ -226,7 +225,6 @@ const Orders = () => {
         return (
             <div className="orders-page">
                 <div className="loading-state">
-                    <Bars color="#F0B21B" height={80} width={80} />
                     <p>Loading your orders...</p>
                 </div>
             </div>

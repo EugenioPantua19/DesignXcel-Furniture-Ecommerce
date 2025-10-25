@@ -7,7 +7,6 @@ import Slider from '../shared/components/ui/Slider';
 import { ContactSection } from '../shared/components/layout';
 import { ChristmasHeaderDecoration, ChristmasFooterDecoration } from '../shared/components/christmas';
 import { getFeaturedProducts, productService } from '../features/products/services/productService';
-import { Bars } from 'react-loader-spinner';
 import './pages.css';
 import '../shared/components/ui/slider.css';
 
@@ -330,7 +329,6 @@ const Home = () => {
                     minHeight: '50vh',
                     gap: '1rem'
                 }}>
-                    <Bars color="#F0B21B" height={80} width={80} />
                     <p>Loading featured products...</p>
                 </div>
             </div>
@@ -611,7 +609,6 @@ const Home = () => {
                             padding: '2rem',
                             gap: '1rem'
                         }}>
-                            <Bars color="#F0B21B" height={60} width={60} />
                             <p>Loading categories...</p>
                         </div>
                     ) : (

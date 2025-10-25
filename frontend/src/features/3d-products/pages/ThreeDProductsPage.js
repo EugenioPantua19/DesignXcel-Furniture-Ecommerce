@@ -746,7 +746,6 @@ const ThreeDProducts = () => {
             padding: '2rem',
             gap: '1rem'
           }}>
-            <Bars color="#F0B21B" height={60} width={60} />
             <p>Loading 3D Products...</p>
           </div>
         </div>
@@ -799,7 +798,6 @@ const ThreeDProducts = () => {
             
             {isResizing && (
               <div className="resizing-indicator">
-                <Bars color="#F0B21B" height={20} width={20} />
                 <span>Resizing...</span>
               </div>
             )}

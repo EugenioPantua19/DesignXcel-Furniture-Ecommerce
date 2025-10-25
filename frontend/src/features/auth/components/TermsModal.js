@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Bars } from 'react-loader-spinner';
 import './TermsModal.css';
 
 const TermsModal = ({ isOpen, onClose, type = 'terms' }) => {
@@ -73,7 +72,6 @@ const TermsModal = ({ isOpen, onClose, type = 'terms' }) => {
                 <div className="terms-modal-content">
                     {loading ? (
                         <div className="terms-modal-loading">
-                            <Bars color="#F0B21B" height={80} width={80} />
                             <p>Loading content...</p>
                         </div>
                     ) : (

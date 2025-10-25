@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import apiClient from '../../../shared/services/api/apiClient';
-import { Bars } from 'react-loader-spinner';
 
 const emptyForm = {
     label: '',
@@ -162,11 +161,6 @@ const AddressManagement = () => {
                     minHeight: '300px',
                     textAlign: 'center'
                 }}>
-                    <Bars 
-                        color="#F0B21B" 
-                        height={window.innerWidth < 768 ? 32 : 40} 
-                        width={window.innerWidth < 768 ? 32 : 40} 
-                    />
                     <div style={{ 
                         fontSize: window.innerWidth < 768 ? '14px' : '16px', 
                         color: '#6b7280', 
@@ -207,7 +201,6 @@ const AddressManagement = () => {
                                                 minHeight: window.innerWidth < 768 ? '32px' : '36px'
                                             }}
                                         >
-                                            {defaultSettingId === addr.AddressID && <Bars color="#6b7280" height={window.innerWidth < 768 ? 10 : 12} width={window.innerWidth < 768 ? 10 : 12} />}
                                             {defaultSettingId === addr.AddressID ? 'Setting...' : 'Set Default'}
                                         </button>
                                         <button 
@@ -230,7 +223,6 @@ const AddressManagement = () => {
                                                 minHeight: window.innerWidth < 768 ? '32px' : '36px'
                                             }}
                                         >
-                                            {deletingId === addr.AddressID && <Bars color="#ffffff" height={window.innerWidth < 768 ? 10 : 12} width={window.innerWidth < 768 ? 10 : 12} />}
                                             {deletingId === addr.AddressID ? 'Deleting...' : 'Delete'}
                                         </button>
                                     </div>
@@ -316,7 +308,6 @@ const AddressManagement = () => {
                                 transition: 'all 0.2s ease'
                             }}
                         >
-                            {saving && <Bars color="#ffffff" height={window.innerWidth < 768 ? 14 : 16} width={window.innerWidth < 768 ? 14 : 16} />}
                             {saving ? (editingId ? 'Saving...' : 'Adding...') : (editingId ? 'Save Changes' : 'Add Address')}
                         </button>
                         {editingId && (

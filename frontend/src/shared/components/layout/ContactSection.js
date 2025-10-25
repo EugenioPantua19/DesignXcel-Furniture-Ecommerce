@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import apiConfig from '../../services/api/apiConfig.js';
-import { Bars } from 'react-loader-spinner';
 import EnhancedLeafletMap from '../ui/EnhancedLeafletMap';
 import '../ui/LeafletMap.css';
 
@@ -185,7 +184,6 @@ const ContactSection = () => {
               <button type="submit" className="contact-submit-btn" disabled={isSubmitting}>
                 {isSubmitting ? (
                   <>
-                    <Bars color="#ffffff" height={20} width={20} />
                     Sending...
                   </>
                 ) : (

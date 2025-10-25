@@ -1,5 +1,4 @@
 import React from 'react';
-import { Bars } from 'react-loader-spinner';
 import './LoadingSpinner.css';
 
 const LoadingSpinner = ({ 
@@ -31,7 +30,6 @@ const LoadingSpinner = ({
   return (
     <div className={spinnerClasses}>
       <div className="loading-spinner__container">
-        <Bars color="#F0B21B" height={spinnerSize.height} width={spinnerSize.width} />
         {text && (
           <div className="loading-spinner__text">
             {text}
