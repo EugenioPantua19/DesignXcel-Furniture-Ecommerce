@@ -466,6 +466,8 @@ module.exports = function(sql, pool) {
         try {
             const { email } = req.body;
             
+            console.log('📧 OTP Request received for email:', email);
+            
             if (!email) {
                 return res.json({ success: false, message: 'Email is required' });
             }
@@ -513,6 +515,7 @@ module.exports = function(sql, pool) {
             console.log('📧 Email config check:');
             console.log('  - OTP_EMAIL_USER:', process.env.OTP_EMAIL_USER ? 'Set' : 'Not set');
             console.log('  - OTP_EMAIL_PASS:', process.env.OTP_EMAIL_PASS ? 'Set' : 'Not set');
+            console.log('  - NODE_ENV:', process.env.NODE_ENV);
             
             // Check if email credentials are properly configured
             const emailUser = process.env.OTP_EMAIL_USER;
@@ -598,6 +601,68 @@ module.exports = function(sql, pool) {
             console.error('Error details:', err.message);
             console.error('Error code:', err.code);
             res.json({ success: false, message: 'Failed to send OTP: ' + err.message });
+        }
+    });
+    
+    // Test OTP email functionality
+    router.post('/api/auth/test-otp', async (req, res) => {
+        try {
+            const { email } = req.body;
+            
+            if (!email) {
+                return res.json({ success: false, message: 'Email is required' });
+            }
+            
+            console.log('🧪 Testing OTP email for:', email);
+            
+            // Generate test OTP
+            const otp = '123456';
+            
+            // Send test email
+            const nodemailer = require('nodemailer');
+            const emailUser = process.env.OTP_EMAIL_USER;
+            const emailPass = process.env.OTP_EMAIL_PASS;
+            
+            if (!emailUser || !emailPass) {
+                return res.json({ success: false, message: 'Email credentials not configured' });
+            }
+            
+            const transporter = nodemailer.createTransport({
+                service: 'gmail',
+                auth: {
+                    user: emailUser,
+                    pass: emailPass
+                }
+            });
+            
+            const mailOptions = {
+                from: emailUser,
+                to: email,
+                subject: 'Test OTP - Design Excellence',
+                html: `
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                        <h2 style="color: #F0B21B;">Design Excellence - Test OTP</h2>
+                        <h3>Your Test OTP Code</h3>
+                        <p>Your verification code is: <strong style="font-size: 24px; color: #1f2937;">${otp}</strong></p>
+                        <p>This is a test email to verify OTP functionality.</p>
+                        <p>If you received this email, the OTP system is working correctly.</p>
+                    </div>
+                `,
+                text: `Your test OTP code is: ${otp}. This is a test email to verify OTP functionality.`
+            };
+            
+            await transporter.sendMail(mailOptions);
+            console.log('✅ Test OTP email sent successfully to:', email);
+            
+            res.json({ 
+                success: true, 
+                message: 'Test OTP email sent successfully',
+                otp: otp // Include OTP in response for testing
+            });
+            
+        } catch (err) {
+            console.error('❌ Error sending test OTP:', err);
+            res.json({ success: false, message: 'Failed to send test OTP: ' + err.message });
         }
     });
     
