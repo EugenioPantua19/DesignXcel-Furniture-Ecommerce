@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../../../shared/contexts/CartContext';
 import './checkout.css';
 import { useAuth } from '../../../shared/hooks/useAuth';
+import AudioLoader from '../../../shared/components/ui/AudioLoader';
 import ConfirmationModal from '../../../shared/components/ui/ConfirmationModal';
 import { ChristmasHeaderDecoration, ChristmasFooterDecoration } from '../../../shared/components/christmas';
 import apiClient from '../../../shared/services/api/apiClient';
@@ -284,7 +285,7 @@ const CheckoutPage = () => {
         return (
             <div className="checkout-page">
                 <div className="empty-cart">
-                    <div className="loading-spinner" style={{ margin: '0 auto 1rem' }}></div>
+                    <AudioLoader size="large" color="#F0B21B" />
                     <h2>Loading checkout...</h2>
                     <p className="text-gray-500">Please wait while we verify your authentication.</p>
                 </div>
@@ -427,7 +428,7 @@ const CheckoutPage = () => {
                         </div>
                         {addressLoading ? (
                             <div className="text-center" style={{ padding: '2rem' }}>
-                                <div className="loading-spinner" style={{ margin: '0 auto 1rem' }}></div>
+                                <AudioLoader size="medium" color="#F0B21B" />
                                 <p className="text-gray-500">Loading address...</p>
                             </div>
                         ) : defaultAddress ? (

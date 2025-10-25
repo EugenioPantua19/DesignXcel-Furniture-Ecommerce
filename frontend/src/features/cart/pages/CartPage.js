@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../../../shared/contexts/CartContext';
 import { useCurrency } from '../../../shared/contexts/CurrencyContext';
 import CartItem from '../components/CartItem';
+import AudioLoader from '../../../shared/components/ui/AudioLoader';
 import ConfirmationModal from '../../../shared/components/ui/ConfirmationModal';
 import PageHeader from '../../../shared/components/layout/PageHeader';
 import { ChristmasHeaderDecoration, ChristmasFooterDecoration } from '../../../shared/components/christmas';

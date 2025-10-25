@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FaQuoteLeft, FaStar } from 'react-icons/fa';
 import Slider from '../ui/Slider';
+import AudioLoader from '../ui/AudioLoader';
 import { getImageUrl } from '../../utils/imageUtils';
 import './testimonials.css';
 import '../ui/slider.css';
@@ -58,7 +59,10 @@ const Testimonials = ({ designSettings = {} }) => {
     return (
       <section className="testimonials">
         <div className="container">
-          <div className="loading">Loading testimonials...</div>
+          <div className="loading">
+            <AudioLoader size="large" color="#F0B21B" />
+            <p>Loading testimonials...</p>
+          </div>
         </div>
       </section>
     );

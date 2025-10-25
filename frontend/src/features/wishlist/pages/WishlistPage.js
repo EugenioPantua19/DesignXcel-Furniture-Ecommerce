@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useWishlist } from '../../../shared/contexts/WishlistContext';
 import { useCurrency } from '../../../shared/contexts/CurrencyContext';
 import { useCart } from '../../../shared/contexts/CartContext';
+import AudioLoader from '../../../shared/components/ui/AudioLoader';
 import PageHeader from '../../../shared/components/layout/PageHeader';
 import ConfirmationModal from '../../../shared/components/ui/ConfirmationModal';
 import { getPrimaryImageUrl } from '../../../shared/utils/imageUtils';

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../../shared/hooks/useAuth';
 import { useCurrency } from '../../../shared/contexts/CurrencyContext';
 import apiClient from '../../../shared/services/api/apiClient';
+import AudioLoader from '../../../shared/components/ui/AudioLoader';
 import ConfirmationModal from '../../../shared/components/ui/ConfirmationModal';
 import PageHeader from '../../../shared/components/layout/PageHeader';
 import { getImageUrl } from '../../../shared/utils/imageUtils';
@@ -225,6 +226,7 @@ const Orders = () => {
         return (
             <div className="orders-page">
                 <div className="loading-state">
+                    <AudioLoader size="large" color="#F0B21B" />
                     <p>Loading your orders...</p>
                 </div>
             </div>

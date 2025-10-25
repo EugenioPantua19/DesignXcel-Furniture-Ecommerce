@@ -4,6 +4,7 @@ import ThreeDProductsFurnitureCard from '../components/3dProductsFurnitureCard';
 import ProductFilter from '../../products/components/ProductFilter';
 import PageHeader from '../../../shared/components/layout/PageHeader';
 import { getAllProducts, getCategories } from '../../products/services/productService';
+import AudioLoader from '../../../shared/components/ui/AudioLoader';
 import '../../../app/pages.css';
 
 const ThreeDProductsFurniture = () => {
@@ -242,6 +243,7 @@ const ThreeDProductsFurniture = () => {
             <div className="catalog-page">
                 <div className="container">
                     <div className="loading">
+                        <AudioLoader size="large" color="#F0B21B" />
                         <p>Loading products...</p>
                     </div>
                 </div>

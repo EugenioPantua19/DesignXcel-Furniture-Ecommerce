@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../shared/hooks/useAuth';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useCurrency } from '../../../shared/contexts/CurrencyContext';
+import AudioLoader from '../../../shared/components/ui/AudioLoader';
 import ProfileManagement from '../components/ProfileManagement';
 import AddressManagement from '../components/AddressManagement';
 import OrderHistory from '../components/OrderHistory';
@@ -110,7 +111,17 @@ const Account = () => {
     // Show loading while authentication is being checked
     if (loading) {
         return (
-            <PageLoader isLoading={true} text="Loading your account..." />
+            <div style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                minHeight: '50vh',
+                gap: '1rem'
+            }}>
+                <AudioLoader size="large" color="#F0B21B" />
+                <p>Loading your account...</p>
+            </div>
         );
     }
 
@@ -258,12 +269,13 @@ const DashboardTab = ({ stats, recentOrders, loading, formatPrice, onLogout }) =
                 justifyContent: 'center',
                 padding: '60px 20px',
                 minHeight: '300px',
-                textAlign: 'center'
+                textAlign: 'center',
+                gap: '1rem'
             }}>
+                <AudioLoader size="medium" color="#F0B21B" />
                 <div style={{ 
                     fontSize: window.innerWidth < 768 ? '14px' : '16px', 
                     color: '#6b7280', 
-                    marginTop: '16px',
                     fontWeight: '500',
                     maxWidth: '280px',
                     lineHeight: '1.5'

@@ -11,6 +11,7 @@ import { getProductById } from '../../products/services/productService';
 import { useCart } from '../../../shared/contexts/CartContext';
 import { useCurrency } from '../../../shared/contexts/CurrencyContext';
 import PageHeader from '../../../shared/components/layout/PageHeader';
+import AudioLoader from '../../../shared/components/ui/AudioLoader';
 import CartSuccessModal from '../../../shared/components/ui/CartSuccessModal';
 import { getImageUrl, getModel3dUrl } from '../../../shared/utils/imageUtils';
 import { testProduct3dModel, debugProduct3dModel } from '../../../shared/utils/debug3dModels';
@@ -746,6 +747,7 @@ const ThreeDProducts = () => {
             padding: '2rem',
             gap: '1rem'
           }}>
+            <AudioLoader size="large" color="#F0B21B" />
             <p>Loading 3D Products...</p>
           </div>
         </div>
@@ -962,6 +964,7 @@ const ThreeDProducts = () => {
                     justifyContent: 'center',
                     gap: '1rem'
                   }}>
+                    <AudioLoader size="large" color="#F0B21B" />
                     <p>Loading 3D Model...</p>
                   </div>
                 </Html>
