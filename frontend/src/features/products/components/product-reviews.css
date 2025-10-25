@@ -426,14 +426,7 @@
     flex-shrink: 0;
 }
 
-.loading-icon {
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
+/* Circle spinner removed - using text-based loading states */
 
 /* Reviews List */
 .reviews-list {

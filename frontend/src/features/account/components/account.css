@@ -1491,15 +1491,7 @@
     max-width: 400px;
 }
 
-/* Spinner Animation */
-.spinner {
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
+/* Circle spinner removed - using text-based loading states */
 
 /* Mobile Responsive */
 @media (max-width: 1024px) {
