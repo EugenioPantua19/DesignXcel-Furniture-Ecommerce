@@ -6,6 +6,7 @@ import PageHeader from '../../../shared/components/layout/PageHeader';
 import Modal from '../../../shared/components/ui/Modal';
 import { ChristmasHeaderDecoration, ChristmasFooterDecoration } from '../../../shared/components/christmas';
 import { getAllProducts, getCategories } from '../services/productService';
+import AudioLoader from '../../../shared/components/ui/AudioLoader';
 import '../../../app/pages.css';
 import '../../../shared/components/ui/modal.css';
 
@@ -246,6 +247,7 @@ const ProductCatalog = () => {
             <div className="catalog-page">
                 <div className="container">
                     <div className="loading">
+                        <AudioLoader size="large" color="#F0B21B" />
                         <p>Loading products...</p>
                     </div>
                 </div>

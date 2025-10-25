@@ -5,6 +5,7 @@ import { useWishlist } from '../../../shared/contexts/WishlistContext';
 import { useCurrency } from '../../../shared/contexts/CurrencyContext';
 import { getProductById, getProductVariations } from '../services/productService';
 import apiConfig from '../../../shared/services/api/apiConfig.js';
+import AudioLoader from '../../../shared/components/ui/AudioLoader';
 import Breadcrumb from '../../../shared/components/layout/Breadcrumb';
 import CartSuccessModal from '../../../shared/components/ui/CartSuccessModal';
 import { PageLoader } from '../../../shared/components/ui';
@@ -432,7 +433,14 @@ const ProductDetail = () => {
                   transition: 'all 0.2s ease'
                 }}
               >
-                {addingToCart ? 'Adding...' : 'Add To Cart'}
+                {addingToCart ? (
+                  <>
+                    <AudioLoader size="small" color="#ffffff" />
+                    Adding...
+                  </>
+                ) : (
+                  'Add To Cart'
+                )}
               </button>
 
               <button 

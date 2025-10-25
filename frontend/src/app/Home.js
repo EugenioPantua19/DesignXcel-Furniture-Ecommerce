@@ -7,6 +7,7 @@ import Slider from '../shared/components/ui/Slider';
 import { ContactSection } from '../shared/components/layout';
 import { ChristmasHeaderDecoration, ChristmasFooterDecoration } from '../shared/components/christmas';
 import { getFeaturedProducts, productService } from '../features/products/services/productService';
+import AudioLoader from '../shared/components/ui/AudioLoader';
 import './pages.css';
 import '../shared/components/ui/slider.css';
 
@@ -329,6 +330,7 @@ const Home = () => {
                     minHeight: '50vh',
                     gap: '1rem'
                 }}>
+                    <AudioLoader size="large" color="#F0B21B" />
                     <p>Loading featured products...</p>
                 </div>
             </div>
@@ -609,6 +611,7 @@ const Home = () => {
                             padding: '2rem',
                             gap: '1rem'
                         }}>
+                            <AudioLoader size="medium" color="#F0B21B" />
                             <p>Loading categories...</p>
                         </div>
                     ) : (
