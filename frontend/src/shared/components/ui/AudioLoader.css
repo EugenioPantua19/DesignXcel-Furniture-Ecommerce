@@ -6,6 +6,57 @@
   padding: 1rem;
 }
 
+/* Audio loader animation styles */
+.audio-loader svg {
+  display: block;
+}
+
+/* Audio loader bars animation */
+@keyframes audio-loader-bar-1 {
+  0%, 40%, 100% {
+    transform: scaleY(0.4);
+  }
+  20% {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes audio-loader-bar-2 {
+  0%, 40%, 100% {
+    transform: scaleY(0.4);
+  }
+  20% {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes audio-loader-bar-3 {
+  0%, 40%, 100% {
+    transform: scaleY(0.4);
+  }
+  20% {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes audio-loader-bar-4 {
+  0%, 40%, 100% {
+    transform: scaleY(0.4);
+  }
+  20% {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes audio-loader-bar-5 {
+  0%, 40%, 100% {
+    transform: scaleY(0.4);
+  }
+  20% {
+    transform: scaleY(1);
+  }
+}
+
 /* Size variants */
 .audio-loader--small {
   padding: 0.5rem;
