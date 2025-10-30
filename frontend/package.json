@@ -36,7 +36,7 @@
     "uuid": "^13.0.0"
   },
   "scripts": {
-    "start": "cross-env PORT=3000 serve -s build -l 3000",
+    "start": "serve -s build -l ${PORT:-3000}",
     "dev": "craco start",
     "build": "react-scripts build",
     "build:production": "react-scripts build",
