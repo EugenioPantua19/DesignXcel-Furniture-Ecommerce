@@ -507,88 +507,25 @@ module.exports = function(sql, pool) {
                         VALUES (@email, @otp, DATEADD(MINUTE, 5, GETDATE()), GETDATE());
                 `);
             
-            // Send OTP via email using nodemailer
-            const nodemailer = require('nodemailer');
-            const fs = require('fs');
-            const path = require('path');
+            // Send OTP via email using SendGrid (works on Railway)
+            const { sendOtpEmail } = require('./utils/sendgridHelper');
             
             console.log('📧 Email config check:');
+            console.log('  - SENDGRID_API_KEY:', process.env.SENDGRID_API_KEY ? 'Set' : 'Not set');
             console.log('  - OTP_EMAIL_USER:', process.env.OTP_EMAIL_USER ? 'Set' : 'Not set');
-            console.log('  - OTP_EMAIL_PASS:', process.env.OTP_EMAIL_PASS ? 'Set' : 'Not set');
             console.log('  - NODE_ENV:', process.env.NODE_ENV);
             
-            // Check if email credentials are properly configured
-            const emailUser = process.env.OTP_EMAIL_USER;
-            const emailPass = process.env.OTP_EMAIL_PASS;
+            // Send OTP via SendGrid
+            const emailResult = await sendOtpEmail(email, otp);
             
-            // Development fallback: if email credentials are not configured, just log the OTP
-            if (!emailUser || emailUser === 'your_gmail_username@gmail.com' || !emailPass || emailPass === 'your_gmail_app_password') {
-                console.log('📧 Email credentials not configured. OTP for development:', otp);
-                console.log(`📧 Would send OTP to ${email}: ${otp}`);
-                
-                // In development, we'll still return success but log the OTP
-                res.json({ 
-                    success: true, 
-                    message: 'OTP generated successfully (email not configured)',
-                    otp: process.env.NODE_ENV === 'development' ? otp : undefined,
-                    development: true
+            if (!emailResult.success) {
+                return res.json({ 
+                    success: false, 
+                    message: emailResult.message || 'Failed to send OTP email'
                 });
-                return;
             }
             
-            const transporter = nodemailer.createTransport({
-                service: 'gmail',
-                auth: {
-                    user: emailUser,
-                    pass: emailPass
-                }
-            });
-            
-            // Read HTML template
-            const templatePath = path.join(__dirname, 'templates', 'emails', 'auth', 'otp-email.html');
-            let htmlTemplate = '';
-            
-            try {
-                htmlTemplate = fs.readFileSync(templatePath, 'utf8');
-            } catch (err) {
-                console.log('Using fallback template');
-                htmlTemplate = `
-                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                        <h2 style="color: #F0B21B;">Design Excellence</h2>
-                        <h3>Your OTP Code</h3>
-                        <p>Your verification code is: <strong style="font-size: 24px; color: #1f2937;">{{OTP_CODE}}</strong></p>
-                        <p>This code is valid for 5 minutes.</p>
-                        <p>If you didn't request this code, please ignore this email.</p>
-                    </div>
-                `;
-            }
-            
-            // Replace placeholder with actual OTP
-            const htmlContent = htmlTemplate.replace('{{OTP_CODE}}', otp);
-            
-            console.log('📧 Sending email to:', email);
-            console.log('📧 Using HTML template:', htmlContent.length > 0 ? 'Yes' : 'No');
-            
-            const mailOptions = {
-                from: emailUser,
-                to: email,
-                subject: 'Your Design Excellence OTP Code',
-                html: htmlContent,
-                text: `Your OTP code is: ${otp}. It is valid for 5 minutes.`
-            };
-            
-            console.log('📧 Mail options:', {
-                from: mailOptions.from,
-                to: mailOptions.to,
-                subject: mailOptions.subject,
-                hasHtml: !!mailOptions.html,
-                htmlLength: mailOptions.html ? mailOptions.html.length : 0
-            });
-            
-            const result = await transporter.sendMail(mailOptions);
-            console.log('📧 Email sent successfully:', result.messageId);
-            
-            console.log(`OTP sent to ${email}: ${otp}`);
+            console.log(`✅ OTP sent to ${email}`);
             
             res.json({ 
                 success: true, 
@@ -615,50 +552,17 @@ module.exports = function(sql, pool) {
             
             console.log('🧪 Testing OTP email for:', email);
             
-            // Generate test OTP
-            const otp = '123456';
+            // Send test email via SendGrid
+            const { sendTestOtpEmail } = require('./utils/sendgridHelper');
+            const result = await sendTestOtpEmail(email);
             
-            // Send test email
-            const nodemailer = require('nodemailer');
-            const emailUser = process.env.OTP_EMAIL_USER;
-            const emailPass = process.env.OTP_EMAIL_PASS;
-            
-            if (!emailUser || !emailPass) {
-                return res.json({ success: false, message: 'Email credentials not configured' });
+            if (result.success) {
+                console.log('✅ Test OTP email sent successfully to:', email);
+            } else {
+                console.error('❌ Error sending test OTP:', result.message);
             }
             
-            const transporter = nodemailer.createTransport({
-                service: 'gmail',
-                auth: {
-                    user: emailUser,
-                    pass: emailPass
-                }
-            });
-            
-            const mailOptions = {
-                from: emailUser,
-                to: email,
-                subject: 'Test OTP - Design Excellence',
-                html: `
-                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                        <h2 style="color: #F0B21B;">Design Excellence - Test OTP</h2>
-                        <h3>Your Test OTP Code</h3>
-                        <p>Your verification code is: <strong style="font-size: 24px; color: #1f2937;">${otp}</strong></p>
-                        <p>This is a test email to verify OTP functionality.</p>
-                        <p>If you received this email, the OTP system is working correctly.</p>
-                    </div>
-                `,
-                text: `Your test OTP code is: ${otp}. This is a test email to verify OTP functionality.`
-            };
-            
-            await transporter.sendMail(mailOptions);
-            console.log('✅ Test OTP email sent successfully to:', email);
-            
-            res.json({ 
-                success: true, 
-                message: 'Test OTP email sent successfully',
-                otp: otp // Include OTP in response for testing
-            });
+            res.json(result);
             
         } catch (err) {
             console.error('❌ Error sending test OTP:', err);
@@ -698,6 +602,58 @@ module.exports = function(sql, pool) {
         } catch (err) {
             console.error('Error verifying OTP:', err);
             res.json({ success: false, message: 'Failed to verify OTP' });
+        }
+    });
+
+    // =============================================================================
+    // DEBUG ENDPOINTS
+    // =============================================================================
+    
+    // Debug endpoint to check environment variables
+    router.get('/api/debug/env-check', async (req, res) => {
+        try {
+            const envCheck = {
+                nodeEnv: process.env.NODE_ENV,
+                otpEmailUser: process.env.OTP_EMAIL_USER ? 'Set' : 'Not set',
+                otpEmailPass: process.env.OTP_EMAIL_PASS ? 'Set' : 'Not set',
+                dbServer: process.env.DB_SERVER ? 'Set' : 'Not set',
+                sessionSecret: process.env.SESSION_SECRET ? 'Set' : 'Not set',
+                corsOrigin: process.env.CORS_ORIGIN ? 'Set' : 'Not set',
+                timestamp: new Date().toISOString()
+            };
+            
+            console.log('🔍 Environment check requested:', envCheck);
+            
+            res.json({
+                success: true,
+                message: 'Environment variables check',
+                environment: envCheck
+            });
+        } catch (error) {
+            console.error('❌ Environment check error:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Environment check failed',
+                error: error.message
+            });
+        }
+    });
+    
+    // Health check endpoint
+    router.get('/api/health', async (req, res) => {
+        try {
+            res.json({
+                success: true,
+                message: 'Server is running',
+                timestamp: new Date().toISOString(),
+                uptime: process.uptime()
+            });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                message: 'Health check failed',
+                error: error.message
+            });
         }
     });
 
@@ -13950,7 +13906,161 @@ module.exports = function(sql, pool) {
     });
 
     /**
-     * Customer Registration (API endpoint)
+     * Customer Registration with OTP Verification (API endpoint)
+     * POST /api/auth/customer/register-with-otp
+     */
+    router.post('/api/auth/customer/register-with-otp', async (req, res) => {
+        try {
+            const { fullName, email, phoneNumber, password, confirmPassword, otp } = req.body;
+            
+            console.log('📧 OTP Registration attempt for email:', email);
+            
+            // Validation
+            if (!fullName || !email || !password || !otp) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Full name, email, password, and OTP are required.',
+                    code: 'MISSING_REQUIRED_FIELDS'
+                });
+            }
+
+            if (password !== confirmPassword) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Passwords do not match.',
+                    code: 'PASSWORD_MISMATCH'
+                });
+            }
+
+            if (password.length < 6) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Password must be at least 6 characters long.',
+                    code: 'PASSWORD_TOO_SHORT'
+                });
+            }
+
+            // Email validation
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Please enter a valid email address.',
+                    code: 'INVALID_EMAIL'
+                });
+            }
+
+            await pool.connect();
+
+            // First verify the OTP
+            console.log('🔐 Verifying OTP for email:', email);
+            const otpResult = await pool.request()
+                .input('email', sql.NVarChar, email)
+                .input('otp', sql.NVarChar, otp)
+                .query(`
+                    SELECT OTP, ExpiresAt 
+                    FROM OTPVerification 
+                    WHERE Email = @email AND OTP = @otp AND ExpiresAt > GETDATE()
+                `);
+            
+            if (otpResult.recordset.length === 0) {
+                console.log('❌ Invalid or expired OTP for email:', email);
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Invalid or expired OTP. Please request a new OTP.',
+                    code: 'INVALID_OTP'
+                });
+            }
+            
+            console.log('✅ OTP verified successfully for email:', email);
+
+            // Check for duplicate email (double check)
+            const existing = await pool.request()
+                .input('email', sql.NVarChar, email)
+                .query('SELECT CustomerID FROM Customers WHERE Email = @email');
+
+            if (existing.recordset.length > 0) {
+                return res.status(409).json({ 
+                    success: false, 
+                    message: 'An account with this email already exists.',
+                    code: 'EMAIL_ALREADY_EXISTS'
+                });
+            }
+
+            // Hash password
+            const saltRounds = 12;
+            const hash = await bcrypt.hash(password, saltRounds);
+
+            // Insert new customer
+            const insertResult = await pool.request()
+                .input('fullName', sql.NVarChar, fullName.trim())
+                .input('email', sql.NVarChar, email.toLowerCase().trim())
+                .input('phoneNumber', sql.NVarChar, phoneNumber || null)
+                .input('passwordHash', sql.NVarChar, hash)
+                .query(`
+                    INSERT INTO Customers (FullName, Email, PhoneNumber, PasswordHash, IsActive, CreatedAt) 
+                    OUTPUT INSERTED.CustomerID
+                    VALUES (@fullName, @email, @phoneNumber, @passwordHash, 1, GETDATE())
+                `);
+
+            const newCustomerId = insertResult.recordset[0].CustomerID;
+            console.log('✅ New customer created with ID:', newCustomerId);
+
+            // Clean up the OTP record
+            await pool.request()
+                .input('email', sql.NVarChar, email)
+                .query('DELETE FROM OTPVerification WHERE Email = @email');
+            
+            console.log('✅ OTP record cleaned up for email:', email);
+
+            // Create customer session data
+            const customerData = {
+                id: newCustomerId,
+                fullName: fullName.trim(),
+                email: email.toLowerCase().trim(),
+                phoneNumber: phoneNumber,
+                role: 'Customer',
+                type: 'customer',
+                isEmailVerified: true // OTP verification confirms email
+            };
+
+            // Store in session
+            req.session.user = customerData;
+            req.session.customerData = customerData;
+
+            // Generate JWT tokens for new customer
+            let jwtTokens = null;
+            try {
+                jwtTokens = jwtUtils.generateTokenPair(customerData);
+                console.log('✅ JWT tokens generated for new customer');
+            } catch (tokenError) {
+                console.error('JWT token creation error:', tokenError);
+                // Continue without tokens - session auth will work
+            }
+
+            console.log('🎉 Registration completed successfully for:', email);
+
+            res.status(201).json({ 
+                success: true, 
+                message: 'Registration successful! Welcome to DesignXcel!',
+                user: customerData,
+                tokens: jwtTokens
+            });
+
+        } catch (err) {
+            console.error('❌ OTP Registration error:', err);
+            console.error('Error details:', err.message);
+            console.error('Error stack:', err.stack);
+            res.status(500).json({ 
+                success: false, 
+                message: 'An error occurred during registration. Please try again.',
+                code: 'SERVER_ERROR'
+            });
+        }
+    });
+
+    /**
+     * Customer Registration (Legacy - Direct registration without OTP)
      * POST /api/auth/customer/register
      */
     router.post('/api/auth/customer/register', async (req, res) => {
