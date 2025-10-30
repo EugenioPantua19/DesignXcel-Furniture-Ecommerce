@@ -347,13 +347,18 @@ module.exports = function(sql, pool) {
     async function logActivity(userId, action, tableAffected, recordId, description, changes = null) {
         try {
             await pool.connect();
+            
+            // Convert recordId to string if it exists, otherwise use null
+            const recordIdValue = recordId !== undefined && recordId !== null ? String(recordId) : null;
+            const changesValue = changes !== undefined && changes !== null ? String(changes) : null;
+            
             await pool.request()
                 .input('userId', sql.Int, userId)
                 .input('action', sql.NVarChar, action)
                 .input('tableAffected', sql.NVarChar, tableAffected)
-                .input('recordId', sql.NVarChar, recordId || null)
+                .input('recordId', sql.NVarChar, recordIdValue)
                 .input('description', sql.NVarChar, description)
-                .input('changes', sql.NVarChar, changes || null)
+                .input('changes', sql.NVarChar, changesValue)
                 .query(`
                     INSERT INTO ActivityLogs (UserID, Action, TableAffected, RecordID, Description, Changes, Timestamp)
                     VALUES (@userId, @action, @tableAffected, @recordId, @description, @changes, GETDATE())
