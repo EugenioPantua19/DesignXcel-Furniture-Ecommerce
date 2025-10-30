@@ -99,7 +99,6 @@ const Footer = () => {
             <ul className="footer-links" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
               <li style={{ marginBottom: '0.3rem' }}><Link to="/account" className="footer-link" style={{ color: '#FFFFFF', textDecoration: 'none', fontSize: '0.8rem' }}>My Account</Link></li>
               <li style={{ marginBottom: '0.3rem' }}><Link to="/orders" className="footer-link" style={{ color: '#FFFFFF', textDecoration: 'none', fontSize: '0.8rem' }}>Track Your Order</Link></li>
-              <li style={{ marginBottom: '0.3rem' }}><Link to="/faq" className="footer-link" style={{ color: '#FFFFFF', textDecoration: 'none', fontSize: '0.8rem' }}>FAQ</Link></li>
             </ul>
           </div>
           

@@ -4,7 +4,6 @@ import ProductCard from '../components/ProductCard';
 import ProductFilter from '../components/ProductFilter';
 import PageHeader from '../../../shared/components/layout/PageHeader';
 import Modal from '../../../shared/components/ui/Modal';
-import { ChristmasHeaderDecoration, ChristmasFooterDecoration } from '../../../shared/components/christmas';
 import { getAllProducts, getCategories } from '../services/productService';
 import AudioLoader from '../../../shared/components/ui/AudioLoader';
 import '../../../app/pages.css';
@@ -225,7 +224,7 @@ const ProductCatalog = () => {
             const [min, max] = filters.priceRange.split('-');
             activeFilters.push({
                 type: 'priceRange',
-                label: `Price: $${min}.00 - $${max}.00`,
+                label: `Price: ₱${min}.00 - ₱${max}.00`,
                 value: filters.priceRange
             });
         }
@@ -258,7 +257,6 @@ const ProductCatalog = () => {
     return (
         <div className="catalog-page">
             <div className="container">
-                {currentTheme === 'christmas' && <ChristmasHeaderDecoration />}
                 <PageHeader
                     breadcrumbs={[
                         { label: 'Home', href: '/' },
@@ -398,7 +396,6 @@ const ProductCatalog = () => {
                         </div>
                     </div>
                 </Modal>
-                {currentTheme === 'christmas' && <ChristmasFooterDecoration />}
             </div>
         </div>
     );

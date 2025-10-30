@@ -132,11 +132,16 @@
                                     <div style="margin-bottom: 10px;">
                                         <div style="font-weight: bold;">Payment Method:</div>
                                         <div style="display: flex; align-items: center; gap: 8px;">
-                                            <span><%= order.PaymentMethod %></span>
-                                            <% if (order.PaymentMethod && order.PaymentMethod.includes('E-Wallet')) { %>
-                                                <span style="background: #28a745; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.8em;">PAID</span>
-                                            <% } else if (order.PaymentMethod === 'Bank Transfer') { %>
-                                                <span style="background: #17a2b8; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.8em;">BANK</span>
+                                            <% if (order.PaymentMethod === 'Bank Transfer' && !order.StripeSessionID && order.PaymentStatus === 'Pending') { %>
+                                                <span>Cash On Delivery</span>
+                                                <span style="background: #ffc107; color: black; padding: 2px 6px; border-radius: 3px; font-size: 0.8em;">COD</span>
+                                            <% } else { %>
+                                                <span><%= order.PaymentMethod %></span>
+                                                <% if (order.PaymentMethod && order.PaymentMethod.includes('E-Wallet')) { %>
+                                                    <span style="background: #28a745; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.8em;">PAID</span>
+                                                <% } else if (order.PaymentMethod === 'Bank Transfer') { %>
+                                                    <span style="background: #17a2b8; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.8em;">BANK</span>
+                                                <% } %>
                                             <% } %>
                                             <% if (order.StripeSessionID) { %>
                                                 <button type="button" onclick="checkPaymentStatus(<%= order.OrderID %>)" style="background: #007bff; color: white; border: none; padding: 2px 6px; border-radius: 3px; font-size: 0.8em; cursor: pointer;">Check Payment</button>

@@ -29,6 +29,9 @@ import './shared/utils/themeManager';
 import ChristmasSnowfall from './shared/components/ChristmasSnowfall';
 import { ChristmasPageDecoration } from './shared/components/christmas';
 
+// Import API connection test
+import apiConnectionTest from './shared/utils/apiConnectionTest';
+
 // Import Stripe debug utilities in development
 if (process.env.NODE_ENV === 'development') {
     import('./shared/utils/stripeDebug');
@@ -103,14 +106,6 @@ function ThemeHandler() {
     return (
         <>
             <ChristmasSnowfall isActive={currentTheme === 'christmas'} />
-            {currentTheme === 'christmas' && (
-                <>
-                    <ChristmasPageDecoration position="top-left" icon="tree" size={28} />
-                    <ChristmasPageDecoration position="top-right" icon="star" size={24} />
-                    <ChristmasPageDecoration position="bottom-left" icon="gift" size={26} />
-                    <ChristmasPageDecoration position="bottom-right" icon="bell" size={24} />
-                </>
-            )}
         </>
     );
 }
@@ -152,6 +147,24 @@ function WishlistProviderWithUserId({ children }) {
 }
 
 function App() {
+    // Test API connection on app load
+    useEffect(() => {
+        const testConnection = async () => {
+            console.log('🚀 App starting - testing API connection...');
+            const config = apiConnectionTest.getConfig();
+            console.log('📋 API Configuration:', config);
+            
+            const result = await apiConnectionTest.testConnection();
+            console.log('🔍 API Connection Test Result:', result);
+            
+            if (!result.success) {
+                console.error('❌ API Connection failed! Check the configuration.');
+            }
+        };
+        
+        testConnection();
+    }, []);
+
     return (
         <AuthProvider>
             <CurrencyProvider>

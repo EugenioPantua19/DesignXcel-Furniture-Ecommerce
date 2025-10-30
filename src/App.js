@@ -34,6 +34,9 @@ if (process.env.NODE_ENV === 'development') {
     import('./shared/utils/stripeDebug');
 }
 
+// Import API connection test
+import apiConnectionTest from './shared/utils/apiConnectionTest';
+
 // Background Image Handler Component
 function BackgroundImageHandler() {
     useEffect(() => {
@@ -152,6 +155,24 @@ function WishlistProviderWithUserId({ children }) {
 }
 
 function App() {
+    // Test API connection on app load
+    useEffect(() => {
+        const testConnection = async () => {
+            console.log('🚀 App starting - testing API connection...');
+            const config = apiConnectionTest.getConfig();
+            console.log('📋 API Configuration:', config);
+            
+            const result = await apiConnectionTest.testConnection();
+            console.log('🔍 API Connection Test Result:', result);
+            
+            if (!result.success) {
+                console.error('❌ API Connection failed! Check the configuration.');
+            }
+        };
+        
+        testConnection();
+    }, []);
+
     return (
         <AuthProvider>
             <CurrencyProvider>

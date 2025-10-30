@@ -173,7 +173,7 @@ const Header = () => {
     setShowSearchResults(false);
     setSearchQuery('');
     clearSearch();
-    navigate(`/products/${product.id}`);
+    navigate(`/product/${product.slug || product.sku || product.id}`);
   };
 
   const handleSearchBlur = () => {

@@ -97,16 +97,13 @@ const getBackendUrl = () => {
         // Check if the field contains a valid model path
         if (field.includes('.glb') || field.includes('.gltf')) {
           const modelUrl = getImageUrl(field);
-          console.log('3D Model URL constructed:', {
-            originalField: field,
-            constructedUrl: modelUrl,
-            backendUrl: getBackendUrl()
-          });
+          console.log('3D Model URL:', modelUrl);
           return modelUrl;
         }
       }
     }
     
+    console.warn('No 3D model found for product');
     return null;
   };
 

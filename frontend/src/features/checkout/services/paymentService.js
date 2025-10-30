@@ -96,7 +96,9 @@ class PaymentService {
             'gcash': 'GCash',
             'grabpay': 'GrabPay',
             'paymaya': 'PayMaya',
-            'bank_transfer': 'Bank Transfer'
+            'bank_transfer': 'Bank Transfer',
+            'cod': 'Cash on Delivery',
+            'stripe': 'Stripe'
         };
         return displayNames[type] || type;
     }
@@ -112,7 +114,9 @@ class PaymentService {
             'gcash': '📱',
             'grabpay': '🚗',
             'paymaya': '💰',
-            'bank_transfer': '🏦'
+            'bank_transfer': '🏦',
+            'cod': '💵',
+            'stripe': '💳'
         };
         return icons[type] || '💳';
     }

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 
 /**
  * Modern Theme Switcher Component with SVG Icons
- * Toggle between default and christmas themes with beautiful icons
+ * Toggle between default and dark themes with beautiful icons
  */
 const ModernThemeSwitcher = ({ className = '', size = 'medium' }) => {
   const [currentTheme, setCurrentTheme] = useState('default');
@@ -48,22 +48,7 @@ const ModernThemeSwitcher = ({ className = '', size = 'medium' }) => {
     </svg>
   );
 
-  const ChristmasIcon = () => (
-    <svg 
-      width="16" 
-      height="16" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round"
-    >
-      <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-      <path d="M2 17l10 5 10-5"/>
-      <path d="M2 12l10 5 10-5"/>
-    </svg>
-  );
+
 
   useEffect(() => {
     // Load current theme
@@ -87,10 +72,8 @@ const ModernThemeSwitcher = ({ className = '', size = 'medium' }) => {
   const handleThemeToggle = async () => {
     if (isLoading) return;
     
-    // Cycle through themes: default -> dark -> christmas -> default
-    const themeCycle = ['default', 'dark', 'christmas'];
-    const currentIndex = themeCycle.indexOf(currentTheme);
-    const newTheme = themeCycle[(currentIndex + 1) % themeCycle.length];
+    // Toggle between default and dark themes only
+    const newTheme = currentTheme === 'default' ? 'dark' : 'default';
     
     setIsLoading(true);
     setIsAnimating(true);
@@ -145,11 +128,11 @@ const ModernThemeSwitcher = ({ className = '', size = 'medium' }) => {
         {/* Single Toggle Switch */}
         <div className="theme-toggle-wrapper">
           <div 
-            className={`theme-toggle-switch ${currentTheme === 'christmas' ? 'christmas-mode' : currentTheme === 'dark' ? 'dark-mode' : 'default-mode'}`}
+            className={`theme-toggle-switch ${currentTheme === 'dark' ? 'dark-mode' : 'default-mode'}`}
             onClick={handleThemeToggle}
           >
             <div className="theme-toggle-thumb">
-              {currentTheme === 'christmas' ? <ChristmasIcon /> : currentTheme === 'dark' ? <DarkIcon /> : <SunIcon />}
+              {currentTheme === 'dark' ? <DarkIcon /> : <SunIcon />}
             </div>
           </div>
         </div>
@@ -159,8 +142,8 @@ const ModernThemeSwitcher = ({ className = '', size = 'medium' }) => {
           onClick={handleThemeToggle}
           disabled={isLoading}
           className="theme-toggle-hidden-btn"
-          title={`Switch to ${currentTheme === 'default' ? 'christmas' : 'default'} theme`}
-          aria-label={`Switch to ${currentTheme === 'default' ? 'christmas' : 'default'} theme`}
+          title={`Switch to ${currentTheme === 'default' ? 'dark' : 'default'} theme`}
+          aria-label={`Switch to ${currentTheme === 'default' ? 'dark' : 'default'} theme`}
         >
           {isLoading && (
             <div className="theme-loading">

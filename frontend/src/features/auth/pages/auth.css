@@ -27,6 +27,16 @@
     padding: 2rem;
     background: #ffffff;
     color: #111827;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    margin: 1rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+}
+
+.auth-form-section:hover {
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    border-color: #d1d5db;
 }
 
 .auth-form-wrapper {
@@ -690,6 +700,156 @@
     color: #9ca3af;
 }
 
+/* Christmas Theme Styling */
+.theme-christmas .auth-form-section {
+    background: linear-gradient(135deg, #ffffff 0%, #fefefe 100%);
+    border: 2px solid #dc2626;
+    box-shadow: 0 4px 6px rgba(220, 38, 38, 0.1), 0 0 0 1px rgba(34, 197, 94, 0.1);
+}
+
+.theme-christmas .auth-form-section:hover {
+    box-shadow: 0 8px 25px rgba(220, 38, 38, 0.15), 0 0 0 1px rgba(34, 197, 94, 0.2);
+    border-color: #b91c1c;
+}
+
+.theme-christmas .auth-form-header h1 {
+    background: linear-gradient(135deg, #dc2626 0%, #22c55e 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.theme-christmas .auth-submit-btn-new {
+    background: linear-gradient(135deg, #dc2626 0%, #22c55e 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+}
+
+.theme-christmas .auth-submit-btn-new:hover:not(:disabled) {
+    background: linear-gradient(135deg, #b91c1c 0%, #16a34a 100%);
+    box-shadow: 0 6px 16px rgba(220, 38, 38, 0.4);
+}
+
+/* Dark Theme Styling */
+.theme-dark .auth-form-section {
+    background: #1f2937;
+    color: #f9fafb;
+    border-color: #374151;
+}
+
+.theme-dark .auth-form-section:hover {
+    border-color: #4b5563;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+.theme-dark .auth-form-header h1 {
+    color: #f9fafb;
+}
+
+.theme-dark .auth-subtitle {
+    color: #d1d5db;
+}
+
+.theme-dark .form-group-new label {
+    color: #f9fafb;
+}
+
+.theme-dark .form-group-new input {
+    background: #374151;
+    border-color: #4b5563;
+    color: #f9fafb;
+}
+
+.theme-dark .form-group-new input:focus {
+    border-color: #F0B21B;
+    box-shadow: 0 0 0 3px rgba(240, 178, 27, 0.1);
+}
+
+.theme-dark .form-group-new input::placeholder {
+    color: #9ca3af;
+}
+
+.theme-dark .password-format-indicator {
+    background: #374151;
+    border-color: #4b5563;
+}
+
+.theme-dark .format-title {
+    color: #d1d5db;
+}
+
+.theme-dark .format-list li {
+    color: #9ca3af;
+}
+
+.theme-dark .password-suggestions {
+    background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+    border-color: #3b82f6;
+}
+
+.theme-dark .suggestions-title {
+    color: #93c5fd;
+}
+
+.theme-dark .suggestions-close {
+    color: #93c5fd;
+}
+
+.theme-dark .suggestions-close:hover {
+    background: rgba(147, 197, 253, 0.1);
+}
+
+.theme-dark .suggestions-text {
+    color: #93c5fd;
+}
+
+/* Christmas Theme Password Components */
+.theme-christmas .password-format-indicator {
+    background: linear-gradient(135deg, #fef2f2 0%, #fef7f7 100%);
+    border-color: #dc2626;
+}
+
+.theme-christmas .format-title {
+    color: #dc2626;
+}
+
+.theme-christmas .format-list li.valid {
+    color: #22c55e;
+}
+
+.theme-christmas .format-list li.invalid {
+    color: #dc2626;
+}
+
+.theme-christmas .password-suggestions {
+    background: linear-gradient(135deg, #fef2f2 0%, #f0fdf4 100%);
+    border-color: #dc2626;
+}
+
+.theme-christmas .suggestions-title {
+    color: #dc2626;
+}
+
+.theme-christmas .suggestions-close {
+    color: #dc2626;
+}
+
+.theme-christmas .suggestions-close:hover {
+    background: rgba(220, 38, 38, 0.1);
+}
+
+.theme-christmas .suggestions-text {
+    color: #dc2626;
+}
+
+.theme-christmas .generate-password-btn {
+    background: linear-gradient(135deg, #dc2626 0%, #22c55e 100%);
+}
+
+.theme-christmas .generate-password-btn:hover {
+    background: linear-gradient(135deg, #b91c1c 0%, #16a34a 100%);
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .auth-container-new {
@@ -704,6 +864,7 @@
     
     .auth-form-section {
         padding: 1.5rem;
+        margin: 0.5rem;
     }
     
     .auth-form-header h1 {
@@ -1036,6 +1197,134 @@
     margin-top: 4px;
 }
 
+/* Password Format Indicator */
+.password-format-indicator {
+    margin-top: 8px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.format-requirements {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.format-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 4px;
+}
+
+.format-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.format-list li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: #6b7280;
+    transition: color 0.3s ease;
+}
+
+.format-list li.valid {
+    color: #10b981;
+}
+
+.format-list li.invalid {
+    color: #ef4444;
+}
+
+.format-list li svg {
+    flex-shrink: 0;
+}
+
+/* Password Suggestions */
+.password-suggestions {
+    margin-top: 12px;
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    border: 1px solid #0ea5e9;
+    border-radius: 8px;
+    padding: 12px;
+    animation: slideInUp 0.3s ease-out;
+}
+
+.suggestions-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.suggestions-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #0369a1;
+}
+
+.suggestions-close {
+    background: none;
+    border: none;
+    color: #0369a1;
+    cursor: pointer;
+    padding: 2px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.suggestions-close:hover {
+    background: rgba(3, 105, 161, 0.1);
+}
+
+.suggestions-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.suggestions-text {
+    font-size: 12px;
+    color: #0369a1;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.generate-password-btn {
+    background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.3s ease;
+    align-self: flex-start;
+}
+
+.generate-password-btn:hover {
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(14, 165, 233, 0.3);
+}
+
+.generate-password-btn:active {
+    transform: translateY(0);
+}
+
 /* Password Match Indicator */
 .password-match-indicator {
     display: flex;
@@ -1065,6 +1354,18 @@
 
 .match-icon {
     font-weight: bold;
+}
+
+/* Animation for password suggestions */
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 /* Success Container */
@@ -1180,5 +1481,34 @@
     
     .remember-me {
         font-size: 12px;
+    }
+    
+    .password-format-indicator {
+        padding: 8px;
+    }
+    
+    .format-list {
+        gap: 4px;
+    }
+    
+    .format-list li {
+        font-size: 11px;
+    }
+    
+    .password-suggestions {
+        padding: 8px;
+    }
+    
+    .suggestions-title {
+        font-size: 12px;
+    }
+    
+    .suggestions-text {
+        font-size: 11px;
+    }
+    
+    .generate-password-btn {
+        padding: 6px 10px;
+        font-size: 11px;
     }
 }

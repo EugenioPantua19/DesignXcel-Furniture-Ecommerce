@@ -96,6 +96,21 @@
     background: #fefce8;
 }
 
+/* COD specific styling */
+.payment-method-option[data-method="cod"] {
+    border-color: #10B981;
+}
+
+.payment-method-option[data-method="cod"]:hover {
+    border-color: #059669;
+    background: #f0fdf4;
+}
+
+.payment-method-option[data-method="cod"].selected {
+    border-color: #059669;
+    background: #f0fdf4;
+}
+
 .payment-method-radio {
     flex-shrink: 0;
 }
@@ -498,6 +513,22 @@ body.theme-dark .payment-method-name {
 
 body.theme-dark .payment-method-details {
     color: #cccccc !important;
+}
+
+/* Dark mode styles for COD payment method */
+body.theme-dark .payment-method-option[data-method="cod"] {
+    border-color: #10B981 !important;
+    background: #1f2937 !important;
+}
+
+body.theme-dark .payment-method-option[data-method="cod"]:hover {
+    border-color: #059669 !important;
+    background: #064e3b !important;
+}
+
+body.theme-dark .payment-method-option[data-method="cod"].selected {
+    border-color: #059669 !important;
+    background: #064e3b !important;
 }
 
 /* Dark mode styles for order summary section */

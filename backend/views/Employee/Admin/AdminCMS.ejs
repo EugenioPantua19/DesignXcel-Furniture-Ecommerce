@@ -1335,6 +1335,23 @@
                                     </div>
                                 </div>
                                 
+                                <!-- Privacy Policy -->
+                                <div style="background: #e9ecef; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+                                    <h5 style="margin-top: 0; color: #495057;">🔒 Privacy Policy</h5>
+                                    <div style="margin-bottom: 15px;">
+                                        <label for="privacy-policy-title">Title:</label><br>
+                                        <input type="text" id="privacy-policy-title" name="privacyPolicyTitle" placeholder="Privacy Policy" style="width: 100%; padding: 0.5em; margin-top: 0.5em;">
+                                    </div>
+                                    <div style="margin-bottom: 15px;">
+                                        <label for="privacy-policy-content">Content:</label><br>
+                                        <textarea id="privacy-policy-content" name="privacyPolicyContent" rows="8" placeholder="Enter the privacy policy text..." style="width: 100%; padding: 0.5em; margin-top: 0.5em;"></textarea>
+                                    </div>
+                                    <div style="margin-bottom: 15px;">
+                                        <label for="privacy-policy-checkbox-text">Checkbox Text:</label><br>
+                                        <input type="text" id="privacy-policy-checkbox-text" name="privacyPolicyCheckboxText" placeholder="I agree to the Privacy Policy" style="width: 100%; padding: 0.5em; margin-top: 0.5em;">
+                                    </div>
+                                </div>
+                                
                                 <!-- Checkout Terms -->
                                 <div style="background: #e9ecef; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
                                     <h5 style="margin-top: 0; color: #495057;">🛒 Checkout Page Terms and Conditions</h5>
@@ -2153,6 +2170,11 @@
                                 document.getElementById('signup-terms-content').value = terms.signupTermsContent || '';
                                 document.getElementById('signup-terms-checkbox-text').value = terms.signupTermsCheckboxText || '';
                                 
+                                // Privacy Policy
+                                document.getElementById('privacy-policy-title').value = terms.privacyPolicyTitle || '';
+                                document.getElementById('privacy-policy-content').value = terms.privacyPolicyContent || '';
+                                document.getElementById('privacy-policy-checkbox-text').value = terms.privacyPolicyCheckboxText || '';
+                                
                                 // Checkout terms
                                 document.getElementById('checkout-terms-title').value = terms.checkoutTermsTitle || '';
                                 document.getElementById('checkout-terms-content').value = terms.checkoutTermsContent || '';
@@ -2177,6 +2199,9 @@
                             signupTermsTitle: form.querySelector('[name="signupTermsTitle"]').value,
                             signupTermsContent: form.querySelector('[name="signupTermsContent"]').value,
                             signupTermsCheckboxText: form.querySelector('[name="signupTermsCheckboxText"]').value,
+                            privacyPolicyTitle: form.querySelector('[name="privacyPolicyTitle"]').value,
+                            privacyPolicyContent: form.querySelector('[name="privacyPolicyContent"]').value,
+                            privacyPolicyCheckboxText: form.querySelector('[name="privacyPolicyCheckboxText"]').value,
                             checkoutTermsTitle: form.querySelector('[name="checkoutTermsTitle"]').value,
                             checkoutTermsContent: form.querySelector('[name="checkoutTermsContent"]').value,
                             checkoutTermsCheckboxText: form.querySelector('[name="checkoutTermsCheckboxText"]').value,

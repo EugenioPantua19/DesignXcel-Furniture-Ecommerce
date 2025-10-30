@@ -29,6 +29,7 @@
   "author": "DesignXcel Team",
   "license": "MIT",
   "dependencies": {
+    "@sendgrid/mail": "^8.1.6",
     "axios": "^1.10.0",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^2.4.3",
@@ -44,13 +45,14 @@
     "express-validator": "^7.2.1",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
+    "mailgun-js": "^0.22.0",
     "mssql": "^10.0.4",
     "multer": "^2.0.2",
     "node-fetch": "^2.7.0",
     "nodemailer": "^7.0.9",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
-    "resend": "^6.1.2",
+    "resend": "^6.2.2",
     "stripe": "^18.3.0"
   },
   "devDependencies": {

@@ -6,7 +6,6 @@ import CartItem from '../components/CartItem';
 import AudioLoader from '../../../shared/components/ui/AudioLoader';
 import ConfirmationModal from '../../../shared/components/ui/ConfirmationModal';
 import PageHeader from '../../../shared/components/layout/PageHeader';
-import { ChristmasHeaderDecoration, ChristmasFooterDecoration } from '../../../shared/components/christmas';
 import '../components/cart.css';
 import { 
   ShoppingCartIcon, 
@@ -21,7 +20,7 @@ import '../components/cart-discounts.css';
 
 const Cart = () => {
     const navigate = useNavigate();
-    const { items, updateQuantity, removeFromCart, clearCart, getTotal, getSubtotal, getItemCount } = useCart();
+    const { items, updateQuantity, removeFromCart, clearCart, getTotal, getSubtotal, getItemCount, CART_LIMITS, lastError } = useCart();
     const { formatPrice } = useCurrency();
     const [showClearConfirmation, setShowClearConfirmation] = useState(false);
     const [showRemoveModal, setShowRemoveModal] = useState(false);
@@ -78,6 +77,9 @@ const Cart = () => {
         if (newQuantity <= 0) {
             setItemToRemove(itemId);
             setShowRemoveModal(true);
+        } else if (newQuantity > CART_LIMITS.MAX_QUANTITY_PER_PRODUCT) {
+            // Silently prevent quantity update beyond limit
+            return;
         } else {
             updateQuantity(itemId, newQuantity);
         }
@@ -105,6 +107,20 @@ const Cart = () => {
     // Handler for checkout button
     const handleProceedToCheckout = () => {
       const checked = items.filter(item => checkedItems[item.id]);
+      
+      // Check if cart exceeds the different items limit
+      if (checked.length > CART_LIMITS.MAX_DIFFERENT_ITEMS) {
+        // Silently prevent checkout
+        return;
+      }
+      
+      // Check if any item exceeds the quantity limit
+      const exceededItems = checked.filter(item => item.quantity > CART_LIMITS.MAX_QUANTITY_PER_PRODUCT);
+      if (exceededItems.length > 0) {
+        // Silently prevent checkout
+        return;
+      }
+      
       navigate('/checkout', { state: { items: checked } });
     };
 
@@ -137,7 +153,6 @@ const Cart = () => {
     return (
         <div className="cart-page">
             <div className="container">
-                {currentTheme === 'christmas' && <ChristmasHeaderDecoration />}
                 <PageHeader
                     breadcrumbs={[
                         { label: 'Home', href: '/' },
@@ -158,6 +173,13 @@ const Cart = () => {
                                 Clear All
                             </button>
                         </div>
+
+                        {/* Error Message */}
+                        {lastError && (
+                            <div className="cart-error-message">
+                                {lastError}
+                            </div>
+                        )}
 
                         <div className="cart-table-header">
                             <div className="header-product">Product</div>
@@ -242,7 +264,6 @@ const Cart = () => {
                 cancelText="Cancel"
                 type="warning"
             />
-            {currentTheme === 'christmas' && <ChristmasFooterDecoration />}
         </div>
     );
 };

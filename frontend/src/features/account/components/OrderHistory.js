@@ -449,24 +449,22 @@ const OrderHistory = () => {
   );
 
   return (
-    <div>
-      <div style={{ marginBottom: '32px' }}>
-        <h3 className="section-title" style={{ 
-          fontSize: '24px', 
-          fontWeight: '700', 
-          color: '#1f2937', 
-          marginBottom: '8px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px'
-        }}>
-          <PackageIcon size={24} color="#F0B21B" />
-          Order History
-        </h3>
-        <p style={{ color: '#6b7280', fontSize: '14px', margin: 0 }}>
-          Track and manage all your orders
-        </p>
+    <div className="tab-container">
+      <div className="tab-header">
+        <div className="tab-header-content">
+          <div className="tab-header-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M16 11V7C16 4.79086 14.2091 3 12 3C9.79086 3 8 4.79086 8 7V11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M5 9H19L18 21H6L5 9Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          <div className="tab-header-text">
+            <h1 className="tab-title">My Orders</h1>
+            <p className="tab-subtitle">Track and manage your order history</p>
+          </div>
+        </div>
       </div>
+
       
       <div className="order-history-tabs" style={{
         display:'flex',

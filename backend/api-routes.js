@@ -69,13 +69,33 @@ module.exports = function(sql, pool) {
         }
     });
 
+    // --- Health Check API Endpoint ---
+    router.get('/api/health', (req, res) => {
+        res.json({ 
+            status: 'OK', 
+            message: 'Backend is running',
+            timestamp: new Date().toISOString(),
+            environment: process.env.NODE_ENV || 'development'
+        });
+    });
+
     // --- Order Management API Endpoints ---
     // Cash on Delivery Order Creation
     router.post('/api/orders/cash-on-delivery', async (req, res) => {
         try {
+            console.log('COD Order Request received:', {
+                session: req.session,
+                body: req.body,
+                headers: req.headers
+            });
             
             // Check if user is authenticated
             if (!req.session.user || req.session.user.role !== 'Customer') {
+                console.log('Authentication failed:', {
+                    hasSession: !!req.session,
+                    hasUser: !!req.session?.user,
+                    userRole: req.session?.user?.role
+                });
                 return res.status(401).json({ 
                     success: false, 
                     message: 'Unauthorized - please log in to place an order' 
@@ -122,29 +142,57 @@ module.exports = function(sql, pool) {
                 finalShippingAddressId = shippingAddressId;
             }
             
-            // Create the order with proper schema
+            // Get Manila timezone date (same as Stripe webhook)
+            const getManilaTime = () => {
+                const now = new Date();
+                // Get Manila time by adding 8 hours to UTC (Philippines is UTC+8)
+                return new Date(now.getTime() + (8 * 60 * 60 * 1000));
+            };
+            
+            const manilaTime = getManilaTime();
+            
+            // Create the order with proper schema (matching Stripe webhook structure)
             const orderResult = await pool.request()
                 .input('customerId', sql.Int, customerId)
-                .input('orderDate', sql.DateTime, new Date())
                 .input('status', sql.NVarChar, 'Pending')
-                .input('paymentMethod', sql.NVarChar, 'Cash on Delivery')
                 .input('totalAmount', sql.Decimal(10, 2), total || 0)
+                .input('paymentMethod', sql.NVarChar, 'Bank Transfer')
+                .input('currency', sql.NVarChar, 'PHP')
+                .input('orderDate', sql.DateTime, manilaTime)
+                .input('paymentDate', sql.DateTime, null) // COD orders don't have payment date initially
+                .input('shippingAddressId', sql.Int, finalShippingAddressId)
                 .input('deliveryType', sql.NVarChar, deliveryType || 'pickup')
                 .input('deliveryCost', sql.Decimal(10, 2), shippingCost || 0)
-                .input('shippingAddressId', sql.Int, finalShippingAddressId)
+                .input('stripeSessionId', sql.NVarChar, null) // COD orders don't have Stripe session
+                .input('paymentStatus', sql.NVarChar, 'Pending') // COD orders are pending payment
+                .input('pickupDate', sql.DateTime, null) // Can be set later if needed
                 .query(`
-                    INSERT INTO Orders (CustomerID, OrderDate, Status, PaymentMethod, TotalAmount, DeliveryType, DeliveryCost, ShippingAddressID)
+                    INSERT INTO Orders (CustomerID, Status, TotalAmount, PaymentMethod, Currency, OrderDate, PaymentDate, ShippingAddressID, DeliveryType, DeliveryCost, StripeSessionID, PaymentStatus, PickupDate)
                     OUTPUT INSERTED.OrderID
-                    VALUES (@customerId, @orderDate, @status, @paymentMethod, @totalAmount, @deliveryType, @deliveryCost, @shippingAddressId)
+                    VALUES (@customerId, @status, @totalAmount, @paymentMethod, @currency, @orderDate, @paymentDate, @shippingAddressId, @deliveryType, @deliveryCost, @stripeSessionId, @paymentStatus, @pickupDate)
                 `);
             
             const orderId = orderResult.recordset[0].OrderID;
+            console.log('✅ COD Order created successfully with OrderID:', orderId);
             
             // Add order items and decrement stock
+            console.log('📦 Processing order items:', items.length);
             for (const item of items) {
+                console.log('Processing item:', item);
+                
+                // Handle both 'id' and 'productId' field names for compatibility
+                const productId = item.productId || item.id;
+                
+                if (!productId) {
+                    console.error('❌ Missing product ID in item:', item);
+                    continue; // Skip this item if no product ID
+                }
+                
+                console.log('Adding order item for product ID:', productId, 'Quantity:', item.quantity);
+                
                 await pool.request()
                     .input('orderId', sql.Int, orderId)
-                    .input('productId', sql.Int, item.productId)
+                    .input('productId', sql.Int, productId)
                     .input('quantity', sql.Int, item.quantity)
                     .input('price', sql.Decimal(10, 2), item.price)
                     .input('variationId', sql.Int, item.variationId || null)
@@ -153,26 +201,36 @@ module.exports = function(sql, pool) {
                         VALUES (@orderId, @productId, @quantity, @price, @variationId)
                     `);
 
+                console.log('✅ Order item added successfully');
+
                 // Decrement stock quantities
+                console.log('📉 Decrementing stock for product ID:', productId, 'Quantity:', item.quantity);
                 
                 // Always decrement main product stock first
                 const productUpdateResult = await pool.request()
-                    .input('productId', sql.Int, item.productId)
+                    .input('productId', sql.Int, productId)
                     .input('quantity', sql.Int, item.quantity)
                     .query(`UPDATE Products 
                             SET StockQuantity = CASE WHEN StockQuantity >= @quantity THEN StockQuantity - @quantity ELSE 0 END 
                             WHERE ProductID = @productId`);
                 
+                console.log('✅ Main product stock decremented. Rows affected:', productUpdateResult.rowsAffected);
+                
                 // Additionally decrement variation stock if this is a variation purchase
                 if (item.variationId && item.variationId !== null && item.variationId !== undefined) {
+                    console.log('📉 Decrementing variation stock for variation ID:', item.variationId);
                     const variationUpdateResult = await pool.request()
                         .input('variationId', sql.Int, item.variationId)
                         .input('quantity', sql.Int, item.quantity)
                         .query(`UPDATE ProductVariations 
                                 SET Quantity = CASE WHEN Quantity >= @quantity THEN Quantity - @quantity ELSE 0 END 
                                 WHERE VariationID = @variationId`);
+                    
+                    console.log('✅ Variation stock decremented. Rows affected:', variationUpdateResult.rowsAffected);
                 }
             }
+            
+            console.log('✅ All order items processed successfully');
             
             
             res.json({ 
@@ -182,10 +240,30 @@ module.exports = function(sql, pool) {
             });
             
         } catch (error) {
+            console.error('❌ COD Order Creation Error:', error);
+            console.error('Error type:', error.name);
+            console.error('Error message:', error.message);
+            console.error('Error stack:', error.stack);
+            console.error('Request body:', req.body);
+            console.error('Session data:', req.session);
+            
+            // Provide more specific error messages
+            let errorMessage = 'Failed to create order';
+            if (error.message.includes('Cannot insert the value NULL')) {
+                errorMessage = 'Missing required order information';
+            } else if (error.message.includes('Invalid column name')) {
+                errorMessage = 'Database schema mismatch - please contact support';
+            } else if (error.message.includes('Foreign key constraint')) {
+                errorMessage = 'Invalid customer or product information';
+            } else if (error.message.includes('Connection')) {
+                errorMessage = 'Database connection error - please try again';
+            }
+            
             res.status(500).json({ 
                 success: false, 
-                message: 'Failed to create order',
-                error: error.message 
+                message: errorMessage,
+                error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error',
+                code: 'COD_ORDER_ERROR'
             });
         }
     });
@@ -943,6 +1021,9 @@ module.exports = function(sql, pool) {
                 query = `
                     SELECT 
                         p.ProductID as id,
+                        p.PublicId as publicId,
+                        p.Slug as slug,
+                        p.SKU as sku,
                         p.Name as name,
                         p.Description as description,
                         p.Price as price,
@@ -994,7 +1075,7 @@ module.exports = function(sql, pool) {
                     ) sold ON p.ProductID = sold.ProductID
                     WHERE p.IsActive = 1
                     GROUP BY 
-                        p.ProductID, p.Name, p.Description, p.Price, p.StockQuantity, 
+                        p.ProductID, p.PublicId, p.Slug, p.SKU, p.Name, p.Description, p.Price, p.StockQuantity, 
                         p.Category, p.ImageURL, p.ThumbnailURLs, p.DateAdded, p.IsActive, p.Dimensions, p.IsFeatured,
                         p.Model3DURL, p.Has3DModel,
                         pd.DiscountID, pd.DiscountType, pd.DiscountValue, pd.StartDate, pd.EndDate,
@@ -1006,6 +1087,9 @@ module.exports = function(sql, pool) {
                 query = `
                     SELECT 
                         p.ProductID as id,
+                        p.PublicId as publicId,
+                        p.Slug as slug,
+                        p.SKU as sku,
                         p.Name as name,
                         p.Description as description,
                         p.Price as price,
@@ -1076,6 +1160,9 @@ module.exports = function(sql, pool) {
                 const fallbackQuery = `
                     SELECT 
                         p.ProductID as id,
+                        p.PublicId as publicId,
+                        p.Slug as slug,
+                        p.SKU as sku,
                         p.Name as name,
                         p.Description as description,
                         p.Price as price,
@@ -1395,10 +1482,15 @@ module.exports = function(sql, pool) {
         }
     });
 
-    // Get product by ID
+    // Get product by ID (supports UUID, slug, and legacy numeric ID for backward compatibility)
     router.get('/api/products/:id', async (req, res) => {
         try {
-            const productId = parseInt(req.params.id);
+            const identifier = req.params.id;
+            
+            // Determine if identifier is UUID, slug, SKU, or legacy numeric ID
+            const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(identifier);
+            const isNumeric = /^\d+$/.test(identifier);
+            const isSKU = /^DX-[A-F0-9]{8}-[0-9]{4}$/i.test(identifier);
             
             // First check if ProductReviews table exists
             const tableCheck = await pool.request().query(`
@@ -1407,103 +1499,320 @@ module.exports = function(sql, pool) {
                 WHERE TABLE_NAME = 'ProductReviews'
             `);
             
-            let query;
-            if (tableCheck.recordset.length > 0) {
-                // ProductReviews table exists, use the full query with ratings
-                query = `
-                    SELECT 
-                        p.ProductID as id,
-                        p.Name as name,
-                        p.Description as description,
-                        p.Price as price,
-                        p.StockQuantity as stockQuantity,
-                        p.Category as categoryName,
-                        p.ImageURL as images,
-                        p.ThumbnailURLs as thumbnails,
-                        p.DateAdded as dateAdded,
-                        p.IsActive as isActive,
-                        p.Dimensions as specifications,
-                        p.IsFeatured as featured,
-                        p.Model3DURL as model3d,
-                        p.Has3DModel as has3dModel,
-                        COALESCE(AVG(CAST(pr.Rating AS FLOAT)), 0) as averageRating,
-                        COUNT(pr.ReviewID) as reviewCount,
-                        pd.DiscountID,
-                        pd.DiscountType,
-                        pd.DiscountValue,
-                        pd.StartDate as discountStartDate,
-                        pd.EndDate as discountEndDate,
-                        CASE 
-                            WHEN pd.DiscountType = 'percentage' THEN 
-                                p.Price - (p.Price * pd.DiscountValue / 100)
-                            WHEN pd.DiscountType = 'fixed' THEN 
-                                CASE WHEN p.Price - pd.DiscountValue < 0 THEN 0 ELSE p.Price - pd.DiscountValue END
-                            ELSE p.Price
-                        END as discountedPrice,
-                        CASE 
-                            WHEN pd.DiscountType = 'percentage' THEN 
-                                p.Price * pd.DiscountValue / 100
-                            WHEN pd.DiscountType = 'fixed' THEN 
-                                CASE WHEN pd.DiscountValue > p.Price THEN p.Price ELSE pd.DiscountValue END
-                            ELSE 0
-                        END as discountAmount
-                    FROM Products p
-                    LEFT JOIN ProductReviews pr ON p.ProductID = pr.ProductID AND pr.IsActive = 1
-                    LEFT JOIN ProductDiscounts pd ON p.ProductID = pd.ProductID AND pd.IsActive = 1
-                    WHERE p.ProductID = @productId AND p.IsActive = 1
-                    GROUP BY 
-                        p.ProductID, p.Name, p.Description, p.Price, p.StockQuantity, 
-                        p.Category, p.ImageURL, p.ThumbnailURLs, p.DateAdded, p.IsActive, p.Dimensions, p.IsFeatured,
-                        p.Model3DURL, p.Has3DModel,
-                        pd.DiscountID, pd.DiscountType, pd.DiscountValue, pd.StartDate, pd.EndDate
-                `;
+            let query, inputParam;
+            if (isUUID) {
+                inputParam = sql.UniqueIdentifier;
+                if (tableCheck.recordset.length > 0) {
+                    // ProductReviews table exists, use the full query with ratings
+                    query = `
+                        SELECT 
+                            p.PublicId as id,
+                            p.Slug as slug,
+                            p.SKU as sku,
+                            p.Name as name,
+                            p.Description as description,
+                            p.Price as price,
+                            p.StockQuantity as stockQuantity,
+                            p.Category as categoryName,
+                            p.ImageURL as images,
+                            p.ThumbnailURLs as thumbnails,
+                            p.DateAdded as dateAdded,
+                            p.IsActive as isActive,
+                            p.Dimensions as specifications,
+                            p.IsFeatured as featured,
+                            p.Model3DURL as model3d,
+                            p.Has3DModel as has3dModel,
+                            COALESCE(AVG(CAST(pr.Rating AS FLOAT)), 0) as averageRating,
+                            COUNT(pr.ReviewID) as reviewCount,
+                            pd.DiscountID,
+                            pd.DiscountType,
+                            pd.DiscountValue,
+                            pd.StartDate as discountStartDate,
+                            pd.EndDate as discountEndDate,
+                            CASE 
+                                WHEN pd.DiscountType = 'percentage' THEN 
+                                    p.Price - (p.Price * pd.DiscountValue / 100)
+                                WHEN pd.DiscountType = 'fixed' THEN 
+                                    CASE WHEN p.Price - pd.DiscountValue < 0 THEN 0 ELSE p.Price - pd.DiscountValue END
+                                ELSE p.Price
+                            END as discountedPrice,
+                            CASE 
+                                WHEN pd.DiscountType = 'percentage' THEN 
+                                    p.Price * pd.DiscountValue / 100
+                                WHEN pd.DiscountType = 'fixed' THEN 
+                                    CASE WHEN pd.DiscountValue > p.Price THEN p.Price ELSE pd.DiscountValue END
+                                ELSE 0
+                            END as discountAmount
+                        FROM Products p
+                        LEFT JOIN ProductReviews pr ON p.ProductID = pr.ProductID AND pr.IsActive = 1
+                        LEFT JOIN ProductDiscounts pd ON p.ProductID = pd.ProductID AND pd.IsActive = 1
+                        WHERE p.PublicId = @identifier AND p.IsActive = 1
+                        GROUP BY 
+                            p.ProductID, p.PublicId, p.Slug, p.SKU, p.Name, p.Description, p.Price, p.StockQuantity, 
+                            p.Category, p.ImageURL, p.ThumbnailURLs, p.DateAdded, p.IsActive, p.Dimensions, p.IsFeatured,
+                            p.Model3DURL, p.Has3DModel,
+                            pd.DiscountID, pd.DiscountType, pd.DiscountValue, pd.StartDate, pd.EndDate
+                    `;
+                } else {
+                    // ProductReviews table doesn't exist, use basic query
+                    query = `
+                        SELECT 
+                            p.PublicId as id,
+                            p.Slug as slug,
+                            p.SKU as sku,
+                            p.Name as name,
+                            p.Description as description,
+                            p.Price as price,
+                            p.StockQuantity as stockQuantity,
+                            p.Category as categoryName,
+                            p.ImageURL as images,
+                            p.ThumbnailURLs as thumbnails,
+                            p.DateAdded as dateAdded,
+                            p.IsActive as isActive,
+                            p.Dimensions as specifications,
+                            p.IsFeatured as featured,
+                            p.Model3DURL as model3d,
+                            p.Has3DModel as has3dModel
+                        FROM Products p
+                        WHERE p.PublicId = @identifier AND p.IsActive = 1
+                    `;
+                }
+            } else if (isNumeric) {
+                // Legacy support for numeric IDs - map to ProductID
+                inputParam = sql.Int;
+                if (tableCheck.recordset.length > 0) {
+                    // ProductReviews table exists, use the full query with ratings
+                    query = `
+                        SELECT 
+                            p.PublicId as id,
+                            p.Slug as slug,
+                            p.SKU as sku,
+                            p.Name as name,
+                            p.Description as description,
+                            p.Price as price,
+                            p.StockQuantity as stockQuantity,
+                            p.Category as categoryName,
+                            p.ImageURL as images,
+                            p.ThumbnailURLs as thumbnails,
+                            p.DateAdded as dateAdded,
+                            p.IsActive as isActive,
+                            p.Dimensions as specifications,
+                            p.IsFeatured as featured,
+                            p.Model3DURL as model3d,
+                            p.Has3DModel as has3dModel,
+                            COALESCE(AVG(CAST(pr.Rating AS FLOAT)), 0) as averageRating,
+                            COUNT(pr.ReviewID) as reviewCount,
+                            pd.DiscountID,
+                            pd.DiscountType,
+                            pd.DiscountValue,
+                            pd.StartDate as discountStartDate,
+                            pd.EndDate as discountEndDate,
+                            CASE 
+                                WHEN pd.DiscountType = 'percentage' THEN 
+                                    p.Price - (p.Price * pd.DiscountValue / 100)
+                                WHEN pd.DiscountType = 'fixed' THEN 
+                                    CASE WHEN p.Price - pd.DiscountValue < 0 THEN 0 ELSE p.Price - pd.DiscountValue END
+                                ELSE p.Price
+                            END as discountedPrice,
+                            CASE 
+                                WHEN pd.DiscountType = 'percentage' THEN 
+                                    p.Price * pd.DiscountValue / 100
+                                WHEN pd.DiscountType = 'fixed' THEN 
+                                    CASE WHEN pd.DiscountValue > p.Price THEN p.Price ELSE pd.DiscountValue END
+                                ELSE 0
+                            END as discountAmount
+                        FROM Products p
+                        LEFT JOIN ProductReviews pr ON p.ProductID = pr.ProductID AND pr.IsActive = 1
+                        LEFT JOIN ProductDiscounts pd ON p.ProductID = pd.ProductID AND pd.IsActive = 1
+                        WHERE p.ProductID = @identifier AND p.IsActive = 1
+                        GROUP BY 
+                            p.ProductID, p.PublicId, p.Slug, p.SKU, p.Name, p.Description, p.Price, p.StockQuantity, 
+                            p.Category, p.ImageURL, p.ThumbnailURLs, p.DateAdded, p.IsActive, p.Dimensions, p.IsFeatured,
+                            p.Model3DURL, p.Has3DModel,
+                            pd.DiscountID, pd.DiscountType, pd.DiscountValue, pd.StartDate, pd.EndDate
+                    `;
+                } else {
+                    // ProductReviews table doesn't exist, use basic query
+                    query = `
+                        SELECT 
+                            p.PublicId as id,
+                            p.Slug as slug,
+                            p.SKU as sku,
+                            p.Name as name,
+                            p.Description as description,
+                            p.Price as price,
+                            p.StockQuantity as stockQuantity,
+                            p.Category as categoryName,
+                            p.ImageURL as images,
+                            p.ThumbnailURLs as thumbnails,
+                            p.DateAdded as dateAdded,
+                            p.IsActive as isActive,
+                            p.Dimensions as specifications,
+                            p.IsFeatured as featured,
+                            p.Model3DURL as model3d,
+                            p.Has3DModel as has3dModel
+                        FROM Products p
+                        WHERE p.ProductID = @identifier AND p.IsActive = 1
+                    `;
+                }
+            } else if (isSKU) {
+                // SKU identifier
+                inputParam = sql.NVarChar;
+                if (tableCheck.recordset.length > 0) {
+                    query = `
+                        SELECT 
+                            p.PublicId as id,
+                            p.Slug as slug,
+                            p.SKU as sku,
+                            p.Name as name,
+                            p.Description as description,
+                            p.Price as price,
+                            p.StockQuantity as stockQuantity,
+                            p.Category as categoryName,
+                            p.ImageURL as images,
+                            p.ThumbnailURLs as thumbnails,
+                            p.DateAdded as dateAdded,
+                            p.IsActive as isActive,
+                            p.Dimensions as specifications,
+                            p.IsFeatured as featured,
+                            p.Model3DURL as model3d,
+                            p.Has3DModel as has3dModel,
+                            COALESCE(AVG(CAST(pr.Rating AS FLOAT)), 0) as averageRating,
+                            COUNT(pr.ReviewID) as reviewCount,
+                            pd.DiscountID,
+                            pd.DiscountType,
+                            pd.DiscountValue,
+                            pd.StartDate as discountStartDate,
+                            pd.EndDate as discountEndDate,
+                            CASE 
+                                WHEN pd.DiscountType = 'percentage' THEN 
+                                    p.Price - (p.Price * pd.DiscountValue / 100)
+                                WHEN pd.DiscountType = 'fixed' THEN 
+                                    CASE WHEN p.Price - pd.DiscountValue < 0 THEN 0 ELSE p.Price - pd.DiscountValue END
+                                ELSE p.Price
+                            END as discountedPrice,
+                            CASE 
+                                WHEN pd.DiscountType = 'percentage' THEN 
+                                    p.Price * pd.DiscountValue / 100
+                                WHEN pd.DiscountType = 'fixed' THEN 
+                                    CASE WHEN pd.DiscountValue > p.Price THEN p.Price ELSE pd.DiscountValue END
+                                ELSE 0
+                            END as discountAmount
+                        FROM Products p
+                        LEFT JOIN ProductReviews pr ON p.ProductID = pr.ProductID AND pr.IsActive = 1
+                        LEFT JOIN ProductDiscounts pd ON p.ProductID = pd.ProductID AND pd.IsActive = 1
+                        WHERE p.SKU = @identifier AND p.IsActive = 1
+                        GROUP BY 
+                            p.ProductID, p.PublicId, p.Slug, p.SKU, p.Name, p.Description, p.Price, p.StockQuantity, 
+                            p.Category, p.ImageURL, p.ThumbnailURLs, p.DateAdded, p.IsActive, p.Dimensions, p.IsFeatured,
+                            p.Model3DURL, p.Has3DModel,
+                            pd.DiscountID, pd.DiscountType, pd.DiscountValue, pd.StartDate, pd.EndDate
+                    `;
+                } else {
+                    query = `
+                        SELECT 
+                            p.PublicId as id,
+                            p.Slug as slug,
+                            p.SKU as sku,
+                            p.Name as name,
+                            p.Description as description,
+                            p.Price as price,
+                            p.StockQuantity as stockQuantity,
+                            p.Category as categoryName,
+                            p.ImageURL as images,
+                            p.ThumbnailURLs as thumbnails,
+                            p.DateAdded as dateAdded,
+                            p.IsActive as isActive,
+                            p.Dimensions as specifications,
+                            p.IsFeatured as featured,
+                            p.Model3DURL as model3d,
+                            p.Has3DModel as has3dModel
+                        FROM Products p
+                        WHERE p.SKU = @identifier AND p.IsActive = 1
+                    `;
+                }
             } else {
-                // ProductReviews table doesn't exist, use basic query
-                query = `
-                    SELECT 
-                        p.ProductID as id,
-                        p.Name as name,
-                        p.Description as description,
-                        p.Price as price,
-                        p.StockQuantity as stockQuantity,
-                        p.Category as categoryName,
-                        p.ImageURL as images,
-                        p.ThumbnailURLs as thumbnails,
-                        p.DateAdded as dateAdded,
-                        p.IsActive as isActive,
-                        p.Dimensions as specifications,
-                        p.IsFeatured as featured,
-                        p.Model3DURL as model3d,
-                        p.Has3DModel as has3dModel,
-                        0 as averageRating,
-                        0 as reviewCount,
-                        pd.DiscountID,
-                        pd.DiscountType,
-                        pd.DiscountValue,
-                        pd.StartDate as discountStartDate,
-                        pd.EndDate as discountEndDate,
-                        CASE 
-                            WHEN pd.DiscountType = 'percentage' THEN 
-                                p.Price - (p.Price * pd.DiscountValue / 100)
-                            WHEN pd.DiscountType = 'fixed' THEN 
-                                CASE WHEN p.Price - pd.DiscountValue < 0 THEN 0 ELSE p.Price - pd.DiscountValue END
-                            ELSE p.Price
-                        END as discountedPrice,
-                        CASE 
-                            WHEN pd.DiscountType = 'percentage' THEN 
-                                p.Price * pd.DiscountValue / 100
-                            WHEN pd.DiscountType = 'fixed' THEN 
-                                CASE WHEN pd.DiscountValue > p.Price THEN p.Price ELSE pd.DiscountValue END
-                            ELSE 0
-                        END as discountAmount
-                    FROM Products p
-                    LEFT JOIN ProductDiscounts pd ON p.ProductID = pd.ProductID AND pd.IsActive = 1
-                    WHERE p.ProductID = @productId AND p.IsActive = 1
-                `;
+                // Assume it's a slug
+                inputParam = sql.NVarChar;
+                if (tableCheck.recordset.length > 0) {
+                    // ProductReviews table exists, use the full query with ratings
+                    query = `
+                        SELECT 
+                            p.PublicId as id,
+                            p.Slug as slug,
+                            p.SKU as sku,
+                            p.Name as name,
+                            p.Description as description,
+                            p.Price as price,
+                            p.StockQuantity as stockQuantity,
+                            p.Category as categoryName,
+                            p.ImageURL as images,
+                            p.ThumbnailURLs as thumbnails,
+                            p.DateAdded as dateAdded,
+                            p.IsActive as isActive,
+                            p.Dimensions as specifications,
+                            p.IsFeatured as featured,
+                            p.Model3DURL as model3d,
+                            p.Has3DModel as has3dModel,
+                            COALESCE(AVG(CAST(pr.Rating AS FLOAT)), 0) as averageRating,
+                            COUNT(pr.ReviewID) as reviewCount,
+                            pd.DiscountID,
+                            pd.DiscountType,
+                            pd.DiscountValue,
+                            pd.StartDate as discountStartDate,
+                            pd.EndDate as discountEndDate,
+                            CASE 
+                                WHEN pd.DiscountType = 'percentage' THEN 
+                                    p.Price - (p.Price * pd.DiscountValue / 100)
+                                WHEN pd.DiscountType = 'fixed' THEN 
+                                    CASE WHEN p.Price - pd.DiscountValue < 0 THEN 0 ELSE p.Price - pd.DiscountValue END
+                                ELSE p.Price
+                            END as discountedPrice,
+                            CASE 
+                                WHEN pd.DiscountType = 'percentage' THEN 
+                                    p.Price * pd.DiscountValue / 100
+                                WHEN pd.DiscountType = 'fixed' THEN 
+                                    CASE WHEN pd.DiscountValue > p.Price THEN p.Price ELSE pd.DiscountValue END
+                                ELSE 0
+                            END as discountAmount
+                        FROM Products p
+                        LEFT JOIN ProductReviews pr ON p.ProductID = pr.ProductID AND pr.IsActive = 1
+                        LEFT JOIN ProductDiscounts pd ON p.ProductID = pd.ProductID AND pd.IsActive = 1
+                        WHERE p.Slug = @identifier AND p.IsActive = 1
+                        GROUP BY 
+                            p.ProductID, p.PublicId, p.Slug, p.SKU, p.Name, p.Description, p.Price, p.StockQuantity, 
+                            p.Category, p.ImageURL, p.ThumbnailURLs, p.DateAdded, p.IsActive, p.Dimensions, p.IsFeatured,
+                            p.Model3DURL, p.Has3DModel,
+                            pd.DiscountID, pd.DiscountType, pd.DiscountValue, pd.StartDate, pd.EndDate
+                    `;
+                } else {
+                    // ProductReviews table doesn't exist, use basic query
+                    query = `
+                        SELECT 
+                            p.PublicId as id,
+                            p.Slug as slug,
+                            p.SKU as sku,
+                            p.Name as name,
+                            p.Description as description,
+                            p.Price as price,
+                            p.StockQuantity as stockQuantity,
+                            p.Category as categoryName,
+                            p.ImageURL as images,
+                            p.ThumbnailURLs as thumbnails,
+                            p.DateAdded as dateAdded,
+                            p.IsActive as isActive,
+                            p.Dimensions as specifications,
+                            p.IsFeatured as featured,
+                            p.Model3DURL as model3d,
+                            p.Has3DModel as has3dModel
+                        FROM Products p
+                        WHERE p.Slug = @identifier AND p.IsActive = 1
+                    `;
+                }
             }
             
             const result = await pool.request()
-                .input('productId', sql.Int, productId)
+                .input('identifier', inputParam, identifier)
                 .query(query);
             
             if (result.recordset.length === 0) {

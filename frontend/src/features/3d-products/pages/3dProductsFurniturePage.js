@@ -221,7 +221,7 @@ const ThreeDProductsFurniture = () => {
             const [min, max] = filters.priceRange.split('-');
             activeFilters.push({
                 type: 'priceRange',
-                label: `Price: $${min}.00 - $${max}.00`,
+                label: `Price: ₱${min}.00 - ₱${max}.00`,
                 value: filters.priceRange
             });
         }

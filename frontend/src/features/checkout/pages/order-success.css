@@ -62,6 +62,61 @@
     line-height: 1.5;
 }
 
+/* COD Notice Section */
+.cod-notice-section {
+    background-color: #fff8e1;
+    border: 1px solid #ffc107;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 24px;
+    grid-column: 1 / -1;
+}
+
+.cod-notice-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #ffc107;
+}
+
+.cod-notice-header h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #b8860b;
+}
+
+.cod-icon {
+    width: 24px;
+    height: 24px;
+    background: #ffc107;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    flex-shrink: 0;
+}
+
+.cod-icon svg {
+    width: 16px;
+    height: 16px;
+}
+
+.cod-notice-content p {
+    margin: 8px 0;
+    font-size: 14px;
+    color: #b8860b;
+    line-height: 1.5;
+}
+
+.cod-notice-content strong {
+    font-weight: 600;
+    color: #8b6914;
+}
+
 /* Order Summary Section - Matching Product Detail Page */
 .order-summary-section {
     background-color: #ffffff;
@@ -662,6 +717,29 @@ body.theme-dark .success-title {
 
 body.theme-dark .success-subtitle {
     color: #cccccc !important;
+}
+
+/* Dark mode styles for COD notice section */
+body.theme-dark .cod-notice-section {
+    background-color: #2d2a1a !important;
+    border: 1px solid #ffc107 !important;
+    box-shadow: 0 2px 8px rgba(255, 193, 7, 0.2) !important;
+}
+
+body.theme-dark .cod-notice-header {
+    border-bottom: 1px solid #ffc107 !important;
+}
+
+body.theme-dark .cod-notice-header h2 {
+    color: #ffc107 !important;
+}
+
+body.theme-dark .cod-notice-content p {
+    color: #ffc107 !important;
+}
+
+body.theme-dark .cod-notice-content strong {
+    color: #ffd54f !important;
 }
 
 /* Dark mode styles for order summary section */

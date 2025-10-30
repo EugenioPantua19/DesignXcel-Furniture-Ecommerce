@@ -5,7 +5,6 @@ import Testimonials from '../shared/components/feedback/Testimonials';
 import Hero from '../shared/components/layout/Hero';
 import Slider from '../shared/components/ui/Slider';
 import { ContactSection } from '../shared/components/layout';
-import { ChristmasHeaderDecoration, ChristmasFooterDecoration } from '../shared/components/christmas';
 import { getFeaturedProducts, productService } from '../features/products/services/productService';
 import AudioLoader from '../shared/components/ui/AudioLoader';
 import './pages.css';
@@ -597,7 +596,6 @@ const Home = () => {
             {/* Featured Categories */}
             <section className="featured-categories">
                 <div className="container">
-                    {currentTheme === 'christmas' && <ChristmasHeaderDecoration />}
                     <div className="section-header">
                         <h2>Featured Categories</h2>
                         <Link to="/products" className="view-all">View All Categories →</Link>
@@ -683,7 +681,6 @@ const Home = () => {
             {/* Featured Products */}
             <section className="featured-products">
                 <div className="container">
-                    {currentTheme === 'christmas' && <ChristmasHeaderDecoration />}
                     <div className="section-header">
                         <h2>Featured Products</h2>
                         <Link to="/products" className="view-all">View All Products →</Link>
@@ -733,9 +730,6 @@ const Home = () => {
             
             {/* Contact Section with Map */}
             <ContactSection />
-            
-            {/* Christmas Footer Decoration - Only show in Christmas theme */}
-            {currentTheme === 'christmas' && <ChristmasFooterDecoration />}
             </div>
         </div>
         </>

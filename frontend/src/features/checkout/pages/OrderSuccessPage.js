@@ -244,9 +244,18 @@ const OrderSuccessPage = () => {
             // Set payment details for display
             if (paymentStatus && paymentMethod) {
                 setPaymentDetails({
+                    orderId: order?.id,
                     status: paymentStatus,
                     method: paymentMethod,
-                    completedAt: new Date().toISOString()
+                    amount: order?.total,
+                    currency: 'PHP',
+                    deliveryType: order?.deliveryType,
+                    deliveryCost: order?.shippingCost,
+                    completedAt: new Date().toISOString(),
+                    // Add customer info if available
+                    customerEmail: user?.email,
+                    // Add address info if available
+                    address: order?.shippingAddress
                 });
             }
         } else {
@@ -302,6 +311,26 @@ const OrderSuccessPage = () => {
                     </p>
                 </div>
 
+                {/* COD Payment Notice */}
+                {paymentMethod === 'Cash on Delivery' && (
+                    <div className="cod-notice-section">
+                        <div className="cod-notice-header">
+                            <div className="cod-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="#F0B21B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                    <path d="M2 17L12 22L22 17" stroke="#F0B21B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                    <path d="M2 12L12 17L22 12" stroke="#F0B21B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                            </div>
+                            <h2>Cash on Delivery Order</h2>
+                        </div>
+                        <div className="cod-notice-content">
+                            <p><strong>Payment Status:</strong> Pending - You will pay when your order is delivered</p>
+                            <p><strong>Next Steps:</strong> Our team will contact you to confirm your order and arrange delivery</p>
+                        </div>
+                    </div>
+                )}
+
                 {/* Order Summary */}
                 <div className="order-summary-section">
                     <div className="order-summary-header">
@@ -325,7 +354,11 @@ const OrderSuccessPage = () => {
                                 </div>
                                 <div className="order-detail-item">
                                     <span className="order-detail-label">Payment Method:</span>
-                                    <span className="order-detail-value">{paymentDetails.method === 'stripe' ? 'E-Wallet (Stripe)' : paymentDetails.method}</span>
+                                    <span className="order-detail-value">
+                                        {paymentDetails.method === 'stripe' ? 'E-Wallet (Stripe)' : 
+                                         paymentDetails.method === 'Cash on Delivery' ? 'Cash on Delivery' :
+                                         paymentDetails.method}
+                                    </span>
                                 </div>
                                 {paymentDetails.paymentStatus && (
                                     <div className="order-detail-item">

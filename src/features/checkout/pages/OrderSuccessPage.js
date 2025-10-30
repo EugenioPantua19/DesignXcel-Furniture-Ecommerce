@@ -327,7 +327,11 @@ const OrderSuccessPage = () => {
                                 </div>
                                 <div className="order-detail-item">
                                     <span className="order-detail-label">Payment Method:</span>
-                                    <span className="order-detail-value">{paymentDetails.method === 'stripe' ? 'E-Wallet (Stripe)' : paymentDetails.method}</span>
+                                    <span className="order-detail-value">
+                                        {paymentDetails.method === 'stripe' ? 'E-Wallet (Stripe)' : 
+                                         paymentDetails.method === 'Cash on Delivery' ? 'Cash on Delivery' :
+                                         paymentDetails.method}
+                                    </span>
                                 </div>
                                 {paymentDetails.paymentStatus && (
                                     <div className="order-detail-item">

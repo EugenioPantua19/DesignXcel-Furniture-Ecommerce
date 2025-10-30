@@ -2,6 +2,7 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../shared/hooks/useAuth';
 import stripeService from '../services/stripeService';
+import codService from '../services/codService';
 import apiClient from '../../../shared/services/api/apiClient';
 import checkoutSessionManager from '../utils/checkoutSessionManager';
 import './payment.css';
@@ -202,6 +203,82 @@ const Payment = () => {
         }
     };
 
+    const handleCodPayment = async () => {
+        setLoading(true);
+        setError('');
+        
+        try {
+            // Get customer email from user context or localStorage
+            const customerEmail = user?.email || JSON.parse(localStorage.getItem('user') || '{}').email;
+            
+            if (!customerEmail) {
+                setError('Please log in to proceed with Cash on Delivery order.');
+                navigate('/login');
+                return;
+            }
+
+            // Validate items
+            if (!checkedItems || checkedItems.length === 0) {
+                setError('No items found in your cart. Please add items before proceeding to payment.');
+                return;
+            }
+
+            // Prepare order data for COD
+            const orderData = {
+                items: checkedItems.map(item => ({
+                    name: item.product?.name || item.name || 'Product',
+                    quantity: item.quantity,
+                    price: item.price,
+                    id: item.product?.id || item.product?.ProductID || item.id,
+                    variationId: item.product?.selectedVariation?.id || null,
+                    variationName: item.product?.selectedVariation?.name || null,
+                    useOriginalProduct: item.product?.useOriginalProduct || false
+                })),
+                email: customerEmail,
+                subtotal: subtotal,
+                shippingCost: shippingCost,
+                total: total,
+                deliveryType: deliveryType,
+                shippingAddressId: location.state?.shippingAddressId || null
+            };
+
+            console.log('Creating COD order:', orderData);
+
+            // Create COD order
+            const result = await codService.createCodOrder(orderData);
+            
+            if (result.success) {
+                // Clear the cart after successful order creation
+                localStorage.removeItem(`shopping-cart-${user?.id || 'guest'}`);
+                
+                // Navigate to order success page
+                navigate('/order-success', {
+                    state: {
+                        order: {
+                            id: result.orderId,
+                            items: checkedItems,
+                            total: total,
+                            subtotal: subtotal,
+                            shippingCost: shippingCost,
+                            deliveryType: deliveryType
+                        },
+                        message: result.message,
+                        paymentStatus: 'pending',
+                        paymentMethod: 'Cash on Delivery'
+                    }
+                });
+            } else {
+                setError(result.message || 'Failed to create COD order');
+            }
+            
+        } catch (error) {
+            console.error('COD payment error:', error);
+            setError(error.message || 'Failed to create Cash on Delivery order. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div className="payment-page">
             <div className="payment-container">
@@ -236,6 +313,29 @@ const Payment = () => {
                             </div>
                             <span className="payment-method-name">Stripe</span>
                             <span className="payment-method-details">Secure payment processing</span>
+                        </div>
+
+                        {/* Cash on Delivery */}
+                        <div 
+                            className={`payment-method-option ${selectedPaymentMethod === 'cod' ? 'selected' : ''}`}
+                            data-method="cod"
+                            onClick={() => setSelectedPaymentMethod('cod')}
+                        >
+                            <div className="payment-method-radio">
+                                <div className={`radio-button ${selectedPaymentMethod === 'cod' ? 'checked' : ''}`}>
+                                    {selectedPaymentMethod === 'cod' && <div className="radio-dot"></div>}
+                                </div>
+                            </div>
+                            <div className="payment-method-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                    <rect x="3" y="4" width="18" height="16" rx="2" fill="#10B981"/>
+                                    <path d="M7 8h10M7 12h10M7 16h6" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                                    <circle cx="18" cy="6" r="3" fill="#EF4444"/>
+                                    <text x="18" y="8" textAnchor="middle" fill="white" fontSize="4" fontWeight="bold">₱</text>
+                                </svg>
+                            </div>
+                            <span className="payment-method-name">Cash on Delivery</span>
+                            <span className="payment-method-details">Pay when your order arrives</span>
                         </div>
                     </div>
                 </div>
@@ -283,10 +383,10 @@ const Payment = () => {
 
                     <button 
                         className="confirm-payment-btn"
-                        onClick={handleEWalletPayment}
+                        onClick={selectedPaymentMethod === 'cod' ? handleCodPayment : handleEWalletPayment}
                         disabled={loading || checkedItems.length === 0}
                     >
-                        {loading ? 'Processing...' : 'Confirm Payment'}
+                        {loading ? 'Processing...' : selectedPaymentMethod === 'cod' ? 'Place COD Order' : 'Confirm Payment'}
                     </button>
                 </div>
             </div>

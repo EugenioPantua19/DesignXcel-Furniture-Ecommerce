@@ -146,11 +146,20 @@ const SecuritySettings = () => {
   };
 
   return (
-    <div className="security-settings">
-      <div className="section-header">
-        <div>
-          <h2 className="section-title">Password Manager</h2>
-          <p className="section-subtitle">Change your password to keep your account secure</p>
+    <div className="tab-container">
+      <div className="tab-header">
+        <div className="tab-header-content">
+          <div className="tab-header-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <circle cx="12" cy="16" r="1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M7 11V7C7 5.67392 7.52678 4.40215 8.46447 3.46447C9.40215 2.52678 10.6739 2 12 2C13.3261 2 14.5979 2.52678 15.5355 3.46447C16.4732 4.40215 17 5.67392 17 7V11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          <div className="tab-header-text">
+            <h1 className="tab-title">Password Manager</h1>
+            <p className="tab-subtitle">Change your password to keep your account secure</p>
+          </div>
         </div>
       </div>
 

@@ -4,8 +4,11 @@ import {
   OrbitControls, 
   useGLTF, 
   PerspectiveCamera,
-  Html
+  Html,
+  useLoader
 } from '@react-three/drei';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import { LoadingManager } from 'three';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { getProductById } from '../../products/services/productService';
 import { useCart } from '../../../shared/contexts/CartContext';
@@ -14,7 +17,8 @@ import PageHeader from '../../../shared/components/layout/PageHeader';
 import AudioLoader from '../../../shared/components/ui/AudioLoader';
 import CartSuccessModal from '../../../shared/components/ui/CartSuccessModal';
 import { getImageUrl, getModel3dUrl } from '../../../shared/utils/imageUtils';
-import { testProduct3dModel, debugProduct3dModel } from '../../../shared/utils/debug3dModels';
+import ARViewer from '../components/ARViewer';
+import QRCodeModal from '../components/QRCodeModal';
 import './3d-products.css';
 
 // Safe OrbitControls wrapper to handle touch events properly
@@ -179,54 +183,314 @@ const LoadingBox = () => {
   );
 };
 
-// Model component that uses useGLTF from drei (avoids multiple Three.js instances)
-const ModelComponent = ({ modelPath, onLoadingChange, onErrorChange }) => {
-  const gltf = useGLTF(modelPath);
+// Inner component that uses useGLTF (must be called unconditionally)
+const GLTFLoaderInner = ({ blobUrl, onLoadingChange, onErrorChange }) => {
+  // useGLTF is called unconditionally - it will handle null/undefined gracefully or suspend
+  const gltf = useGLTF(blobUrl);
   
   useEffect(() => {
     if (gltf && gltf.scene) {
-      // Enhanced material processing for texture visibility
-      gltf.scene.traverse((child) => {
-        if (child.isMesh && child.material) {
-          // Apply texture visibility fixes
-          if (child.material.map) {
-            // Force optimal material properties for texture visibility
-            child.material.color.setHex(0xffffff); // White base color
-            child.material.roughness = 0.5; // Moderate roughness
-            child.material.metalness = 0.0; // Non-metallic
-            child.material.emissive.setHex(0x000000); // No emission
-            child.material.transparent = false;
-            child.material.opacity = 1.0;
-            child.material.side = 2; // THREE.FrontSide
-            
-            // Force texture updates
-            child.material.map.needsUpdate = true;
-            child.material.map.flipY = false;
-            child.material.map.generateMipmaps = true;
-            child.material.map.minFilter = 1006; // THREE.LinearMipmapLinearFilter
-            child.material.map.magFilter = 1003; // THREE.LinearFilter
-            child.material.map.wrapS = 1000; // THREE.RepeatWrapping
-            child.material.map.wrapT = 1000; // THREE.RepeatWrapping
-            
-            child.material.needsUpdate = true;
-          }
-        }
-      });
-      
-      // Notify parent component that loading is complete
-      if (onLoadingChange) onLoadingChange(false);
-      if (onErrorChange) onErrorChange(null);
+      console.log('GLTFLoaderInner - GLTF loaded and processed successfully');
     }
-  }, [gltf, modelPath, onLoadingChange, onErrorChange]);
+  }, [gltf]);
+  
+  useEffect(() => {
+    if (gltf && gltf.scene) {
+      try {
+        // Enhanced material processing for texture visibility
+        gltf.scene.traverse((child) => {
+          if (child.isMesh && child.material) {
+            // Apply texture visibility fixes
+            if (child.material.map) {
+              // Force optimal material properties for texture visibility
+              child.material.color.setHex(0xffffff); // White base color
+              child.material.roughness = 0.5; // Moderate roughness
+              child.material.metalness = 0.0; // Non-metallic
+              child.material.emissive.setHex(0x000000); // No emission
+              child.material.transparent = false;
+              child.material.opacity = 1.0;
+              child.material.side = 2; // THREE.FrontSide
+              
+              // Force texture updates
+              child.material.map.needsUpdate = true;
+              child.material.map.flipY = false;
+              child.material.map.generateMipmaps = true;
+              child.material.map.minFilter = 1006; // THREE.LinearMipmapLinearFilter
+              child.material.map.magFilter = 1003; // THREE.LinearFilter
+              child.material.map.wrapS = 1000; // THREE.RepeatWrapping
+              child.material.map.wrapT = 1000; // THREE.RepeatWrapping
+              
+              child.material.needsUpdate = true;
+            }
+          }
+        });
+        
+        if (onLoadingChange) onLoadingChange(false);
+        if (onErrorChange) onErrorChange(null);
+      } catch (processError) {
+        console.error('Error processing model:', processError);
+        if (onLoadingChange) onLoadingChange(false);
+        if (onErrorChange) onErrorChange(processError.message || 'Failed to process 3D model');
+      }
+    }
+  }, [gltf, onLoadingChange, onErrorChange]);
 
   // Notify parent component about loading state
   useEffect(() => {
     if (onLoadingChange) {
-      onLoadingChange(!gltf);
+      onLoadingChange(!gltf || !gltf.scene);
     }
   }, [gltf, onLoadingChange]);
 
-  return gltf ? <primitive object={gltf.scene} /> : null;
+  if (!gltf || !gltf.scene) {
+    return null;
+  }
+  
+  return <primitive object={gltf.scene} />;
+};
+
+// Model component that uses useLoader for better error handling
+const ModelComponent = ({ modelPath, onLoadingChange, onErrorChange }) => {
+  const [gltf, setGltf] = useState(null);
+  const [loadError, setLoadError] = useState(null);
+  const loadingRef = useRef(false); // Track if we're currently loading
+  const loadedPathRef = useRef(null); // Track which path we've loaded
+  
+  // Early return if no modelPath
+  if (!modelPath) {
+    if (onLoadingChange) onLoadingChange(false);
+    return null;
+  }
+  
+  // Load the model manually with timeout handling
+  useEffect(() => {
+    if (!modelPath) return;
+    
+    // If we already have this model loaded, don't reload
+    if (gltf && gltf.scene && loadedPathRef.current === modelPath) {
+      return;
+    }
+    
+    // If we're already loading this path, don't start another load
+    if (loadingRef.current && loadedPathRef.current === modelPath) {
+      return;
+    }
+    
+    // If the path changed, reset state
+    if (loadedPathRef.current !== modelPath) {
+      setLoadError(null);
+      setGltf(null);
+      loadingRef.current = false;
+    }
+    
+    loadingRef.current = true;
+    loadedPathRef.current = modelPath;
+    
+    if (onLoadingChange) onLoadingChange(true);
+    
+    let timeoutId;
+    let loadingAborted = false;
+    
+    // First, verify the file is accessible
+    const verifyAndLoad = async () => {
+      try {
+        // Quick HEAD check to verify file exists (with short timeout)
+        const verifyController = new AbortController();
+        const verifyTimeout = setTimeout(() => verifyController.abort(), 5000);
+        
+        const verifyResponse = await fetch(modelPath, {
+          method: 'HEAD',
+          signal: verifyController.signal
+        });
+        
+        clearTimeout(verifyTimeout);
+        
+        if (!verifyResponse.ok) {
+          throw new Error(`Model file not accessible: HTTP ${verifyResponse.status}`);
+        }
+      } catch (verifyError) {
+        // Continue with load attempt even if verification fails
+      }
+      
+      // Set up timeout (90 seconds)
+      timeoutId = setTimeout(() => {
+        if (!loadingAborted) {
+          loadingAborted = true;
+          loadingRef.current = false;
+          const error = new Error(`Model loading timed out after 90 seconds. URL: ${modelPath}`);
+          setLoadError(error.message);
+          setGltf(null);
+          if (onErrorChange) onErrorChange(error.message);
+          if (onLoadingChange) onLoadingChange(false);
+        }
+      }, 90000);
+      
+      // Fetch the file and parse with GLTFLoader
+      const fetchAndLoadModel = async () => {
+        try {
+          if (onLoadingChange) onLoadingChange(true);
+          
+          const fetchController = new AbortController();
+          const fetchTimeout = setTimeout(() => {
+            fetchController.abort();
+          }, 85000);
+          
+          const response = await fetch(modelPath, {
+            signal: fetchController.signal,
+            headers: {
+              'Accept': 'model/gltf-binary, application/octet-stream, */*'
+            }
+          });
+          
+          clearTimeout(fetchTimeout);
+          
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+          
+          const blob = await response.blob();
+          const arrayBuffer = await blob.arrayBuffer();
+          
+          const loadingManager = new LoadingManager();
+          
+          loadingManager.onError = (url) => {
+            if (!loadingAborted) {
+              loadingAborted = true;
+              clearTimeout(timeoutId);
+              const errorMsg = `Failed to parse 3D model: ${url}`;
+              setLoadError(errorMsg);
+              setGltf(null);
+              if (onErrorChange) onErrorChange(errorMsg);
+              if (onLoadingChange) onLoadingChange(false);
+            }
+          };
+          
+          const loader = new GLTFLoader(loadingManager);
+          
+          loader.parse(
+            arrayBuffer,
+            modelPath,
+            (loadedGltf) => {
+              if (loadingAborted) {
+                return;
+              }
+              
+              clearTimeout(timeoutId);
+              loadingRef.current = false;
+              setGltf(loadedGltf);
+              setLoadError(null);
+              if (onErrorChange) onErrorChange(null);
+              if (onLoadingChange) onLoadingChange(false);
+            },
+            (error) => {
+              if (loadingAborted) {
+                return;
+              }
+              
+              clearTimeout(timeoutId);
+              
+              let errorMsg = error.message || 'Failed to parse 3D model';
+              if (error.message?.includes('CORS')) {
+                errorMsg = 'CORS error: Model file blocked by cross-origin policy.';
+              } else if (error.message?.includes('Invalid')) {
+                errorMsg = 'Invalid 3D model file. Please check the file format.';
+              }
+              
+              setLoadError(errorMsg);
+              setGltf(null);
+              if (onErrorChange) onErrorChange(errorMsg);
+              if (onLoadingChange) onLoadingChange(false);
+            }
+          );
+          
+        } catch (fetchError) {
+          if (loadingAborted) return;
+          
+          clearTimeout(timeoutId);
+          loadingRef.current = false;
+          
+          let errorMsg = fetchError.message || 'Failed to download/parse 3D model';
+          
+          if (fetchError.name === 'AbortError' || fetchError.message?.includes('aborted')) {
+            errorMsg = 'Download timed out: The model file took too long to download. The file may be too large or the connection is slow.';
+          } else if (fetchError.message?.includes('Failed to fetch') || fetchError.message?.includes('network') || fetchError.message?.includes('ERR_')) {
+            errorMsg = 'Network error: Cannot reach model file. Please check your connection and that the server is running.';
+          } else if (fetchError.message?.includes('404') || fetchError.message?.includes('not found')) {
+            errorMsg = 'File not found: The 3D model file does not exist on the server.';
+          } else if (fetchError.message?.includes('CORS')) {
+            errorMsg = 'CORS error: Model file blocked by cross-origin policy. Please check server CORS settings.';
+          }
+          
+          setLoadError(errorMsg);
+          setGltf(null);
+          if (onErrorChange) onErrorChange(errorMsg);
+          if (onLoadingChange) onLoadingChange(false);
+        }
+      };
+      
+      fetchAndLoadModel();
+      
+      // Cleanup function
+      return () => {
+        loadingRef.current = false;
+      };
+    };
+    
+    verifyAndLoad();
+    
+    return () => {
+      loadingAborted = true;
+      loadingRef.current = false;
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [modelPath]); // Remove onLoadingChange and onErrorChange from dependencies to prevent re-runs
+  
+  // Process the loaded model
+  useEffect(() => {
+    if (gltf && gltf.scene) {
+      try {
+        gltf.scene.traverse((child) => {
+          if (child.isMesh && child.material) {
+            if (child.material.map) {
+              child.material.color.setHex(0xffffff);
+              child.material.roughness = 0.5;
+              child.material.metalness = 0.0;
+              child.material.emissive.setHex(0x000000);
+              child.material.transparent = false;
+              child.material.opacity = 1.0;
+              child.material.side = 2;
+              
+              child.material.map.needsUpdate = true;
+              child.material.map.flipY = false;
+              child.material.map.generateMipmaps = true;
+              child.material.map.minFilter = 1006;
+              child.material.map.magFilter = 1003;
+              child.material.map.wrapS = 1000;
+              child.material.map.wrapT = 1000;
+              
+              child.material.needsUpdate = true;
+            }
+          }
+        });
+        
+        if (onLoadingChange) onLoadingChange(false);
+        if (onErrorChange) onErrorChange(null);
+      } catch (processError) {
+        if (onLoadingChange) onLoadingChange(false);
+        if (onErrorChange) onErrorChange(processError.message || 'Failed to process 3D model');
+      }
+    }
+  }, [gltf, modelPath, onLoadingChange, onErrorChange]);
+
+  if (loadError) {
+    return null;
+  }
+
+  if (!gltf || !gltf.scene) {
+    return null;
+  }
+  
+  return <primitive object={gltf.scene} />;
 };
 
 
@@ -263,8 +527,40 @@ const CustomizableModel = ({ modelPath, customizations, isRotating360 }) => {
   }, []);
   
   // Model loading state
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const loadingRef = useRef(true);
+  
+  // Sync ref with state
+  useEffect(() => {
+    loadingRef.current = loading;
+  }, [loading]);
+  
+  // Add extended timeout for model loading (allows time for download + useGLTF processing)
+  useEffect(() => {
+    if (!modelPath) {
+      setLoading(false);
+      loadingRef.current = false;
+      return;
+    }
+    
+    // Reset loading state when model path changes
+    setLoading(true);
+    loadingRef.current = true;
+    setError(null);
+    
+    const timeoutId = setTimeout(() => {
+      if (loadingRef.current) {
+        setLoading(false);
+        loadingRef.current = false;
+        setError(`Model loading timed out after 120 seconds. The file may be too large or slow to load. URL: ${modelPath}`);
+      }
+    }, 120000);
+    
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [modelPath]);
 
   // Process materials when scene is loaded - preserve original materials
   useEffect(() => {
@@ -337,23 +633,6 @@ const CustomizableModel = ({ modelPath, customizations, isRotating360 }) => {
     );
   }
 
-  // Show loading placeholder if model is loading
-  if (loading && modelPath) {
-    return (
-      <group>
-        {/* Animated loading geometry */}
-        <LoadingBox />
-        <Html center position={[0, 2, 0]}>
-          <div className="model-placeholder">
-            <h3>Loading 3D Preview...</h3>
-            <p className="placeholder-subtitle">Please wait while we load the 3D model</p>
-            <p className="placeholder-note">Loading: {modelPath}</p>
-          </div>
-        </Html>
-      </group>
-    );
-  }
-
   // Show error message if there's an error
   if (error) {
     return (
@@ -371,52 +650,109 @@ const CustomizableModel = ({ modelPath, customizations, isRotating360 }) => {
       </Html>
     );
   }
+  
+  // Only render ModelComponent if we have a modelPath and no error
+  if (!modelPath) {
+    return null;
+  }
 
   return (
     <>
-      {modelPath && (
-        <RotatingModel isRotating={isRotating360}>
-          <group 
-            ref={meshRef}
-            position={[0, 0, 0]}
-            scale={isMobile ? [1.1, 1.1, 1.1] : [1.2, 1.2, 1.2]} // Reduced scale for mobile (10%) vs desktop (20%)
-          >
-            <ModelComponent 
-              modelPath={modelPath} 
-              onLoadingChange={setLoading}
-              onErrorChange={setError}
-            />
-          </group>
-        </RotatingModel>
+      {/* Show loading overlay if still loading */}
+      {loading && modelPath && (
+        <Html center position={[0, 2, 0]}>
+          <div className="model-placeholder" style={{ pointerEvents: 'none', zIndex: 1000 }}>
+            <h3>Loading 3D Preview...</h3>
+            <p className="placeholder-subtitle">Please wait while we load the 3D model</p>
+            <p className="placeholder-note">Loading: {modelPath}</p>
+          </div>
+        </Html>
       )}
+      
+      <RotatingModel isRotating={isRotating360}>
+        <group 
+          ref={meshRef}
+          position={[0, 0, 0]}
+          scale={isMobile ? [1.1, 1.1, 1.1] : [1.2, 1.2, 1.2]} // Reduced scale for mobile (10%) vs desktop (20%)
+        >
+          {/* Always render ModelComponent so it can update loading state */}
+          {modelPath && (
+            <>
+              {loading && <LoadingBox />}
+              <ErrorBoundary onError={setError}>
+                <ModelComponent 
+                  modelPath={modelPath} 
+                  onLoadingChange={setLoading}
+                  onErrorChange={setError}
+                />
+              </ErrorBoundary>
+            </>
+          )}
+        </group>
+      </RotatingModel>
     </>
   );
 };
 
+// Error Boundary component for React Three Fiber
+const ErrorBoundary = ({ children, onError }) => {
+  useEffect(() => {
+    const handleError = (event) => {
+      console.error('Error in 3D model:', event.error);
+      if (onError) {
+        onError(event.error.message || 'Failed to load 3D model');
+      }
+    };
+    
+    window.addEventListener('error', handleError);
+    return () => window.removeEventListener('error', handleError);
+  }, [onError]);
+  
+  return <>{children}</>;
+};
+
+// Model Error Catcher for Suspense errors
+const ModelErrorCatcher = ({ children }) => {
+  useEffect(() => {
+    const handleUnhandledRejection = (event) => {
+      console.error('Unhandled promise rejection in 3D model:', event.reason);
+    };
+    
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+    return () => window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+  }, []);
+  
+  return <>{children}</>;
+};
+
 // Main 3D Products Component
 const ThreeDProducts = () => {
-  const { id } = useParams();
+  const { slug } = useParams(); // Changed from 'id' to 'slug' to match route param
   const navigate = useNavigate();
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [showCartSuccessModal, setShowCartSuccessModal] = useState(false);
+  const [showARViewer, setShowARViewer] = useState(false);
+  const [showQRCode, setShowQRCode] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [isCameraPanelVisible, setIsCameraPanelVisible] = useState(true);
   const [isCameraTransitioning, setIsCameraTransitioning] = useState(false);
   
   const { addToCart } = useCart();
   
-  // Debug cart context
-  useEffect(() => {
-    console.log('3D Products - Cart context loaded:', { addToCart: typeof addToCart });
-  }, [addToCart]);
 
   // Detect mobile device and update camera settings
   useEffect(() => {
     const checkMobile = () => {
-      const mobile = window.innerWidth <= 768;
+      // More robust mobile detection
+      const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      const isMobileWidth = window.innerWidth <= 768;
+      const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      
+      // Consider it mobile if it's a mobile device OR (mobile width AND touch device)
+      const mobile = isMobileDevice || (isMobileWidth && isTouchDevice);
       setIsMobile(mobile);
     };
     
@@ -521,13 +857,7 @@ const ThreeDProducts = () => {
   useEffect(() => {
     const loadProduct = async () => {
       try {
-        const response = await getProductById(id);
-        console.log('3D Products - Product data loaded:', response.product);
-        console.log('3D Products - Model data:', {
-          model3d: response.product?.model3d,
-          has3dModel: response.product?.has3dModel,
-          modelPath: getModel3dUrl(response.product)
-        });
+        const response = await getProductById(slug);
         setProduct(response.product);
       } catch (error) {
         console.error('Error loading product:', error);
@@ -537,10 +867,26 @@ const ThreeDProducts = () => {
       }
     };
 
-    if (id) {
+    if (slug) {
       loadProduct();
     }
-  }, [id]);
+  }, [slug]);
+
+  // Auto-open AR viewer if URL has ?ar=true and user is on mobile
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const shouldOpenAR = urlParams.get('ar') === 'true';
+    
+    if (shouldOpenAR && isMobile && product) {
+      // Small delay to ensure page is loaded
+      setTimeout(() => {
+        setShowARViewer(true);
+        // Clean up URL to remove ?ar=true after opening
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, '', newUrl);
+      }, 500);
+    }
+  }, [isMobile, product, slug]);
 
   const [priceAdjustment, setPriceAdjustment] = useState(0);
   const [isResizing, setIsResizing] = useState(false);
@@ -552,25 +898,17 @@ const ThreeDProducts = () => {
 
   // Use the uploaded 3D model from the product, or show placeholder
   const modelPath = getModel3dUrl(product);
-
-  // Debug logging and testing
+  
+  // Debug model path
   useEffect(() => {
     if (product) {
-      // Run comprehensive 3D model debugging
-      testProduct3dModel(product).then(result => {
-        console.log('3D Model Comprehensive Test Result:', result);
-        
-        // If the model is not accessible, show a helpful error message
-        if (result && result.error) {
-          console.warn('3D Model not accessible:', result.error);
-        }
+      console.log('Product data:', {
+        model3d: product.model3d,
+        has3dModel: product.has3dModel,
+        modelPath: modelPath
       });
-      
-      // Also run basic debug
-      const debug = debugProduct3dModel(product);
-      console.log('3D Model Basic Debug:', debug);
     }
-  }, [product]);
+  }, [product, modelPath]);
 
   // Calculate price adjustments
   useEffect(() => {
@@ -648,7 +986,6 @@ const ThreeDProducts = () => {
   };
 
   const handleCameraAngleChange = (angle) => {
-    console.log('Changing camera angle to:', angle);
     setCameraAngle(angle);
     setIsCameraTransitioning(true);
     
@@ -657,8 +994,6 @@ const ThreeDProducts = () => {
       if (controlsRef.current) {
         const config = cameraAngles[angle];
         if (config) {
-          console.log('Applying camera config:', config);
-          
           // Smoothly animate camera to new position
           const controls = controlsRef.current;
           const camera = controls.object;
@@ -676,18 +1011,14 @@ const ThreeDProducts = () => {
             cameraRef.current.lookAt(...config.target);
           }
           
-          console.log('Camera position set to:', config.position);
-          
           // End transition after a short delay
           setTimeout(() => {
             setIsCameraTransitioning(false);
           }, 300);
         } else {
-          console.warn('No config found for camera angle:', angle);
           setIsCameraTransitioning(false);
         }
       } else {
-        console.warn('Controls ref not available');
         setIsCameraTransitioning(false);
       }
     }, 100);
@@ -705,8 +1036,6 @@ const ThreeDProducts = () => {
   // Handle add to cart - exactly like product detail page
   const handleAddToCart = () => {
     if (product && quantity > 0) {
-      console.log('Adding to cart:', { product: product.name, quantity, customizations });
-      
       // Create product object with customization data
       const productWithCustomization = {
         ...product,
@@ -723,14 +1052,12 @@ const ThreeDProducts = () => {
           height: customizations.height,
           depth: customizations.depth
         });
-        console.log('Successfully added to cart');
         setShowCartSuccessModal(true);
       } catch (error) {
         console.error('Error adding to cart:', error);
         alert('Failed to add item to cart. Please try again.');
       }
     } else {
-      console.warn('Cannot add to cart: missing product or invalid quantity');
       alert('Please select a valid quantity to add to cart.');
     }
   };
@@ -796,6 +1123,26 @@ const ThreeDProducts = () => {
                 <path d="M12 3v9l4-4"/>
               </svg>
               <span>360°</span>
+            </button>
+            
+            <button 
+              className="btn-ar"
+              onClick={() => {
+                // Show QR code on desktop, AR viewer on mobile (like IKEA Place)
+                if (isMobile) {
+                  setShowARViewer(true);
+                } else {
+                  setShowQRCode(true);
+                }
+              }}
+              title={isMobile ? "View in AR" : "View in AR (Scan QR code with phone)"}
+            >
+              <svg className="icon-ar" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                <path d="M2 17l10 5 10-5"/>
+                <path d="M2 12l10 5 10-5"/>
+              </svg>
+              <span>AR</span>
             </button>
             
             {isResizing && (
@@ -939,41 +1286,88 @@ const ThreeDProducts = () => {
               gl={{ 
                 antialias: true, 
                 alpha: true,
-                powerPreference: "high-performance"
+                powerPreference: "high-performance",
+                preserveDrawingBuffer: true,
+                failIfMajorPerformanceCaveat: false
               }}
-              onCreated={({ gl }) => {
-                // Add error handling for WebGL context
-                gl.domElement.addEventListener('webglcontextlost', (event) => {
-                  console.warn('WebGL context lost, attempting to restore...');
-                  event.preventDefault();
-                });
+              onCreated={({ gl, scene, camera }) => {
+                // Enhanced WebGL context loss handling
+                let contextLostHandler = null;
+                let contextRestoredHandler = null;
                 
-                gl.domElement.addEventListener('webglcontextrestored', () => {
-                  console.log('WebGL context restored');
-                });
+                contextLostHandler = (event) => {
+                  console.warn('⚠️ WebGL context lost, attempting to restore...');
+                  event.preventDefault();
+                  
+                  // Attempt to restore context after a short delay
+                  setTimeout(() => {
+                    try {
+                      // Force a canvas resize to trigger context restoration
+                      const canvas = gl.domElement;
+                      const width = canvas.width;
+                      const height = canvas.height;
+                      canvas.width = width;
+                      canvas.height = height;
+                      console.log('🔄 Context restoration triggered');
+                    } catch (error) {
+                      console.error('Failed to trigger context restoration:', error);
+                    }
+                  }, 100);
+                };
+                
+                contextRestoredHandler = () => {
+                  console.log('✅ WebGL context restored successfully');
+                  
+                  // Re-render scene
+                  try {
+                    gl.render(scene, camera);
+                  } catch (error) {
+                    console.warn('Re-render after context restore failed:', error);
+                  }
+                };
+                
+                gl.domElement.addEventListener('webglcontextlost', contextLostHandler, false);
+                gl.domElement.addEventListener('webglcontextrestored', contextRestoredHandler, false);
+                
+                // Cleanup
+                return () => {
+                  if (gl.domElement) {
+                    gl.domElement.removeEventListener('webglcontextlost', contextLostHandler);
+                    gl.domElement.removeEventListener('webglcontextrestored', contextRestoredHandler);
+                  }
+                };
               }}
             >
               <SafeEnvironment />
               
-              <React.Suspense fallback={
-                <Html center>
-                  <div style={{ 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    alignItems: 'center', 
-                    justifyContent: 'center',
-                    gap: '1rem'
-                  }}>
-                    <AudioLoader size="large" color="#F0B21B" />
-                    <p>Loading 3D Model...</p>
-                  </div>
-                </Html>
-              }>
-                <CustomizableModel
-                  modelPath={modelPath}
-                  customizations={customizations}
-                  isRotating360={isRotating360}
-                />
+              <React.Suspense 
+                fallback={
+                  <Html center>
+                    <div style={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      gap: '1rem'
+                    }}>
+                      <AudioLoader size="large" color="#F0B21B" />
+                      <p>Loading 3D Model...</p>
+                      {modelPath && (
+                        <p style={{ fontSize: '0.8em', opacity: 0.7 }}>
+                          Loading: {modelPath}
+                        </p>
+                      )}
+                    </div>
+                  </Html>
+                }
+              >
+                <ModelErrorCatcher>
+                  <CustomizableModel
+                    modelPath={modelPath}
+                    customizations={customizations}
+                    isRotating360={isRotating360}
+                  />
+                </ModelErrorCatcher>
               </React.Suspense>
               
               <SafeOrbitControls
@@ -1004,7 +1398,7 @@ const ThreeDProducts = () => {
             
             <div className="dimension-controls">
               <div className="dimension-control">
-                <label>WIDTH</label>
+                <label>WIDTH (50-80 cm)</label>
                 <div className="slider-container">
                   <input
                     type="range"
@@ -1020,7 +1414,7 @@ const ThreeDProducts = () => {
               </div>
 
               <div className="dimension-control">
-                <label>DEPTH</label>
+                <label>DEPTH (40-70 cm)</label>
                 <div className="slider-container">
                   <input
                     type="range"
@@ -1036,7 +1430,7 @@ const ThreeDProducts = () => {
               </div>
 
               <div className="dimension-control">
-                <label>HEIGHT </label>
+                <label>HEIGHT (70-100 cm)</label>
                 <div className="slider-container">
                   <input
                     type="range"
@@ -1096,10 +1490,7 @@ const ThreeDProducts = () => {
               
               <button 
                 className="add-to-cart-btn"
-                onClick={(e) => {
-                  console.log('Add to Cart button clicked', { product: product?.name, quantity, customizations });
-                  handleAddToCart();
-                }}
+                onClick={handleAddToCart}
                 disabled={!product || quantity <= 0 || (product?.stockQuantity && quantity > product.stockQuantity)}
               >
                 ADD TO CART
@@ -1118,6 +1509,22 @@ const ThreeDProducts = () => {
         quantity={quantity}
         onViewCart={() => navigate('/cart')}
         onContinueShopping={() => navigate('/products')}
+      />
+
+      {/* AR Viewer Modal - Only shown on mobile */}
+      <ARViewer
+        isOpen={showARViewer}
+        onClose={() => setShowARViewer(false)}
+        product={product}
+        modelPath={modelPath}
+      />
+
+      {/* QR Code Modal - Only shown on desktop */}
+      <QRCodeModal
+        isOpen={showQRCode}
+        onClose={() => setShowQRCode(false)}
+        product={product}
+        arUrl={`${window.location.origin}/3d-products/${product?.slug || slug}?ar=true`}
       />
       
     </div>

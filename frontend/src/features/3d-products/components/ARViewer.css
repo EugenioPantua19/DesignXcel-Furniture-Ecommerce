@@ -1,0 +1,375 @@
+/* AR Viewer Modal Styles */
+
+.ar-viewer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.95);
+  backdrop-filter: blur(10px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.ar-viewer-modal {
+  width: 100%;
+  max-width: 1200px;
+  height: 90vh;
+  max-height: 900px;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: slideUp 0.3s ease-out;
+  position: relative;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Header */
+.ar-viewer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e0e0e0;
+  background: #ffffff;
+  z-index: 10;
+}
+
+.ar-viewer-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ar-viewer-title h2 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #000000;
+  margin: 0;
+}
+
+.ar-icon {
+  width: 24px;
+  height: 24px;
+  color: #F0B21B;
+  stroke: currentColor;
+}
+
+.ar-close-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  color: #666666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.ar-close-btn:hover {
+  background: #f0f0f0;
+  color: #000000;
+}
+
+/* Instructions */
+.ar-instructions {
+  padding: 16px 24px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.ar-instruction-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #333333;
+  font-size: 14px;
+}
+
+.ar-instruction-item svg {
+  flex-shrink: 0;
+  color: #F0B21B;
+}
+
+/* AR Viewer Container */
+.ar-viewer-container {
+  flex: 1;
+  position: relative;
+  background: #000000;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Loading State */
+.ar-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  color: #ffffff;
+}
+
+.ar-loading-spinner {
+  width: 60px;
+  height: 60px;
+  border: 4px solid rgba(240, 178, 27, 0.3);
+  border-top-color: #F0B21B;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.ar-loading p {
+  font-size: 16px;
+  color: #ffffff;
+  margin: 0;
+}
+
+/* Error State */
+.ar-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 40px;
+  text-align: center;
+  color: #ffffff;
+  max-width: 500px;
+}
+
+.ar-error svg {
+  color: #ef4444;
+  opacity: 0.8;
+}
+
+.ar-error h3 {
+  font-size: 24px;
+  font-weight: 600;
+  margin: 0;
+  color: #ffffff;
+}
+
+.ar-error p {
+  font-size: 16px;
+  color: #d1d5db;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.ar-error-hint {
+  font-size: 14px;
+  color: #9ca3af;
+  margin-top: 8px;
+  font-style: italic;
+}
+
+/* AR Launch Button (slot in model-viewer) */
+.ar-launch-btn {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #F0B21B;
+  color: #000000;
+  border: none;
+  border-radius: 50px;
+  padding: 14px 28px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+  z-index: 100;
+}
+
+.ar-launch-btn:hover {
+  background: #D4AF37;
+  transform: translateX(-50%) translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+.ar-launch-btn:active {
+  transform: translateX(-50%) translateY(0);
+}
+
+.ar-launch-btn svg {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+}
+
+/* Footer */
+.ar-viewer-footer {
+  padding: 20px 24px;
+  border-top: 1px solid #e0e0e0;
+  background: #ffffff;
+}
+
+.ar-tips h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #000000;
+  margin: 0 0 12px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ar-tips ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 8px;
+}
+
+.ar-tips li {
+  font-size: 13px;
+  color: #666666;
+  padding-left: 20px;
+  position: relative;
+  line-height: 1.5;
+}
+
+.ar-tips li::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: #F0B21B;
+  font-weight: bold;
+  font-size: 18px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .ar-viewer-overlay {
+    padding: 0;
+  }
+
+  .ar-viewer-modal {
+    width: 100%;
+    height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+
+  .ar-viewer-header {
+    padding: 16px 20px;
+  }
+
+  .ar-viewer-title h2 {
+    font-size: 18px;
+  }
+
+  .ar-instructions {
+    padding: 12px 20px;
+  }
+
+  .ar-instruction-item {
+    font-size: 13px;
+  }
+
+  .ar-viewer-footer {
+    padding: 16px 20px;
+  }
+
+  .ar-tips ul {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .ar-tips li {
+    font-size: 12px;
+  }
+
+  .ar-launch-btn {
+    bottom: 80px;
+    padding: 12px 24px;
+    font-size: 14px;
+  }
+}
+
+/* Dark Mode Support */
+body.theme-dark .ar-viewer-modal {
+  background: #1a1a1a;
+}
+
+body.theme-dark .ar-viewer-header {
+  background: #1a1a1a;
+  border-bottom-color: #374151;
+}
+
+body.theme-dark .ar-viewer-title h2 {
+  color: #ffffff;
+}
+
+body.theme-dark .ar-close-btn {
+  color: #d1d5db;
+}
+
+body.theme-dark .ar-close-btn:hover {
+  background: #374151;
+  color: #ffffff;
+}
+
+body.theme-dark .ar-instructions {
+  background: #2d2d2d;
+  border-bottom-color: #374151;
+}
+
+body.theme-dark .ar-instruction-item {
+  color: #ffffff;
+}
+
+body.theme-dark .ar-viewer-footer {
+  background: #1a1a1a;
+  border-top-color: #374151;
+}
+
+body.theme-dark .ar-tips h4 {
+  color: #ffffff;
+}
+
+body.theme-dark .ar-tips li {
+  color: #d1d5db;
+}
+

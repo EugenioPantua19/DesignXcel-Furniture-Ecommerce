@@ -3,6 +3,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const sql = require('mssql');
+const sendgridHelper = require('./utils/sendgridHelper');
 // All encryption removed - using plain text storage
 
 module.exports = function(sql, pool) {
@@ -43,6 +44,79 @@ module.exports = function(sql, pool) {
         } catch (error) {
             console.error(`Error deleting old thumbnail files ${thumbnailUrls}:`, error);
         }
+    }
+    
+    // Helper function to safely delete a customer and all related data
+    async function deleteCustomerSafely(customerId, transaction) {
+        // First, set ShippingAddressID to NULL in orders to break foreign key references
+        await transaction.request()
+            .input('customerId', sql.Int, customerId)
+            .query('UPDATE Orders SET ShippingAddressID = NULL WHERE CustomerID = @customerId');
+        
+        // Delete order items first (they reference orders)
+        await transaction.request()
+            .input('customerId', sql.Int, customerId)
+            .query(`
+                DELETE FROM OrderItems 
+                WHERE OrderID IN (
+                    SELECT OrderID FROM Orders WHERE CustomerID = @customerId
+                )
+            `);
+        
+        // Delete customer orders (now safe since order items are deleted)
+        await transaction.request()
+            .input('customerId', sql.Int, customerId)
+            .query('DELETE FROM Orders WHERE CustomerID = @customerId');
+        
+        // Delete customer addresses
+        await transaction.request()
+            .input('customerId', sql.Int, customerId)
+            .query('DELETE FROM CustomerAddresses WHERE CustomerID = @customerId');
+        
+        // Delete customer cart items (if table exists)
+        try {
+            await transaction.request()
+                .input('customerId', sql.Int, customerId)
+                .query('DELETE FROM CartItems WHERE CustomerID = @customerId');
+        } catch (error) {
+            // Table doesn't exist, continue
+            console.log('CartItems table not found, skipping...');
+        }
+        
+        // Delete customer wishlist items (if table exists)
+        try {
+            await transaction.request()
+                .input('customerId', sql.Int, customerId)
+                .query('DELETE FROM WishlistItems WHERE CustomerID = @customerId');
+        } catch (error) {
+            // Table doesn't exist, continue
+            console.log('WishlistItems table not found, skipping...');
+        }
+        
+        // Delete customer reviews (if table exists)
+        try {
+            await transaction.request()
+                .input('customerId', sql.Int, customerId)
+                .query('DELETE FROM ProductReviews WHERE CustomerID = @customerId');
+        } catch (error) {
+            // Table doesn't exist, continue
+            console.log('ProductReviews table not found, skipping...');
+        }
+        
+        // Delete OTP records (if table exists)
+        try {
+            await transaction.request()
+                .input('customerId', sql.Int, customerId)
+                .query('DELETE FROM CustomerDeleteOTP WHERE CustomerID = @customerId');
+        } catch (error) {
+            // Table doesn't exist, continue
+            console.log('CustomerDeleteOTP table not found, skipping...');
+        }
+        
+        // Finally, delete the customer account
+        await transaction.request()
+            .input('customerId', sql.Int, customerId)
+            .query('DELETE FROM Customers WHERE CustomerID = @customerId');
     }
 
     // =============================================================================
@@ -7196,32 +7270,31 @@ module.exports = function(sql, pool) {
             
             const currentCustomer = currentCustomerResult.recordset[0];
             
-            // Check if customer has any orders before permanent deletion
-            const ordersCheck = await pool.request()
-                .input('customerId', sql.Int, customerId)
-                .query('SELECT COUNT(*) as orderCount FROM Orders WHERE CustomerID = @customerId');
+            // Start transaction for customer deletion
+            const transaction = pool.transaction();
+            await transaction.begin();
             
-            if (ordersCheck.recordset[0].orderCount > 0) {
-                return res.status(400).json({ 
-                    success: false, 
-                    message: 'Cannot permanently delete customer with existing orders. Please archive instead.' 
-                });
+            try {
+                // Use helper function to safely delete customer and all related data
+                await deleteCustomerSafely(customerId, transaction);
+                
+                // Commit transaction
+                await transaction.commit();
+                
+                // Log the activity
+                await logActivity(
+                    req.session.user.id,
+                    'DELETE',
+                    'Customers',
+                    customerId.toString(),
+                    `Admin permanently deleted customer ${currentCustomer.FullName} (ID: ${customerId})`,
+                    JSON.stringify({ action: 'permanent_delete' })
+                );
+            } catch (transactionError) {
+                // Rollback transaction on error
+                await transaction.rollback();
+                throw transactionError;
             }
-            
-            // Permanently delete the customer
-            await pool.request()
-                .input('customerId', sql.Int, customerId)
-                .query('DELETE FROM Customers WHERE CustomerID = @customerId');
-            
-            // Log the activity
-            await logActivity(
-                req.session.user.id,
-                'DELETE',
-                'Customers',
-                customerId.toString(),
-                `Admin permanently deleted customer ${currentCustomer.FullName} (ID: ${customerId})`,
-                JSON.stringify({ action: 'permanent_delete' })
-            );
             
             res.json({ success: true, message: 'Customer permanently deleted successfully' });
         } catch (error) {
@@ -7649,32 +7722,31 @@ module.exports = function(sql, pool) {
             
             const currentCustomer = currentCustomerResult.recordset[0];
             
-            // Check if customer has any orders before permanent deletion
-            const ordersCheck = await pool.request()
-                .input('customerId', sql.Int, customerId)
-                .query('SELECT COUNT(*) as orderCount FROM Orders WHERE CustomerID = @customerId');
+            // Start transaction for customer deletion
+            const transaction = pool.transaction();
+            await transaction.begin();
             
-            if (ordersCheck.recordset[0].orderCount > 0) {
-                return res.status(400).json({ 
-                    success: false, 
-                    message: 'Cannot permanently delete customer with existing orders. Please archive instead.' 
-                });
+            try {
+                // Use helper function to safely delete customer and all related data
+                await deleteCustomerSafely(customerId, transaction);
+                
+                // Commit transaction
+                await transaction.commit();
+                
+                // Log the activity
+                await logActivity(
+                    req.session.user.id,
+                    'DELETE',
+                    'Customers',
+                    customerId.toString(),
+                    `Order Support permanently deleted customer ${currentCustomer.FullName} (ID: ${customerId})`,
+                    JSON.stringify({ action: 'permanent_delete' })
+                );
+            } catch (transactionError) {
+                // Rollback transaction on error
+                await transaction.rollback();
+                throw transactionError;
             }
-            
-            // Permanently delete the customer
-            await pool.request()
-                .input('customerId', sql.Int, customerId)
-                .query('DELETE FROM Customers WHERE CustomerID = @customerId');
-            
-            // Log the activity
-            await logActivity(
-                req.session.user.id,
-                'DELETE',
-                'Customers',
-                customerId.toString(),
-                `Order Support permanently deleted customer ${currentCustomer.FullName} (ID: ${customerId})`,
-                JSON.stringify({ action: 'permanent_delete' })
-            );
             
             res.json({ success: true, message: 'Customer permanently deleted successfully' });
         } catch (error) {
@@ -8079,32 +8151,31 @@ module.exports = function(sql, pool) {
             
             const currentCustomer = currentCustomerResult.recordset[0];
             
-            // Check if customer has any orders before permanent deletion
-            const ordersCheck = await pool.request()
-                .input('customerId', sql.Int, customerId)
-                .query('SELECT COUNT(*) as orderCount FROM Orders WHERE CustomerID = @customerId');
+            // Start transaction for customer deletion
+            const transaction = pool.transaction();
+            await transaction.begin();
             
-            if (ordersCheck.recordset[0].orderCount > 0) {
-                return res.status(400).json({ 
-                    success: false, 
-                    message: 'Cannot permanently delete customer with existing orders. Please archive instead.' 
-                });
+            try {
+                // Use helper function to safely delete customer and all related data
+                await deleteCustomerSafely(customerId, transaction);
+                
+                // Commit transaction
+                await transaction.commit();
+                
+                // Log the activity
+                await logActivity(
+                    req.session.user.id,
+                    'DELETE',
+                    'Customers',
+                    customerId.toString(),
+                    `Transaction Manager permanently deleted customer ${currentCustomer.FullName} (ID: ${customerId})`,
+                    JSON.stringify({ action: 'permanent_delete' })
+                );
+            } catch (transactionError) {
+                // Rollback transaction on error
+                await transaction.rollback();
+                throw transactionError;
             }
-            
-            // Permanently delete the customer
-            await pool.request()
-                .input('customerId', sql.Int, customerId)
-                .query('DELETE FROM Customers WHERE CustomerID = @customerId');
-            
-            // Log the activity
-            await logActivity(
-                req.session.user.id,
-                'DELETE',
-                'Customers',
-                customerId.toString(),
-                `Transaction Manager permanently deleted customer ${currentCustomer.FullName} (ID: ${customerId})`,
-                JSON.stringify({ action: 'permanent_delete' })
-            );
             
             res.json({ success: true, message: 'Customer permanently deleted successfully' });
         } catch (error) {
@@ -8506,32 +8577,31 @@ module.exports = function(sql, pool) {
             
             const currentCustomer = currentCustomerResult.recordset[0];
             
-            // Check if customer has any orders before permanent deletion
-            const ordersCheck = await pool.request()
-                .input('customerId', sql.Int, customerId)
-                .query('SELECT COUNT(*) as orderCount FROM Orders WHERE CustomerID = @customerId');
+            // Start transaction for customer deletion
+            const transaction = pool.transaction();
+            await transaction.begin();
             
-            if (ordersCheck.recordset[0].orderCount > 0) {
-                return res.status(400).json({ 
-                    success: false, 
-                    message: 'Cannot permanently delete customer with existing orders. Please archive instead.' 
-                });
+            try {
+                // Use helper function to safely delete customer and all related data
+                await deleteCustomerSafely(customerId, transaction);
+                
+                // Commit transaction
+                await transaction.commit();
+                
+                // Log the activity
+                await logActivity(
+                    req.session.user.id,
+                    'DELETE',
+                    'Customers',
+                    customerId.toString(),
+                    `User Manager permanently deleted customer ${currentCustomer.FullName} (ID: ${customerId})`,
+                    JSON.stringify({ action: 'permanent_delete' })
+                );
+            } catch (transactionError) {
+                // Rollback transaction on error
+                await transaction.rollback();
+                throw transactionError;
             }
-            
-            // Permanently delete the customer
-            await pool.request()
-                .input('customerId', sql.Int, customerId)
-                .query('DELETE FROM Customers WHERE CustomerID = @customerId');
-            
-            // Log the activity
-            await logActivity(
-                req.session.user.id,
-                'DELETE',
-                'Customers',
-                customerId.toString(),
-                `User Manager permanently deleted customer ${currentCustomer.FullName} (ID: ${customerId})`,
-                JSON.stringify({ action: 'permanent_delete' })
-            );
             
             res.json({ success: true, message: 'Customer permanently deleted successfully' });
         } catch (error) {
@@ -8936,32 +9006,31 @@ module.exports = function(sql, pool) {
             
             const currentCustomer = currentCustomerResult.recordset[0];
             
-            // Check if customer has any orders before permanent deletion
-            const ordersCheck = await pool.request()
-                .input('customerId', sql.Int, customerId)
-                .query('SELECT COUNT(*) as orderCount FROM Orders WHERE CustomerID = @customerId');
+            // Start transaction for customer deletion
+            const transaction = pool.transaction();
+            await transaction.begin();
             
-            if (ordersCheck.recordset[0].orderCount > 0) {
-                return res.status(400).json({ 
-                    success: false, 
-                    message: 'Cannot permanently delete customer with existing orders. Please archive instead.' 
-                });
+            try {
+                // Use helper function to safely delete customer and all related data
+                await deleteCustomerSafely(customerId, transaction);
+                
+                // Commit transaction
+                await transaction.commit();
+                
+                // Log the activity
+                await logActivity(
+                    req.session.user.id,
+                    'DELETE',
+                    'Customers',
+                    customerId.toString(),
+                    `Inventory Manager permanently deleted customer ${currentCustomer.FullName} (ID: ${customerId})`,
+                    JSON.stringify({ action: 'permanent_delete' })
+                );
+            } catch (transactionError) {
+                // Rollback transaction on error
+                await transaction.rollback();
+                throw transactionError;
             }
-            
-            // Permanently delete the customer
-            await pool.request()
-                .input('customerId', sql.Int, customerId)
-                .query('DELETE FROM Customers WHERE CustomerID = @customerId');
-            
-            // Log the activity
-            await logActivity(
-                req.session.user.id,
-                'DELETE',
-                'Customers',
-                customerId.toString(),
-                `Inventory Manager permanently deleted customer ${currentCustomer.FullName} (ID: ${customerId})`,
-                JSON.stringify({ action: 'permanent_delete' })
-            );
             
             res.json({ success: true, message: 'Customer permanently deleted successfully' });
         } catch (error) {
@@ -14271,75 +14340,32 @@ module.exports = function(sql, pool) {
                 // Continue with email sending even if token storage fails
             }
             
-            // Send password reset email using nodemailer
-            const nodemailer = require('nodemailer');
-            const fs = require('fs');
-            const path = require('path');
+            // Send password reset email using SendGrid (works on Railway)
+            const { sendPasswordResetEmail } = require('./utils/sendgridHelper');
             
             console.log('📧 Password reset email config check:');
+            console.log('  - SENDGRID_API_KEY:', process.env.SENDGRID_API_KEY ? 'Set' : 'Not set');
             console.log('  - OTP_EMAIL_USER:', process.env.OTP_EMAIL_USER ? 'Set' : 'Not set');
-            console.log('  - OTP_EMAIL_PASS:', process.env.OTP_EMAIL_PASS ? 'Set' : 'Not set');
+            console.log('  - FRONTEND_URL:', process.env.FRONTEND_URL ? 'Set' : 'Not set');
             
-            const transporter = nodemailer.createTransport({
-                service: 'gmail',
-                auth: {
-                    user: process.env.OTP_EMAIL_USER,
-                    pass: process.env.OTP_EMAIL_PASS
-                }
-            });
+            // Send password reset email via SendGrid
+            const emailResult = await sendPasswordResetEmail(email, user.FullName, resetToken);
             
-            // Read HTML template
-            const templatePath = path.join(__dirname, 'templates', 'emails', 'auth', 'password-reset-email.html');
-            let htmlTemplate = '';
-            
-            try {
-                htmlTemplate = fs.readFileSync(templatePath, 'utf8');
-            } catch (templateError) {
-                console.error('Error reading password reset email template:', templateError);
-                // Fallback to simple text email
-                htmlTemplate = `
-                    <h2>Password Reset Request</h2>
-                    <p>Hello ${user.FullName},</p>
-                    <p>You requested to reset your password. Click the link below to reset your password:</p>
-                    <p><a href="http://localhost:3000/reset-password?token=${resetToken}">Reset Password</a></p>
-                    <p>This link will expire in 1 hour.</p>
-                    <p>If you didn't request this, please ignore this email.</p>
-                `;
+            if (!emailResult.success) {
+                return res.status(500).json({ 
+                    success: false, 
+                    message: emailResult.message || 'Failed to send password reset email'
+                });
             }
             
-            // Replace placeholders in template
-            const resetLink = `http://localhost:3000/reset-password?token=${resetToken}`;
-            const personalizedTemplate = htmlTemplate
-                .replace(/{{USER_NAME}}/g, user.FullName || 'Valued Customer')
-                .replace(/{{RESET_LINK}}/g, resetLink);
-            
-            // Email options
-            const mailOptions = {
-                from: `"Design Excellence" <${process.env.OTP_EMAIL_USER}>`,
-                to: email,
-                subject: 'Reset Your Design Excellence Password',
-                html: personalizedTemplate
-            };
-            
-            // Send email
-            try {
-                const info = await transporter.sendMail(mailOptions);
-                console.log('✅ Password reset email sent successfully:', info.messageId);
+            console.log(`✅ Password reset email sent to ${email}`);
                 
                 res.json({ 
                     success: true, 
                     message: 'Password reset instructions have been sent to your email address',
                     // In development, you might want to return the token for testing
-                    ...(process.env.NODE_ENV === 'development' && { resetToken, resetLink })
-                });
-                
-            } catch (emailError) {
-                console.error('❌ Error sending password reset email:', emailError);
-                res.status(500).json({ 
-                    success: false, 
-                    message: 'Failed to send password reset email. Please try again later.' 
-                });
-            }
+                ...(process.env.NODE_ENV === 'development' && { resetToken, resetLink: emailResult.resetLink })
+            });
             
         } catch (err) {
             console.error('Forgot password error:', err);
@@ -14870,6 +14896,170 @@ module.exports = function(sql, pool) {
     });
 
     // =============================================================================
+    // CUSTOMER ACCOUNT DELETION ROUTES
+    // =============================================================================
+
+    // Send OTP for account deletion
+    router.post('/api/customer/send-delete-otp', isAuthenticated, async (req, res) => {
+        const customerId = req.session.user && req.session.user.id;
+        if (!customerId) {
+            return res.status(401).json({ success: false, message: 'Not authenticated.' });
+        }
+
+        try {
+            await pool.connect();
+            
+            // Get customer email
+            const customerResult = await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .query('SELECT Email FROM Customers WHERE CustomerID = @customerId AND IsActive = 1');
+            
+            if (customerResult.recordset.length === 0) {
+                return res.status(404).json({ success: false, message: 'Customer not found.' });
+            }
+
+            const customerEmail = customerResult.recordset[0].Email;
+            
+            // Generate 6-digit OTP
+            const otp = Math.floor(100000 + Math.random() * 900000).toString();
+            
+            // Store OTP in database with expiration (5 minutes)
+            await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .input('otp', sql.NVarChar, otp)
+                .input('expiresAt', sql.DateTime, new Date(Date.now() + 5 * 60 * 1000)) // 5 minutes from now
+                .query(`
+                    INSERT INTO CustomerDeleteOTP (CustomerID, OTP, ExpiresAt, CreatedAt)
+                    VALUES (@customerId, @otp, @expiresAt, GETDATE())
+                `);
+            
+            // Send OTP email
+            try {
+                const emailResult = await sendgridHelper.sendOtpEmail(
+                    customerEmail,
+                    otp
+                );
+                
+                if (emailResult.success) {
+                    return res.json({ success: true, message: 'Verification code sent to your email.' });
+                } else {
+                    return res.status(500).json({ success: false, message: 'Failed to send verification code.' });
+                }
+            } catch (emailError) {
+                console.error('Error sending OTP email:', emailError);
+                return res.status(500).json({ success: false, message: 'Failed to send verification code.' });
+            }
+            
+        } catch (err) {
+            console.error('Error sending delete OTP:', err);
+            return res.status(500).json({ success: false, message: 'Failed to send verification code.' });
+        }
+    });
+
+    // Verify OTP for account deletion
+    router.post('/api/customer/verify-delete-otp', isAuthenticated, async (req, res) => {
+        const customerId = req.session.user && req.session.user.id;
+        const { otp } = req.body;
+        
+        if (!customerId) {
+            return res.status(401).json({ success: false, message: 'Not authenticated.' });
+        }
+        
+        if (!otp || otp.length !== 6) {
+            return res.status(400).json({ success: false, message: 'Invalid OTP format.' });
+        }
+
+        try {
+            await pool.connect();
+            
+            // Verify OTP
+            const otpResult = await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .input('otp', sql.NVarChar, otp)
+                .query(`
+                    SELECT OTP FROM CustomerDeleteOTP 
+                    WHERE CustomerID = @customerId 
+                    AND OTP = @otp 
+                    AND ExpiresAt > GETDATE()
+                    AND IsUsed = 0
+                `);
+            
+            if (otpResult.recordset.length === 0) {
+                return res.status(400).json({ success: false, message: 'Invalid or expired OTP.' });
+            }
+            
+            // Mark OTP as used
+            await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .input('otp', sql.NVarChar, otp)
+                .query('UPDATE CustomerDeleteOTP SET IsUsed = 1 WHERE CustomerID = @customerId AND OTP = @otp');
+            
+            return res.json({ success: true, message: 'OTP verified successfully.' });
+            
+        } catch (err) {
+            console.error('Error verifying delete OTP:', err);
+            return res.status(500).json({ success: false, message: 'Failed to verify OTP.' });
+        }
+    });
+
+    // Delete customer account
+    router.delete('/api/customer/delete-account', isAuthenticated, async (req, res) => {
+        const customerId = req.session.user && req.session.user.id;
+        if (!customerId) {
+            return res.status(401).json({ success: false, message: 'Not authenticated.' });
+        }
+
+        try {
+            await pool.connect();
+            
+            // Check if customer has verified OTP recently (within last 10 minutes)
+            const otpResult = await pool.request()
+                .input('customerId', sql.Int, customerId)
+                .query(`
+                    SELECT TOP 1 OTP FROM CustomerDeleteOTP 
+                    WHERE CustomerID = @customerId 
+                    AND IsUsed = 1
+                    AND CreatedAt > DATEADD(MINUTE, -10, GETDATE())
+                    ORDER BY CreatedAt DESC
+                `);
+            
+            if (otpResult.recordset.length === 0) {
+                return res.status(400).json({ success: false, message: 'OTP verification required before account deletion.' });
+            }
+            
+            // Start transaction for account deletion
+            const transaction = pool.transaction();
+            await transaction.begin();
+            
+            try {
+                // Use helper function to safely delete customer and all related data
+                await deleteCustomerSafely(customerId, transaction);
+                
+                // Commit transaction
+                await transaction.commit();
+                
+                // Destroy session
+                req.session.destroy((err) => {
+                    if (err) {
+                        console.error('Error destroying session:', err);
+                    }
+                });
+                
+                return res.json({ success: true, message: 'Account deleted successfully.' });
+                
+            } catch (transactionError) {
+                // Rollback transaction on error
+                await transaction.rollback();
+                throw transactionError;
+            }
+            
+        } catch (err) {
+            console.error('Error deleting customer account:', err);
+            return res.status(500).json({ success: false, message: 'Failed to delete account.' });
+        }
+    });
+
+    // =============================================================================
     // DASHBOARD API ENDPOINTS
     // =============================================================================
 
@@ -15335,6 +15525,7 @@ module.exports = function(sql, pool) {
         { name: 'thumbnail2', maxCount: 1 },
         { name: 'thumbnail3', maxCount: 1 },
         { name: 'thumbnail4', maxCount: 1 },
+        { name: 'thumbnails', maxCount: 4 }, // Add support for thumbnails field
         { name: 'model3d', maxCount: 1 }
     ]), async (req, res) => {
         try {
@@ -15410,9 +15601,18 @@ module.exports = function(sql, pool) {
                     
                     // Handle thumbnails
                     const thumbnails = [];
+                    
+                    // Check for individual thumbnail fields (thumbnail1, thumbnail2, etc.)
                     for (let i = 1; i <= 4; i++) {
                         if (req.files[`thumbnail${i}`]) {
                             const thumbnailFile = req.files[`thumbnail${i}`][0];
+                            thumbnails.push(`/uploads/products/thumbnails/${thumbnailFile.filename}`);
+                        }
+                    }
+                    
+                    // Also check for thumbnails field (multiple files)
+                    if (req.files.thumbnails && req.files.thumbnails.length > 0) {
+                        for (const thumbnailFile of req.files.thumbnails) {
                             thumbnails.push(`/uploads/products/thumbnails/${thumbnailFile.filename}`);
                         }
                     }
@@ -15628,7 +15828,7 @@ module.exports = function(sql, pool) {
     });
 
     // Product Materials API
-    router.get('/api/products/:id/materials', isAuthenticated, async (req, res) => {
+    router.get('/api/products/:id/materials', async (req, res) => {
         try {
             await pool.connect();
             const { id } = req.params;

@@ -393,6 +393,100 @@ app.use(express.static(path.join(__dirname, 'public'), {
   }
 }));
 
+// IMPORTANT: Model file routes MUST come BEFORE static middleware
+// This ensures proper CORS headers and error handling for 3D models
+
+// OPTIONS handler for CORS preflight requests for GLTF files
+app.options('/uploads/products/models/:filename', (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept, Range');
+  res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Type, Content-Range');
+  res.setHeader('Access-Control-Max-Age', '86400'); // 24 hours
+  res.status(204).send();
+});
+
+// GLTF file serving endpoint with proper headers and timeout handling
+app.get('/uploads/products/models/:filename', (req, res) => {
+  const filename = req.params.filename;
+  const filePath = path.join(__dirname, 'public', 'uploads', 'products', 'models', filename);
+  
+  // Check if file exists
+  if (!fs.existsSync(filePath)) {
+    console.error(`3D model file not found: ${filename}`);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    return res.status(404).json({ error: '3D model file not found' });
+  }
+  
+  // Get file stats
+  const stats = fs.statSync(filePath);
+  const fileSize = stats.size;
+  
+  // Determine content type based on file extension
+  const contentType = filename.toLowerCase().endsWith('.glb') 
+    ? 'model/gltf-binary' 
+    : filename.toLowerCase().endsWith('.gltf')
+    ? 'model/gltf+json'
+    : 'application/octet-stream';
+  
+  // Set CORS headers FIRST before any other headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept, Range');
+  res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Type, Content-Range');
+  
+  // Set proper headers for GLTF/GLB files
+  res.setHeader('Content-Type', contentType);
+  res.setHeader('Content-Length', fileSize);
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  res.setHeader('Accept-Ranges', 'bytes'); // Support range requests
+  
+  // Set a longer timeout for large files (5 minutes)
+  req.setTimeout(300000); // 5 minutes
+  res.setTimeout(300000);
+  
+  // Handle Range requests for better loading performance
+  const range = req.headers.range;
+  if (range) {
+    const parts = range.replace(/bytes=/, "").split("-");
+    const start = parseInt(parts[0], 10);
+    const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+    const chunksize = (end - start) + 1;
+    const file = fs.createReadStream(filePath, { start, end });
+    const head = {
+      'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+      'Accept-Ranges': 'bytes',
+      'Content-Length': chunksize,
+      'Content-Type': contentType,
+    };
+    res.writeHead(206, head);
+    file.pipe(res);
+    return;
+  }
+  
+  // Stream the file for non-range requests
+  const fileStream = fs.createReadStream(filePath);
+  
+  fileStream.on('error', (error) => {
+    console.error(`Error streaming GLTF file ${filename}:`, error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Error loading 3D model file', details: error.message });
+    } else {
+      res.destroy();
+    }
+  });
+  
+  // Handle client disconnection
+  req.on('close', () => {
+    if (!res.finished) {
+      fileStream.destroy();
+    }
+  });
+  
+  fileStream.pipe(res);
+});
+
+// Static file serving for other uploads (images, etc.) - comes AFTER model routes
 app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads'), {
   setHeaders: (res, path) => {
     if (path.endsWith('.glb') || path.endsWith('.gltf')) {
@@ -1529,7 +1623,9 @@ app.get('/api/products', async (req, res) => {
         
         const result = await pool.request().query(`
             SELECT 
-                ProductID as id,
+                PublicId as id,
+                Slug as slug,
+                SKU as sku,
                 Name as name,
                 Description as description,
                 Price as price,
@@ -1570,46 +1666,23 @@ app.get('/api/products', async (req, res) => {
     }
 });
 
-// GLTF file serving endpoint with proper headers
-app.get('/uploads/products/models/:filename', (req, res) => {
-  const filename = req.params.filename;
-  const filePath = path.join(__dirname, 'public', 'uploads', 'products', 'models', filename);
-  
-  // Check if file exists
-  if (!fs.existsSync(filePath)) {
-    return res.status(404).json({ error: '3D model file not found' });
-  }
-  
-  // Set proper headers for GLTF files
-  res.setHeader('Content-Type', 'application/octet-stream');
-  res.setHeader('Cache-Control', 'public, max-age=3600');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  
-  // Stream the file
-  const fileStream = fs.createReadStream(filePath);
-  fileStream.pipe(res);
-  
-  fileStream.on('error', (error) => {
-    console.error('Error streaming GLTF file:', error);
-    if (!res.headersSent) {
-      res.status(500).json({ error: 'Error loading 3D model file' });
-    }
-  });
-});
-
-// Get product by ID
+// Get product by ID (supports UUID, slug, and legacy numeric ID for backward compatibility)
 app.get('/api/products/:id', async (req, res) => {
     try {
-        const productId = parseInt(req.params.id);
+        const identifier = req.params.id;
         await poolConnect;
         
-        const result = await pool.request()
-            .input('productId', sql.Int, productId)
-            .query(`
+        // Determine if identifier is UUID, slug, or legacy numeric ID
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(identifier);
+        const isNumeric = /^\d+$/.test(identifier);
+        
+        let query, inputParam;
+        if (isUUID) {
+            query = `
                 SELECT 
-                    ProductID as id,
+                    PublicId as id,
+                    Slug as slug,
+                    SKU as sku,
                     Name as name,
                     Description as description,
                     Price as price,
@@ -1621,8 +1694,56 @@ app.get('/api/products/:id', async (req, res) => {
                     Dimensions as specifications,
                     IsFeatured as featured
                 FROM Products 
-                WHERE ProductID = @productId AND IsActive = 1
-            `);
+                WHERE PublicId = @identifier AND IsActive = 1
+            `;
+            inputParam = sql.UniqueIdentifier;
+        } else if (isNumeric) {
+            // Legacy support for numeric IDs - map to PublicId
+            query = `
+                SELECT 
+                    PublicId as id,
+                    Slug as slug,
+                    SKU as sku,
+                    Name as name,
+                    Description as description,
+                    Price as price,
+                    StockQuantity as stockQuantity,
+                    Category as categoryName,
+                    ImageURL as images,
+                    DateAdded as dateAdded,
+                    IsActive as isActive,
+                    Dimensions as specifications,
+                    IsFeatured as featured
+                FROM Products 
+                WHERE ProductID = @identifier AND IsActive = 1
+            `;
+            inputParam = sql.Int;
+        } else {
+            // Assume it's a slug
+            query = `
+                SELECT 
+                    PublicId as id,
+                    Slug as slug,
+                    SKU as sku,
+                    Name as name,
+                    Description as description,
+                    Price as price,
+                    StockQuantity as stockQuantity,
+                    Category as categoryName,
+                    ImageURL as images,
+                    DateAdded as dateAdded,
+                    IsActive as isActive,
+                    Dimensions as specifications,
+                    IsFeatured as featured
+                FROM Products 
+                WHERE Slug = @identifier AND IsActive = 1
+            `;
+            inputParam = sql.NVarChar;
+        }
+        
+        const result = await pool.request()
+            .input('identifier', inputParam, identifier)
+            .query(query);
         
         if (result.recordset.length === 0) {
             return res.status(404).json({

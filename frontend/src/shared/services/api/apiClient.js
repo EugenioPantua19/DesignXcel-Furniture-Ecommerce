@@ -38,8 +38,11 @@ class ApiClient {
           if (token) {
             // Check if token is expired and try to refresh
             if (this.isTokenExpired(token)) {
-              console.log('🔄 Access token expired, attempting refresh...');
-              // Don't block the request, let the response interceptor handle refresh
+              // Silently handle expired token - let the response interceptor handle refresh
+              // Only log in debug mode to reduce console noise
+              if (apiConfig.debugMode) {
+                console.log('🔄 Access token expired, attempting refresh...');
+              }
             }
             config.headers.Authorization = `Bearer ${token}`;
           }

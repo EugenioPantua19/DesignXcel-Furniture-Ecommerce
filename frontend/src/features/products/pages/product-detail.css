@@ -199,9 +199,57 @@
   border: none;
   padding: 4px 8px;
   border-radius: 20px;
+}
+
+.stock-badge.low-stock {
+  background-color: #fef3c7;
+  color: #92400e;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 20px;
+}
+
+.stock-badge.out-of-stock {
+  background-color: #fee2e2;
+  color: #991b1b;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 20px;
   font-size: 12px;
   font-weight: 500;
   white-space: nowrap;
+}
+
+/* Stock Quantity Info */
+.stock-quantity-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background-color: #f9fafb;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.stock-label {
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.stock-value {
+  font-weight: 600;
+}
+
+.stock-value.in-stock {
+  color: #065f46;
+}
+
+.stock-value.low-stock {
+  color: #92400e;
+}
+
+.stock-value.out-of-stock {
+  color: #991b1b;
 }
 
 /* Rating */
@@ -315,6 +363,7 @@
   width: 120px;
   height: 40px;
 }
+
 
 .qty-btn {
   width: 40px;
@@ -466,10 +515,17 @@
   align-items: center;
   justify-content: center;
   transition: transform 0.2s ease;
+  text-decoration: none;
 }
 
 .social-btn:hover {
   transform: scale(1.1);
+  opacity: 0.9;
+}
+
+.social-btn:focus {
+  outline: 2px solid #F0B21B;
+  outline-offset: 2px;
 }
 
 .social-btn.facebook {
@@ -485,6 +541,18 @@
 }
 
 .social-btn.instagram {
+  background-color: #F0B21B;
+}
+
+.social-btn.whatsapp {
+  background-color: #F0B21B;
+}
+
+.social-btn.linkedin {
+  background-color: #F0B21B;
+}
+
+.social-btn.copy-link {
   background-color: #F0B21B;
 }
 

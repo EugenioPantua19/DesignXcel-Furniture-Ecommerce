@@ -41,11 +41,14 @@ const Login = () => {
         phone: ''
     });
     const [acceptedTerms, setAcceptedTerms] = useState(false);
+    const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
     const [rememberMe, setRememberMe] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [passwordValidation, setPasswordValidation] = useState(null);
+    const [suggestedPassword, setSuggestedPassword] = useState('');
+    const [showPasswordSuggestions, setShowPasswordSuggestions] = useState(false);
     
     // Modal states
     const [showTermsModal, setShowTermsModal] = useState(false);
@@ -69,6 +72,35 @@ const Login = () => {
     const { loginCustomer, registerCustomer } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
+
+    // Generate suggested password
+    const generateSuggestedPassword = () => {
+        const adjectives = ['Strong', 'Secure', 'Safe', 'Smart', 'Super'];
+        const nouns = ['Pass', 'Key', 'Code', 'Lock', 'Guard'];
+        const numbers = Math.floor(Math.random() * 9000) + 1000;
+        const specialChars = ['!', '@', '#', '$', '%'];
+        
+        const adjective = adjectives[Math.floor(Math.random() * adjectives.length)];
+        const noun = nouns[Math.floor(Math.random() * nouns.length)];
+        const special = specialChars[Math.floor(Math.random() * specialChars.length)];
+        
+        return `${adjective}${noun}${numbers}${special}`;
+    };
+
+    const handleGeneratePassword = () => {
+        const newPassword = generateSuggestedPassword();
+        setSuggestedPassword(newPassword);
+        setFormData({
+            ...formData,
+            password: newPassword,
+            confirmPassword: newPassword
+        });
+        setShowPasswordSuggestions(false);
+        
+        // Validate the generated password
+        const validation = validatePassword(newPassword);
+        setPasswordValidation(validation);
+    };
 
     // Public terms for signup
     const [publicTerms, setPublicTerms] = useState(null);
@@ -227,9 +259,15 @@ const Login = () => {
                     return;
                 }
 
-                // Check if terms are accepted
+                // Check if terms and privacy policy are accepted
                 if (!acceptedTerms) {
                     setError('You must accept the terms and conditions to continue');
+                    setLoading(false);
+                    return;
+                }
+                
+                if (!acceptedPrivacy) {
+                    setError('You must accept the privacy policy to continue');
                     setLoading(false);
                     return;
                 }
@@ -557,6 +595,7 @@ const Login = () => {
                                                 placeholder="Enter Password"
                                                 value={formData.password}
                                                 onChange={handleChange}
+                                                onFocus={() => setShowPasswordSuggestions(true)}
                                                 required
                                             />
                                             <button 
@@ -577,6 +616,82 @@ const Login = () => {
                                                 )}
                                             </button>
                                         </div>
+                                        
+                                        {/* Password Format Indicator */}
+                                        <div className="password-format-indicator">
+                                            <div className="format-requirements">
+                                                <span className="format-title">Password Requirements:</span>
+                                                <ul className="format-list">
+                                                    <li className={formData.password.length >= 8 ? 'valid' : 'invalid'}>
+                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                                            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+                                                            <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="2"/>
+                                                        </svg>
+                                                        At least 8 characters
+                                                    </li>
+                                                    <li className={/[A-Z]/.test(formData.password) ? 'valid' : 'invalid'}>
+                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                                            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+                                                            <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="2"/>
+                                                        </svg>
+                                                        One uppercase letter
+                                                    </li>
+                                                    <li className={/[a-z]/.test(formData.password) ? 'valid' : 'invalid'}>
+                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                                            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+                                                            <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="2"/>
+                                                        </svg>
+                                                        One lowercase letter
+                                                    </li>
+                                                    <li className={/\d/.test(formData.password) ? 'valid' : 'invalid'}>
+                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                                            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+                                                            <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="2"/>
+                                                        </svg>
+                                                        One number
+                                                    </li>
+                                                    <li className={/[!@#$%^&*(),.?":{}|<>]/.test(formData.password) ? 'valid' : 'invalid'}>
+                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                                            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+                                                            <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="2"/>
+                                                        </svg>
+                                                        One special character
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        </div>
+
+                                        {/* Password Suggestions */}
+                                        {showPasswordSuggestions && !formData.password && (
+                                            <div className="password-suggestions">
+                                                <div className="suggestions-header">
+                                                    <span className="suggestions-title">Need a strong password?</span>
+                                                    <button 
+                                                        type="button" 
+                                                        className="suggestions-close"
+                                                        onClick={() => setShowPasswordSuggestions(false)}
+                                                    >
+                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                                            <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2"/>
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                                <div className="suggestions-content">
+                                                    <p className="suggestions-text">Generate a secure password that meets all requirements:</p>
+                                                    <button 
+                                                        type="button" 
+                                                        className="generate-password-btn"
+                                                        onClick={handleGeneratePassword}
+                                                    >
+                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                                            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke="currentColor" strokeWidth="2"/>
+                                                        </svg>
+                                                        Generate Strong Password
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                        
                                         {/* Password Strength Indicator */}
                                         {passwordValidation && (
                                             <PasswordStrengthIndicator 
@@ -637,10 +752,24 @@ const Login = () => {
                                             required
                                         />
                                         <label htmlFor="acceptTerms">
-                                            Agree with <span 
+                                            I agree to the <span 
                                                 className="terms-link" 
                                                 onClick={() => setShowTermsModal(true)}
-                                            >Terms & Condition</span> and <span 
+                                            >Terms & Conditions</span>
+                                        </label>
+                                    </div>
+                                    
+                                    {/* Privacy Policy */}
+                                    <div className="terms-checkbox-new">
+                                        <input
+                                            type="checkbox"
+                                            id="acceptPrivacy"
+                                            checked={acceptedPrivacy}
+                                            onChange={(e) => setAcceptedPrivacy(e.target.checked)}
+                                            required
+                                        />
+                                        <label htmlFor="acceptPrivacy">
+                                            I agree to the <span 
                                                 className="terms-link" 
                                                 onClick={() => setShowPrivacyModal(true)}
                                             >Privacy Policy</span>
@@ -717,7 +846,7 @@ const Login = () => {
                             )}
 
                             {/* Submit Button */}
-                            <button type="submit" className="auth-submit-btn-new" disabled={loading || (!isLogin && registerStep !== 3) || (!isLogin && !acceptedTerms)}>
+                            <button type="submit" className="auth-submit-btn-new" disabled={loading || (!isLogin && registerStep !== 3) || (!isLogin && (!acceptedTerms || !acceptedPrivacy))}>
                                 {loading ? (
                                     <>
                                         <AudioLoader size="small" color="#ffffff" />

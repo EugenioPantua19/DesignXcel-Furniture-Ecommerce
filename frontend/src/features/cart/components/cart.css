@@ -1201,6 +1201,23 @@ body.theme-dark .payment-methods p {
     }
 }
 
+.cart-error-message {
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+    padding: 12px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    font-size: 0.875rem;
+}
+
+/* Dark mode support for cart error message */
+body.theme-dark .cart-error-message {
+    background: #58151c;
+    border-color: #842029;
+    color: #f1aeb5;
+}
+
 @media (max-width: 480px) {
     body.theme-dark .cart-summary-card {
         background: #2d2d2d !important;
@@ -1231,4 +1248,21 @@ body.theme-dark .payment-methods p {
         background: #F0B21B;
         color: #000000;
     }
+}
+
+.cart-error-message {
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+    padding: 12px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    font-size: 0.875rem;
+}
+
+/* Dark mode support for cart error message */
+body.theme-dark .cart-error-message {
+    background: #58151c;
+    border-color: #842029;
+    color: #f1aeb5;
 }

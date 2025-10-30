@@ -5,6 +5,8 @@
 class ThemeManager {
   constructor() {
     this.currentTheme = 'default';
+    this.backendTheme = 'default'; // Store backend theme
+    this.customerOverride = null; // Store customer override
     this.themeClasses = {
       'default': '',
       'dark': 'theme-dark',
@@ -23,7 +25,21 @@ class ThemeManager {
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          this.currentTheme = data.activeTheme || 'default';
+          this.backendTheme = data.activeTheme || 'default';
+          
+          // Check for customer override in session storage
+          const override = sessionStorage.getItem('designxcel-theme-override');
+          
+          if (override && this.themeClasses[override]) {
+            // Customer has an override - use it temporarily (will reset on refresh)
+            this.customerOverride = override;
+            this.currentTheme = override;
+          } else {
+            // Use backend theme (always reverts to this on refresh)
+            this.currentTheme = this.backendTheme;
+            this.customerOverride = null;
+          }
+          
           this.applyTheme(this.currentTheme);
         }
       } else {
@@ -76,29 +92,22 @@ class ThemeManager {
       return false;
     }
 
-    try {
-      // Save theme to backend
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/theme/public`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ activeTheme: theme })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          this.applyTheme(theme);
-          return true;
-        }
-      }
-    } catch (error) {
-      console.error('Failed to save theme to backend:', error);
-      // Still apply theme locally
-      this.applyTheme(theme);
-      return false;
+    // Customer can switch between any themes (default, dark, christmas)
+    // If backend has a theme set, save the customer's choice as override in sessionStorage
+    // On refresh, it will revert to backend theme
+    
+    if (this.backendTheme && theme !== this.backendTheme) {
+      // Customer is overriding backend theme
+      this.customerOverride = theme;
+      sessionStorage.setItem('designxcel-theme-override', theme);
+    } else if (theme === this.backendTheme) {
+      // Customer switched back to backend theme, clear override
+      this.customerOverride = null;
+      sessionStorage.removeItem('designxcel-theme-override');
     }
+
+    this.applyTheme(theme);
+    return true;
   }
 
   /**

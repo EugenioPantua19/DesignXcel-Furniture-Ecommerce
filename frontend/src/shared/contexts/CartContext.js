@@ -10,6 +10,12 @@ const CART_ACTIONS = {
     SET_LOADING: 'SET_LOADING'
 };
 
+// Cart limits
+const CART_LIMITS = {
+    MAX_QUANTITY_PER_PRODUCT: 10,
+    MAX_DIFFERENT_ITEMS: 5
+};
+
 // Cart reducer
 const cartReducer = (state, action) => {
     switch (action.type) {
@@ -34,12 +40,43 @@ const cartReducer = (state, action) => {
             if (existingItemIndex >= 0) {
                 // Update existing item quantity
                 const updatedItems = [...state.items];
-                updatedItems[existingItemIndex].quantity += quantity;
-                return {
-                    ...state,
-                    items: updatedItems
-                };
+                const currentQuantity = updatedItems[existingItemIndex].quantity;
+                const newQuantity = currentQuantity + quantity;
+                
+                // Check if adding this quantity would exceed the limit
+                if (newQuantity > CART_LIMITS.MAX_QUANTITY_PER_PRODUCT) {
+                    // Set to maximum allowed quantity
+                    updatedItems[existingItemIndex].quantity = CART_LIMITS.MAX_QUANTITY_PER_PRODUCT;
+                    return {
+                        ...state,
+                        items: updatedItems,
+                        lastError: `Maximum quantity of ${CART_LIMITS.MAX_QUANTITY_PER_PRODUCT} items per product reached`
+                    };
+                } else {
+                    updatedItems[existingItemIndex].quantity = newQuantity;
+                    return {
+                        ...state,
+                        items: updatedItems,
+                        lastError: null
+                    };
+                }
             } else {
+                // Check if adding a new item would exceed the different items limit
+                if (state.items.length >= CART_LIMITS.MAX_DIFFERENT_ITEMS) {
+                    return {
+                        ...state,
+                        lastError: `Maximum of ${CART_LIMITS.MAX_DIFFERENT_ITEMS} different items allowed in cart`
+                    };
+                }
+                
+                // Check if the quantity being added exceeds the limit
+                if (quantity > CART_LIMITS.MAX_QUANTITY_PER_PRODUCT) {
+                    return {
+                        ...state,
+                        lastError: `Maximum quantity of ${CART_LIMITS.MAX_QUANTITY_PER_PRODUCT} items per product allowed`
+                    };
+                }
+                
                 // Add new item
                 const newItem = {
                     id: itemKey,
@@ -54,7 +91,8 @@ const cartReducer = (state, action) => {
                 };
                 return {
                     ...state,
-                    items: [...state.items, newItem]
+                    items: [...state.items, newItem],
+                    lastError: null
                 };
             }
         }
@@ -71,9 +109,19 @@ const cartReducer = (state, action) => {
             if (quantity <= 0) {
                 return {
                     ...state,
-                    items: state.items.filter(item => item.id !== itemId)
+                    items: state.items.filter(item => item.id !== itemId),
+                    lastError: null
                 };
             }
+            
+            // Check if quantity exceeds the limit
+            if (quantity > CART_LIMITS.MAX_QUANTITY_PER_PRODUCT) {
+                return {
+                    ...state,
+                    lastError: `Maximum quantity of ${CART_LIMITS.MAX_QUANTITY_PER_PRODUCT} items per product allowed`
+                };
+            }
+            
             return {
                 ...state,
                 items: state.items.map(item =>
@@ -86,7 +134,8 @@ const cartReducer = (state, action) => {
                         useOriginalProduct: item.useOriginalProduct,
                         selectedVariation: item.selectedVariation
                     } : item
-                )
+                ),
+                lastError: null
             };
         }
 
@@ -123,7 +172,8 @@ const cartReducer = (state, action) => {
 const initialState = {
     items: [],
     isOpen: false,
-    isLoading: true
+    isLoading: true,
+    lastError: null
 };
 
 // Create cart context
@@ -354,11 +404,45 @@ export const CartProvider = ({ children, userId }) => {
     };
 
 
+    // Helper functions for limits
+    const canAddItem = (product, quantity = 1) => {
+        const variationId = product.selectedVariation?.id;
+        const existingItem = state.items.find(item => 
+            item.product.id === product.id && 
+            item.variationId === variationId
+        );
+        
+        if (existingItem) {
+            return (existingItem.quantity + quantity) <= CART_LIMITS.MAX_QUANTITY_PER_PRODUCT;
+        } else {
+            return state.items.length < CART_LIMITS.MAX_DIFFERENT_ITEMS && quantity <= CART_LIMITS.MAX_QUANTITY_PER_PRODUCT;
+        }
+    };
+
+    const getRemainingSlots = () => {
+        return Math.max(0, CART_LIMITS.MAX_DIFFERENT_ITEMS - state.items.length);
+    };
+
+    const getMaxQuantityForProduct = (product) => {
+        const variationId = product.selectedVariation?.id;
+        const existingItem = state.items.find(item => 
+            item.product.id === product.id && 
+            item.variationId === variationId
+        );
+        
+        if (existingItem) {
+            return CART_LIMITS.MAX_QUANTITY_PER_PRODUCT - existingItem.quantity;
+        } else {
+            return CART_LIMITS.MAX_QUANTITY_PER_PRODUCT;
+        }
+    };
+
     const value = {
         // State
         items: state.items,
         isOpen: state.isOpen,
         isLoading: state.isLoading,
+        lastError: state.lastError,
         // Actions
         addToCart,
         removeFromCart,
@@ -368,7 +452,12 @@ export const CartProvider = ({ children, userId }) => {
         // Calculations
         getItemCount,
         getSubtotal,
-        getTotal
+        getTotal,
+        // Limits
+        canAddItem,
+        getRemainingSlots,
+        getMaxQuantityForProduct,
+        CART_LIMITS
     };
 
     return (

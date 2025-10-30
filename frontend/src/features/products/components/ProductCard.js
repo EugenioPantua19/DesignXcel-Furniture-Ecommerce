@@ -62,7 +62,7 @@ const ProductCard = ({ product }) => {
   // Use the utility function to get the primary image URL
   const imageUrl = getPrimaryImageUrl(product);
 
-  const { addToCart } = useCart();
+  const { addToCart, canAddItem, getRemainingSlots, CART_LIMITS } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const navigate = useNavigate();
   const [quickOpen, setQuickOpen] = useState(false);
@@ -72,7 +72,7 @@ const ProductCard = ({ product }) => {
     if (has3DModelData) {
       navigate('/3d-products-furniture');
     } else {
-      navigate(`/product/${id}`);
+      navigate(`/product/${product.slug || product.sku || product.id}`);
     }
   };
 
@@ -120,7 +120,20 @@ const ProductCard = ({ product }) => {
               <circle cx="12" cy="12" r="3"/>
             </svg>
           </button>
-          <button className="action-icon" aria-label="Add to cart" onClick={(e) => { e.preventDefault(); e.stopPropagation(); addToCart(product, 1); }}>
+          <button 
+            className="action-icon" 
+            aria-label="Add to cart" 
+            onClick={(e) => { 
+              e.preventDefault(); 
+              e.stopPropagation(); 
+              
+              if (!canAddItem(product, 1)) {
+                return;
+              }
+              
+              addToCart(product, 1); 
+            }}
+          >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="9" cy="21" r="1"/>
               <circle cx="20" cy="21" r="1"/>
@@ -168,7 +181,9 @@ const ProductCard = ({ product }) => {
             className="stock-dot" 
             style={{ backgroundColor: stockStatus.color }}
           ></div>
-          <span className="stock-text" style={{ fontWeight: 'bold' }}>{stockStatus.label}</span>
+          <span className="stock-text" style={{ fontWeight: 'bold' }}>
+            {currentStock > 0 ? `${currentStock} available` : 'Sold Out'}
+          </span>
         </div>
         
         {/* Sold quantity */}
@@ -194,7 +209,13 @@ const ProductCard = ({ product }) => {
         onClose={() => setQuickOpen(false)}
         product={product}
         formatPrice={formatPrice}
-        onAddToCart={(p) => { addToCart(p, 1); setQuickOpen(false); }}
+        onAddToCart={(p) => { 
+          if (!canAddItem(p, 1)) {
+            return;
+          }
+          addToCart(p, 1); 
+          setQuickOpen(false); 
+        }}
       />
 
     </div>

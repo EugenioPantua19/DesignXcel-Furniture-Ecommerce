@@ -5,7 +5,6 @@ import './checkout.css';
 import { useAuth } from '../../../shared/hooks/useAuth';
 import AudioLoader from '../../../shared/components/ui/AudioLoader';
 import ConfirmationModal from '../../../shared/components/ui/ConfirmationModal';
-import { ChristmasHeaderDecoration, ChristmasFooterDecoration } from '../../../shared/components/christmas';
 import apiClient from '../../../shared/services/api/apiClient';
 import checkoutSessionManager from '../utils/checkoutSessionManager';
 import { getImageUrl } from '../../../shared/utils/imageUtils';
@@ -309,7 +308,6 @@ const CheckoutPage = () => {
 
     return (
         <div className="checkout-page">
-            {currentTheme === 'christmas' && <ChristmasHeaderDecoration />}
             {/* Address Selection Modal */}
             {showAddressModal && (
                 <div className="modal-overlay">
@@ -463,9 +461,30 @@ const CheckoutPage = () => {
                                 </div>
                             </div>
                         ) : (
-                            <div className="text-center" style={{ padding: '2rem' }}>
-                                <p className="text-gray-500 mb-2">No shipping address found</p>
-                                <p className="text-gray-500 mb-4">Please add an address to continue with your order</p>
+                            <div className="empty-address-state">
+                                <div className="empty-icon">
+                                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M3 3H21C21.5523 3 22 3.44772 22 4V20C22 20.5523 21.5523 21 21 21H3C2.44772 21 2 20.5523 2 20V4C2 3.44772 2.44772 3 3 3Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                        <path d="M8 9L12 13L16 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                    </svg>
+                                </div>
+                                <p className="empty-title">No shipping address found</p>
+                                <p className="empty-description">Please add an address to continue with your order</p>
+                                <button 
+                                    className="btn btn-primary add-address-btn"
+                                    onClick={() => navigate('/account?tab=addresses&returnTo=checkout')}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '8px',
+                                        margin: '0 auto'
+                                    }}
+                                >
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M12 5V19M5 12H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                    </svg>
+                                    Add Address
+                                </button>
                             </div>
                         )}
                     </div>
@@ -595,7 +614,6 @@ const CheckoutPage = () => {
                     </button>
                 </div>
             </div>
-            {currentTheme === 'christmas' && <ChristmasFooterDecoration />}
         </div>
     );
 };

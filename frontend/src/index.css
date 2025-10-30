@@ -410,6 +410,11 @@ body.theme-dark .header-offer-bar {
   color: #ffffff !important;
 }
 
+body.theme-christmas .header-offer-bar {
+  background-color: #228B22 !important;
+  color: #ffffff !important;
+}
+
 /* Dark Mode - Navigation */
 body.theme-dark .nav-main,
 body.theme-dark .nav-links,

@@ -10,8 +10,7 @@ const ThemeSwitcher = ({ className = '', showLabel = true }) => {
 
   const themes = [
     { value: 'default', label: 'Default', icon: '🏠' },
-    { value: 'dark', label: 'Dark', icon: '🌙' },
-    { value: 'christmas', label: 'Christmas', icon: '🎄' }
+    { value: 'dark', label: 'Dark', icon: '🌙' }
   ];
 
   useEffect(() => {

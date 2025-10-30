@@ -50,11 +50,7 @@ const publicRoutes = [
     element: <ProductCatalogPage />
   },
   {
-    path: '/product/:id',
-    element: <ProductDetailPage />
-  },
-  {
-    path: '/products/:id',
+    path: '/product/:slug',
     element: <ProductDetailPage />
   },
   {
@@ -62,7 +58,7 @@ const publicRoutes = [
     element: <ThreeDProductsFurniturePage />
   },
   {
-    path: '/3d-products/:id',
+    path: '/3d-products/:slug',
     element: <ThreeDProductsPage />
   },
   {

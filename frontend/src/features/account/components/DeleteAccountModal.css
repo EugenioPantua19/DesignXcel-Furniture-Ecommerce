@@ -1,0 +1,455 @@
+/* Delete Account Modal Styles - Matching Dashboard Design */
+
+.delete-account-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 1rem;
+    backdrop-filter: blur(4px);
+}
+
+.delete-account-modal {
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+    max-width: 500px;
+    width: 100%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+    position: relative;
+}
+
+.delete-account-header {
+    text-align: center;
+    padding: 2rem 2rem 1rem 2rem;
+    background: linear-gradient(135deg, #fef2f2 0%, #fef7f7 100%);
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.delete-icon {
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: center;
+}
+
+.delete-account-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0 0 0.5rem 0;
+    line-height: 1.2;
+}
+
+.delete-account-subtitle {
+    font-size: 1rem;
+    color: #6b7280;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.delete-account-content {
+    padding: 2rem;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.step-header {
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.step-header h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0 0 0.5rem 0;
+}
+
+.step-header p {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin: 0;
+    line-height: 1.5;
+}
+
+/* OTP Step Styles */
+.send-otp-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    align-items: center;
+}
+
+.email-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    width: 100%;
+}
+
+.email-label {
+    font-size: 0.875rem;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.email-value {
+    font-size: 1rem;
+    color: #1f2937;
+    font-weight: 600;
+}
+
+.btn-send-otp {
+    background: linear-gradient(135deg, #F0B21B 0%, #d69e16 100%);
+    color: #1f2937;
+    border: none;
+    padding: 0.75rem 2rem;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 200px;
+    justify-content: center;
+}
+
+.btn-send-otp:hover:not(:disabled) {
+    background: linear-gradient(135deg, #d69e16 0%, #b7791f 100%);
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(240, 178, 27, 0.3);
+    transform: translateY(-1px);
+}
+
+.btn-send-otp:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Verify OTP Section */
+.verify-otp-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    align-items: center;
+}
+
+.otp-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+}
+
+.otp-input-group label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1f2937;
+    text-align: center;
+}
+
+.otp-input {
+    padding: 0.75rem 1rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 1.25rem;
+    text-align: center;
+    letter-spacing: 0.5rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    background: #ffffff;
+    color: #1f2937;
+}
+
+.otp-input:focus {
+    outline: none;
+    border-color: #F0B21B;
+    box-shadow: 0 0 0 3px rgba(240, 178, 27, 0.1);
+}
+
+.btn-verify-otp {
+    background: linear-gradient(135deg, #F0B21B 0%, #d69e16 100%);
+    color: #1f2937;
+    border: none;
+    padding: 0.75rem 2rem;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 200px;
+    justify-content: center;
+}
+
+.btn-verify-otp:hover:not(:disabled) {
+    background: linear-gradient(135deg, #d69e16 0%, #b7791f 100%);
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(240, 178, 27, 0.3);
+    transform: translateY(-1px);
+}
+
+.btn-verify-otp:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-resend-otp {
+    background: none;
+    color: #6b7280;
+    border: 1px solid #e5e7eb;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-resend-otp:hover:not(:disabled) {
+    background: #f9fafb;
+    color: #1f2937;
+    border-color: #d1d5db;
+}
+
+.btn-resend-otp:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Confirmation Step Styles */
+.confirmation-step {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.confirmation-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.confirmation-input-group label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1f2937;
+    text-align: center;
+}
+
+.confirmation-input {
+    padding: 0.75rem 1rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 1rem;
+    text-align: center;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    background: #ffffff;
+    color: #1f2937;
+    text-transform: uppercase;
+}
+
+.confirmation-input:focus {
+    outline: none;
+    border-color: #ef4444;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.warning-section {
+    display: flex;
+    gap: 1rem;
+    padding: 1.5rem;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    margin: 1rem 0;
+}
+
+.warning-icon {
+    flex-shrink: 0;
+    color: #ef4444;
+    margin-top: 0.25rem;
+}
+
+.warning-content h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #dc2626;
+    margin: 0 0 0.5rem 0;
+}
+
+.warning-content ul {
+    margin: 0;
+    padding-left: 1.25rem;
+    color: #7f1d1d;
+}
+
+.warning-content li {
+    font-size: 0.875rem;
+    margin-bottom: 0.25rem;
+    line-height: 1.4;
+}
+
+.btn-delete-account {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: #ffffff;
+    border: none;
+    padding: 0.75rem 2rem;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    justify-content: center;
+    margin-top: 1rem;
+}
+
+.btn-delete-account:hover:not(:disabled) {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    transform: translateY(-1px);
+}
+
+.btn-delete-account:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Error Message */
+.error-message {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    color: #dc2626;
+    font-size: 0.875rem;
+    margin-top: 1rem;
+}
+
+/* Footer */
+.delete-account-footer {
+    padding: 1rem 2rem 2rem 2rem;
+    display: flex;
+    justify-content: center;
+    border-top: 1px solid #e5e7eb;
+    background: #f9fafb;
+}
+
+.btn-cancel {
+    background: #ffffff;
+    color: #6b7280;
+    border: 1px solid #e5e7eb;
+    padding: 0.75rem 2rem;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-cancel:hover {
+    background: #f9fafb;
+    color: #1f2937;
+    border-color: #d1d5db;
+}
+
+/* Delete Account Card Styles */
+.delete-account-card {
+    border-color: #fecaca !important;
+}
+
+.delete-account-card:hover {
+    background: #fef2f2 !important;
+    border-color: #fca5a5 !important;
+}
+
+.delete-account-card .action-icon {
+    background: #fef2f2 !important;
+    color: #ef4444 !important;
+}
+
+.delete-account-card .action-content h3 {
+    color: #dc2626 !important;
+}
+
+.delete-account-card .action-content p {
+    color: #7f1d1d !important;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .delete-account-modal {
+        margin: 1rem;
+        max-height: 95vh;
+    }
+    
+    .delete-account-header {
+        padding: 1.5rem 1.5rem 1rem 1.5rem;
+    }
+    
+    .delete-account-title {
+        font-size: 1.5rem;
+    }
+    
+    .delete-account-content {
+        padding: 1.5rem;
+    }
+    
+    .warning-section {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .delete-account-footer {
+        padding: 1rem 1.5rem 1.5rem 1.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .delete-account-modal {
+        margin: 0.5rem;
+    }
+    
+    .delete-account-header {
+        padding: 1rem 1rem 0.75rem 1rem;
+    }
+    
+    .delete-account-content {
+        padding: 1rem;
+    }
+    
+    .btn-send-otp,
+    .btn-verify-otp,
+    .btn-delete-account {
+        width: 100%;
+        min-width: auto;
+    }
+}

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import apiClient from '../../../shared/services/api/apiClient';
 
 const emptyForm = {
@@ -14,7 +15,8 @@ const emptyForm = {
     isDefault: false
 };
 
-const AddressManagement = () => {
+const AddressManagement = ({ returnTo }) => {
+    const navigate = useNavigate();
     const [addresses, setAddresses] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -78,6 +80,15 @@ const AddressManagement = () => {
             }
             await fetchAddresses();
             resetForm();
+            
+            // If we came from checkout and this was a new address, navigate back
+            if (returnTo === 'checkout' && !editingId) {
+                // Show a brief success message before navigating
+                setError(''); // Clear any existing errors
+                setTimeout(() => {
+                    navigate('/checkout');
+                }, 500);
+            }
         } catch (e) {
             setError('Failed to save address.');
         } finally {
@@ -142,8 +153,44 @@ const AddressManagement = () => {
     };
 
     return (
-        <div>
-            <h2 style={{ marginBottom: 12 }}>Manage Addresses</h2>
+        <div className="tab-container">
+            <div className="tab-header">
+                <div className="tab-header-content">
+                    <div className="tab-header-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M3 3H21C21.5523 3 22 3.44772 22 4V20C22 20.5523 21.5523 21 21 21H3C2.44772 21 2 20.5523 2 20V4C2 3.44772 2.44772 3 3 3Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M8 9L12 13L16 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                    </div>
+                    <div className="tab-header-text">
+                        <h1 className="tab-title">Manage Addresses</h1>
+                        <p className="tab-subtitle">
+                            {returnTo === 'checkout' 
+                                ? 'Add an address to continue with your checkout' 
+                                : 'Add, edit, and manage your delivery addresses'
+                            }
+                        </p>
+                    </div>
+                    {returnTo === 'checkout' && (
+                        <div className="tab-header-actions">
+                            <button 
+                                className="btn btn-secondary"
+                                onClick={() => navigate('/checkout')}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px'
+                                }}
+                            >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M19 12H5M12 19L5 12L12 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                                Back to Checkout
+                            </button>
+                        </div>
+                    )}
+                </div>
+            </div>
 
             {error && (
                 <div className="error-alert" style={{ marginBottom: 12 }}>
