@@ -65,10 +65,8 @@ export const WishlistProvider = ({ children, userId }) => {
         // Only load wishlist data if it has items or if current state is empty
         if (wishlistData && wishlistData.length > 0) {
           setWishlist(wishlistData);
-        } else if (wishlist.length === 0) {
-          setWishlist(wishlistData);
         } else {
-          setIsLoading(false);
+          setWishlist(wishlistData || []);
         }
       } catch (error) {
         console.error('Error loading wishlist from localStorage:', error);
@@ -127,6 +125,7 @@ export const WishlistProvider = ({ children, userId }) => {
     
     // Update previous userId
     setPreviousUserId(userId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, previousUserId]);
 
   // Save wishlist to localStorage whenever it changes

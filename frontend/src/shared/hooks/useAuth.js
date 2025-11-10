@@ -56,7 +56,7 @@ export const AuthProvider = ({ children }) => {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [checkAuthStatus, clearAuthData]);
 
     /**
      * Check authentication status with server
@@ -91,7 +91,7 @@ export const AuthProvider = ({ children }) => {
             
             return false;
         }
-    }, []);
+    }, [clearAuthData]);
 
     /**
      * Customer login
@@ -217,7 +217,7 @@ export const AuthProvider = ({ children }) => {
         } finally {
             clearAuthData();
         }
-    }, []);
+    }, [clearAuthData]);
 
     /**
      * Clear authentication data

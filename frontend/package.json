@@ -5,7 +5,6 @@
   "proxy": "http://localhost:5000",
   "description": "DesignXcel Frontend React Application",
   "dependencies": {
-    "@google/model-viewer": "^4.1.0",
     "@react-three/drei": "^9.88.0",
     "@react-three/fiber": "^8.15.19",
     "@react-three/xr": "^6.6.27",
@@ -30,7 +29,7 @@
     "socket.io-client": "^4.7.2",
     "stream-browserify": "^3.0.0",
     "stream-http": "^3.2.0",
-    "three": "^0.172.0",
+    "three": "^0.151.3",
     "url": "^0.11.4",
     "util": "^0.12.5",
     "uuid": "^13.0.0"
@@ -38,9 +37,9 @@
   "scripts": {
     "start": "serve -s build -l ${PORT:-3000}",
     "dev": "craco start",
-    "build": "react-scripts build",
-    "build:production": "react-scripts build",
-    "build:railway": "copy .env.railway .env.production && react-scripts build",
+    "build": "cross-env CI=false react-scripts build",
+    "build:production": "cross-env CI=false react-scripts build",
+    "build:railway": "node scripts/copy-env.js && cross-env CI=false react-scripts build",
     "test": "craco test",
     "eject": "react-scripts eject",
     "test:watch": "react-scripts test --watchAll",

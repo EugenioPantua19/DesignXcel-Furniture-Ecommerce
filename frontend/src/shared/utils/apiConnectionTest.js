@@ -1,18 +1,35 @@
 // API Connection Test Utility
 // This utility helps test the connection between frontend and backend
 
-import apiClient from '../services/api/apiClient';
-
 class ApiConnectionTest {
     constructor() {
         this.apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-        console.log('🔗 API Connection Test initialized with URL:', this.apiUrl);
+        this._apiClient = null;
+        this._initialized = false;
+    }
+
+    _initialize() {
+        if (!this._initialized) {
+            console.log('🔗 API Connection Test initialized with URL:', this.apiUrl);
+            this._initialized = true;
+        }
+    }
+
+    // Lazy load apiClient to avoid circular dependency issues
+    async getApiClient() {
+        if (!this._apiClient) {
+            // Dynamic import to avoid circular dependency
+            const apiClientModule = await import('../services/api/apiClient');
+            this._apiClient = apiClientModule.default || apiClientModule;
+        }
+        return this._apiClient;
     }
 
     /**
      * Test basic API connectivity
      */
     async testConnection() {
+        this._initialize();
         try {
             console.log('🧪 Testing API connection...');
             
@@ -22,7 +39,8 @@ class ApiConnectionTest {
             
             console.log('✅ Health check response:', healthData);
             
-            // Test 2: Using apiClient
+            // Test 2: Using apiClient (lazy loaded)
+            const apiClient = await this.getApiClient();
             const clientResponse = await apiClient.get('/api/health');
             console.log('✅ API Client response:', clientResponse);
             
@@ -79,6 +97,7 @@ class ApiConnectionTest {
      * Get current configuration
      */
     getConfig() {
+        this._initialize();
         return {
             apiUrl: this.apiUrl,
             environment: process.env.REACT_APP_ENVIRONMENT || 'development',
@@ -92,4 +111,31 @@ class ApiConnectionTest {
     }
 }
 
-export default new ApiConnectionTest();
+// Export a function that returns a singleton instance
+// This prevents initialization at module load time
+let apiConnectionTestInstance = null;
+
+const getApiConnectionTest = () => {
+    if (!apiConnectionTestInstance) {
+        apiConnectionTestInstance = new ApiConnectionTest();
+    }
+    return apiConnectionTestInstance;
+};
+
+// Export the getter function, not the instance
+// This ensures the instance is only created when first accessed
+export default {
+    get instance() {
+        return getApiConnectionTest();
+    },
+    // Proxy methods for convenience
+    async testConnection() {
+        return getApiConnectionTest().testConnection();
+    },
+    async testEndpoints() {
+        return getApiConnectionTest().testEndpoints();
+    },
+    getConfig() {
+        return getApiConnectionTest().getConfig();
+    }
+};
