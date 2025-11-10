@@ -93,6 +93,15 @@ class SessionManager {
     }
 }
 
-// Export singleton instance
-export const sessionManager = new SessionManager();
-export default sessionManager;
+// Export singleton instance with lazy initialization
+let sessionManagerInstance = null;
+
+const getSessionManager = () => {
+    if (!sessionManagerInstance) {
+        sessionManagerInstance = new SessionManager();
+    }
+    return sessionManagerInstance;
+};
+
+export const sessionManager = getSessionManager();
+export default getSessionManager();

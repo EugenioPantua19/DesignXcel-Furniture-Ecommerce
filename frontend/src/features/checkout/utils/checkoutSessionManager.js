@@ -1,9 +1,6 @@
 // Checkout Session Manager
 // Handles session validation specifically for checkout flow
 
-import { authService } from '../../auth/services/authService';
-import sessionManager from '../../../shared/utils/sessionManager';
-
 class CheckoutSessionManager {
     constructor() {
         this.isValidating = false;
@@ -31,6 +28,12 @@ class CheckoutSessionManager {
 
     async _performValidation() {
         try {
+            // Lazy load dependencies to avoid circular dependencies
+            const sessionManagerModule = await import('../../../shared/utils/sessionManager');
+            const sessionManager = sessionManagerModule.default || sessionManagerModule.sessionManager;
+            const authServiceModule = await import('../../auth/services/authService');
+            const authService = authServiceModule.authService;
+            
             console.log('🛒 Validating session for checkout...');
             
             // Check if we have basic auth data
@@ -138,6 +141,10 @@ class CheckoutSessionManager {
         const validation = await this.validateCheckoutSession();
         
         if (!validation.valid && validation.shouldRedirect) {
+            // Lazy load sessionManager
+            const sessionManagerModule = await import('../../../shared/utils/sessionManager');
+            const sessionManager = sessionManagerModule.default || sessionManagerModule.sessionManager;
+            
             // Clear invalid session data
             sessionManager.clearSession();
             
@@ -152,8 +159,12 @@ class CheckoutSessionManager {
     }
 
     // Handle checkout-specific errors
-    handleCheckoutError(error, endpoint) {
+    async handleCheckoutError(error, endpoint) {
         if (error.response && error.response.status === 401) {
+            // Lazy load sessionManager
+            const sessionManagerModule = await import('../../../shared/utils/sessionManager');
+            const sessionManager = sessionManagerModule.default || sessionManagerModule.sessionManager;
+            
             // Show user-friendly message
             const message = 'Your session has expired. Please log in again to continue with checkout.';
             
@@ -176,7 +187,10 @@ class CheckoutSessionManager {
     }
 
     // Get session info for debugging
-    getSessionDebugInfo() {
+    async getSessionDebugInfo() {
+        const sessionManagerModule = await import('../../../shared/utils/sessionManager');
+        const sessionManager = sessionManagerModule.default || sessionManagerModule.sessionManager;
+        
         return {
             ...sessionManager.getSessionInfo(),
             isValidating: this.isValidating,
@@ -185,6 +199,15 @@ class CheckoutSessionManager {
     }
 }
 
-// Export singleton instance
-export const checkoutSessionManager = new CheckoutSessionManager();
-export default checkoutSessionManager;
+// Export singleton instance with lazy initialization
+let checkoutSessionManagerInstance = null;
+
+const getCheckoutSessionManager = () => {
+    if (!checkoutSessionManagerInstance) {
+        checkoutSessionManagerInstance = new CheckoutSessionManager();
+    }
+    return checkoutSessionManagerInstance;
+};
+
+export const checkoutSessionManager = getCheckoutSessionManager();
+export default getCheckoutSessionManager();
