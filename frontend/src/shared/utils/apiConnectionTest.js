@@ -124,7 +124,7 @@ const getApiConnectionTest = () => {
 
 // Export the getter function, not the instance
 // This ensures the instance is only created when first accessed
-export default {
+const apiConnectionTest = {
     get instance() {
         return getApiConnectionTest();
     },
@@ -139,3 +139,5 @@ export default {
         return getApiConnectionTest().getConfig();
     }
 };
+
+export default apiConnectionTest;

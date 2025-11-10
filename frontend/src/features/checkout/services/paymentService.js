@@ -224,7 +224,7 @@ const getPaymentService = () => {
     return paymentServiceInstance;
 };
 
-export default {
+const paymentService = {
     get instance() {
         return getPaymentService();
     },
@@ -257,3 +257,5 @@ export default {
         return getPaymentService().getCardBrand(cardNumber);
     }
 };
+
+export default paymentService;

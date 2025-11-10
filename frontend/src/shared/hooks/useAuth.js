@@ -29,34 +29,15 @@ export const AuthProvider = ({ children }) => {
     const [sessionId, setSessionId] = useState(null);
 
     /**
-     * Initialize authentication state
+     * Clear authentication data
      */
-    const initializeAuth = useCallback(async () => {
-        try {
-            setLoading(true);
-            
-            // Check for stored token
-            const savedToken = localStorage.getItem('authToken');
-            const savedUser = localStorage.getItem('userData');
-            
-            if (savedToken && savedUser) {
-                const userData = JSON.parse(savedUser);
-                setUser(userData);
-                setToken(savedToken);
-                
-                // Verify token with server
-                await checkAuthStatus();
-            } else {
-                // Check session-based auth
-                await checkAuthStatus();
-            }
-        } catch (error) {
-            console.error('Auth initialization error:', error);
-            clearAuthData();
-        } finally {
-            setLoading(false);
-        }
-    }, [checkAuthStatus, clearAuthData]);
+    const clearAuthData = useCallback(() => {
+        setUser(null);
+        setToken(null);
+        setSessionId(null);
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('userData');
+    }, []);
 
     /**
      * Check authentication status with server
@@ -92,6 +73,36 @@ export const AuthProvider = ({ children }) => {
             return false;
         }
     }, [clearAuthData]);
+
+    /**
+     * Initialize authentication state
+     */
+    const initializeAuth = useCallback(async () => {
+        try {
+            setLoading(true);
+            
+            // Check for stored token
+            const savedToken = localStorage.getItem('authToken');
+            const savedUser = localStorage.getItem('userData');
+            
+            if (savedToken && savedUser) {
+                const userData = JSON.parse(savedUser);
+                setUser(userData);
+                setToken(savedToken);
+                
+                // Verify token with server
+                await checkAuthStatus();
+            } else {
+                // Check session-based auth
+                await checkAuthStatus();
+            }
+        } catch (error) {
+            console.error('Auth initialization error:', error);
+            clearAuthData();
+        } finally {
+            setLoading(false);
+        }
+    }, [checkAuthStatus, clearAuthData]);
 
     /**
      * Customer login
@@ -218,17 +229,6 @@ export const AuthProvider = ({ children }) => {
             clearAuthData();
         }
     }, [clearAuthData]);
-
-    /**
-     * Clear authentication data
-     */
-    const clearAuthData = useCallback(() => {
-        setUser(null);
-        setToken(null);
-        setSessionId(null);
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('userData');
-    }, []);
 
     /**
      * Update user profile
